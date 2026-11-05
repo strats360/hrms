@@ -42,6 +42,8 @@ export function CommandPalette({ open, onOpenChange, onGo }: { open: boolean; on
       { label: "Leave balances", sub: "Leave", to: "/leave/balances" },
       { label: "Holiday calendar", sub: "Leave", to: "/leave/holidays" },
       { label: "Admin users & access", sub: "Settings", to: "/settings/access" },
+      { label: "Salary structure", sub: "Payroll", to: "/payroll/structure" },
+      { label: "Review & approve payroll", sub: "Payroll", to: "/payroll/review" },
       { label: "Audit log", sub: "Settings", to: "/settings/audit" },
     ];
     const s = q.trim().toLowerCase();

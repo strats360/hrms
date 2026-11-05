@@ -12,6 +12,7 @@ import { ErrorState, Loading, PageHeader } from "@/components/ui/page";
 import { PersonCell } from "@/components/ui/avatar";
 import { Tag } from "@/components/ui/tag";
 import { ReasonDialog } from "@/components/ui/reason-dialog";
+import { PayrollCard } from "@/components/payroll/PayrollCard";
 
 interface Dashboard {
   date: string;
@@ -83,6 +84,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))" }}>
+        {can("payroll") ? <PayrollCard /> : null}
         {can("leave") ? (
           <Card className="!gap-3">
             <CardHeader title="Leave requests awaiting you" actions={<Button variant="ghost" onClick={() => nav("/leave")}>All requests</Button>} />
@@ -137,8 +139,8 @@ export default function DashboardPage() {
             <AttentionRow to="/employees/onboarding" title="Onboarding to verify" sub="New joiners who submitted their details" count={d.awaitingVerification} show={can("employees")} />
             <AttentionRow to="/attendance" title="Not marked yet today" sub="No punch recorded so far" count={a?.notMarked ?? 0} show={!!a} tone="neutral" />
             <div className="rounded-[var(--radius-md)] px-3 py-2.5" style={{ background: "var(--color-surface)" }}>
-              <div className="font-semibold">Payroll and statutory compliance</div>
-              <div className="text-muted text-[12px]">Payroll runs, challans and due-date alerts arrive in phase 2.</div>
+              <div className="font-semibold">Statutory compliance</div>
+              <div className="text-muted text-[12px]">PF, ESI and PT challans with due-date alerts are next in phase 2.</div>
             </div>
           </div>
         </Card>

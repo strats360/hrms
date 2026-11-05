@@ -20,7 +20,30 @@ The product design lives in [`design/`](design/). `HRMS v2.dc.html` is the sourc
 | Platform console | A separate super admin area with tenant list, plan and status changes (suspend/reactivate), staff list and a cross-tenant audit log |
 | Audit log | Changes to records, approvals, exports and views of full bank account numbers |
 
-Phase 2 covers payroll, statutory compliance (EPF, ESI, PT, LWF), TDS, reimbursements, payments, reports, and billing for the SaaS. These modules already appear in the navigation with a "Soon" label.
+### Phase 2 (in progress)
+
+**Payroll is built:**
+
+| Area | What works |
+| --- | --- |
+| Salary structure | A company-wide template (Basic % of gross, HRA % of Basic, conveyance, medical, PF on full basic or capped). Salary revisions are effective-dated, with custom components per employee. Revisions can't backdate into a locked month |
+| Payroll run | A 7-step wizard: payroll month, input checks (joiners, exits, revisions, missing bank or PAN), attendance and LOP, calculate, review, approve and lock, then payslips and the bank file |
+| Calculation | Pay prorated for paid days. LOP comes from approved attendance (absent = 1 day, half day = 0.5) and approved unpaid leave, and can be overridden per employee. Joiners and leavers are prorated |
+| Statutory | PF 12% on wages capped at ₹15,000 (EPF/EPS split, EDLI, admin), ESI 0.75%/3.25% up to ₹21,000 gross, state Professional Tax and Labour Welfare Fund |
+| TDS | Projects annual income from year-to-date actuals plus the current structure, under the new or old regime. Applies the 87A rebate with marginal relief, surcharge with marginal relief, and 4% cess. What's left is spread over the remaining months |
+| Review | Register with exceptions, change versus last month, hold or release salary, one-time earnings and deductions (incentives, arrears, recoveries), CSV salary register |
+| Controls | Maker-checker approval (whoever calculates can't approve, unless they're a super admin). Approval is blocked while attendance corrections are pending. Reopening needs a reason and isn't allowed after the bank file is exported. Everything is audited |
+| Payslips | Published to self-service with an email to each employee, printable or "Save as PDF" in the design's layout. Data is snapshotted, so payslips never change after lock |
+| Bank file | CSV with full account numbers (decrypted only for this export). Held salaries and missing bank details are skipped, and duplicate account+amount is blocked |
+
+**Before running real payroll, a payroll consultant or CA should confirm these:**
+- **Tax slabs:** FY 2026-27 uses the FY 2025-26 slabs from Finance Act 2025. Update `TAX_TABLES` in `packages/shared/src/payroll.ts` if the Finance Act 2026 changed them.
+- **State tables:** Professional Tax covers Gujarat, Maharashtra, Karnataka, West Bengal, Telangana, Andhra Pradesh and Madhya Pradesh (plus states with no PT). Labour Welfare Fund covers Gujarat and Maharashtra. Other states show a warning on the payslip.
+- **CTC definition:** monthly CTC = gross + employer PF + employer ESI. PF admin and EDLI are shown as extra employer cost.
+- **Old-regime TDS:** this counts only the standard deduction, employee PF (80C) and PT. Investment declarations, HRA exemption, previous-employer income and opening balances come with the TDS module. Until then, an employee's first month on the system annualises TDS and flags it.
+- **Not in scope:** EPS age limit (58+), the ESI contribution-period rule, and mid-month salary revisions (the structure effective at month end is used).
+
+**Still to come in Phase 2:** statutory compliance (ECR, ESI and PT returns, challans), TDS declarations and Form 16, reimbursements, payments, reports and SaaS billing. These show as "Soon" in the navigation.
 
 ## Architecture
 

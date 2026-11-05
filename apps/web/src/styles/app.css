@@ -94,3 +94,17 @@ select.input { appearance: none; padding-right: 30px; background-image: url("dat
 @keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+
+/* Printing a payslip: show only #payslip-print, in light colours. "Download PDF" uses the browser's Save as PDF. */
+@media print {
+  @page { size: A4; margin: 14mm; }
+  html, body { background: #fff !important; }
+  body * { visibility: hidden !important; }
+  #payslip-print, #payslip-print * { visibility: visible !important; }
+  #payslip-print {
+    position: absolute; left: 0; top: 0; width: 100%;
+    --color-text: #1d1e26; --color-divider: #d9dbe3; --tint-1: #f3f4f8; --ok-bg: #e8f5ec; --ok-fg: #1e5b33; --muted: #5d6070; --color-accent: #5d5294;
+    color: #1d1e26;
+  }
+  .dialog { box-shadow: none !important; background: #fff !important; }
+}
