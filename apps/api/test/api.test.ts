@@ -47,7 +47,8 @@ describe("permissions", () => {
     expect((await kunal.get("/platform/tenants")).status).toBe(403);
     const r = await platform.get("/platform/tenants");
     expect(r.status).toBe(200);
-    expect(r.body.some((t: any) => t.code === "TN-0142")).toBe(true);
+    const stl = r.body.find((t: any) => t.code === "TN-0142");
+    expect(stl.employees).toBeGreaterThan(200);
   });
 });
 
@@ -69,6 +70,17 @@ describe("employees", () => {
     expect(d.body).not.toHaveProperty("accountNumberEnc");
     const rev = await hr.get(`/admin/employees/${id}?reveal=account`);
     expect(rev.body.accountNumber).toBe("034501512345");
+  });
+  it("partial update leaves other fields untouched", async () => {
+    const id = (await hr.get("/admin/employees?q=STL-0057")).body.rows[0].id;
+    const before = (await hr.get(`/admin/employees/${id}`)).body;
+    expect((await hr.patch(`/admin/employees/${id}`, { phone: "+91 98240 00000" })).status).toBe(200);
+    const after = (await hr.get(`/admin/employees/${id}`)).body;
+    expect(after.phone).toBe("+91 98240 00000");
+    expect(after.status).toBe(before.status);
+    expect(after.annualCtc).toBe(before.annualCtc);
+    expect(after.taxRegime).toBe(before.taxRegime);
+    expect(after.esiApplicable).toBe(before.esiApplicable);
   });
   it("validates PAN and IFSC", async () => {
     const r = await hr.post("/admin/employees", { firstName: "Test", workEmail: "t1@strats360.com", dateOfJoining: "2026-12-01", pan: "BAD", sendInvite: false });
@@ -240,6 +252,7 @@ describe("access management", () => {
   });
   it("cannot edit the super admin role or lock out the last super admin", async () => {
     const roles = await kunal.get("/admin/access/roles");
+    expect(roles.body.find((r: any) => r.key === "hr_admin").members).toBe(1);
     const sa = roles.body.find((r: any) => r.key === "super_admin");
     expect((await kunal.patch(`/admin/access/roles/${sa.id}`, { permissions: {} })).status).toBe(400);
     const members = await kunal.get("/admin/access/members");

@@ -4,7 +4,7 @@ import { adminInvites, employees, memberships, roles, tenants, user } from "@hrm
 import { inviteAdminSchema, randomToken, roleSchema, sanitizeMatrix, sha256Hex, updateMemberSchema } from "@hrms/shared";
 import type { AppEnv } from "../env";
 import { requirePerm } from "../lib/context";
-import { v } from "../lib/validate";
+import { v, vPatch } from "../lib/validate";
 import { badRequest, conflict, notFound } from "../lib/errors";
 import { audit } from "../lib/audit";
 import { layout } from "../lib/email";
@@ -18,7 +18,7 @@ accessRoutes.get("/roles", requirePerm("users", "view"), async (c) => {
   const rows = await db
     .select({
       role: roles,
-      members: sql<number>`(select count(*)::int from ${memberships} m where m.role_id = ${roles.id} and m.status = 'active')`,
+      members: sql<number>`(select count(*)::int from memberships m where m.role_id = "roles"."id" and m.status = 'active')`,
     })
     .from(roles)
     .where(eq(roles.tenantId, tid))
@@ -37,7 +37,7 @@ accessRoutes.post("/roles", requirePerm("users", "configure"), v("json", roleSch
   return c.json(row, 201);
 });
 
-accessRoutes.patch("/roles/:id", requirePerm("users", "configure"), v("json", roleSchema.partial()), async (c) => {
+accessRoutes.patch("/roles/:id", requirePerm("users", "configure"), vPatch(roleSchema.partial()), async (c) => {
   const db = c.get("db");
   const tid = c.get("tenant").tenantId;
   const [cur] = await db.select().from(roles).where(and(eq(roles.id, c.req.param("id")), eq(roles.tenantId, tid)));

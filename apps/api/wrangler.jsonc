@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "strats360-hrms",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // The React app is built to apps/web/dist and served by this Worker.
+  // /api/* runs the Worker first; everything else is a static asset with SPA fallback.
+  "assets": {
+    "directory": "../web/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": { "enabled": true },
+  "vars": {
+    "APP_URL": "https://hrms.example.com",
+    "EMAIL_FROM": "Strats360 People <people@example.com>",
+    "ENVIRONMENT": "production"
+  },
+  // Neon Postgres through Hyperdrive. Create with:
+  //   npx wrangler hyperdrive create hrms-db --connection-string="postgres://...neon.tech/neondb?sslmode=require"
+  // then paste the id below. For local dev, DATABASE_URL in .dev.vars is used instead.
+  "hyperdrive": [
+    { "binding": "HYPERDRIVE", "id": "REPLACE_WITH_HYPERDRIVE_ID", "localConnectionString": "postgres://hrms:hrms@localhost:5432/hrms" }
+  ],
+  // Employee documents and logos. Create with: npx wrangler r2 bucket create hrms-files
+  "r2_buckets": [{ "binding": "FILES", "bucket_name": "hrms-files" }]
+  // Secrets (set with `npx wrangler secret put NAME`):
+  //   BETTER_AUTH_SECRET, ENCRYPTION_KEY, RESEND_API_KEY
+}

@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "wrangler dev --port 8787",
     "deploy": "wrangler deploy",
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.node.json",
     "test": "vitest run",
     "cf-typegen": "wrangler types",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "platform-admin": "tsx scripts/create-platform-admin.ts"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.9.1",
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261104.1",
+    "@types/node": "^26.6.6",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "vitest": "^3.2.7",

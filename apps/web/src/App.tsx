@@ -1,0 +1,127 @@
+import { lazy, Suspense, type ReactNode } from "react";
+import { createBrowserRouter, Navigate, Outlet, RouterProvider, useLocation } from "react-router";
+import { useSession } from "@/lib/session";
+import { Loading } from "@/components/ui/page";
+import { AdminLayout } from "@/components/layout/AdminLayout";
+import { PlatformLayout } from "@/components/layout/PlatformLayout";
+import { EssLayout } from "@/components/layout/EssLayout";
+
+const L = (f: () => Promise<{ default: React.ComponentType }>) => {
+  const C = lazy(f);
+  return (
+    <Suspense fallback={<Loading />}>
+      <C />
+    </Suspense>
+  );
+};
+
+/** Must be signed in. */
+function RequireAuth({ children }: { children?: ReactNode }) {
+  const { me, loading } = useSession();
+  const loc = useLocation();
+  if (loading) return <Loading />;
+  if (!me) return <Navigate to={`/login?next=${encodeURIComponent(loc.pathname + loc.search)}`} replace />;
+  return <>{children ?? <Outlet />}</>;
+}
+
+/** "/" decides where a user lands. */
+function Home() {
+  const { me, tenant } = useSession();
+  if (tenant?.roleId) return <AdminLayout />;
+  if (tenant?.employeeId) return <Navigate to="/me" replace />;
+  if (me?.platformRole) return <Navigate to="/platform" replace />;
+  return <Navigate to="/no-access" replace />;
+}
+
+const router = createBrowserRouter([
+  // public
+  { path: "/login", element: L(() => import("@/pages/auth/Login")) },
+  { path: "/forgot-password", element: L(() => import("@/pages/auth/ForgotPassword")) },
+  { path: "/reset-password", element: L(() => import("@/pages/auth/ResetPassword")) },
+  { path: "/signup", element: L(() => import("@/pages/auth/Signup")) },
+  { path: "/onboarding/:token", element: L(() => import("@/pages/auth/InviteAccept")) },
+  { path: "/invite/admin/:token", element: L(() => import("@/pages/auth/AdminInvite")) },
+  {
+    element: <RequireAuth />,
+    children: [
+      { path: "/no-access", element: L(() => import("@/pages/auth/NoAccess")) },
+      { path: "/setup", element: L(() => import("@/pages/setup/CompanySetup")) },
+      { path: "/me/onboarding", element: L(() => import("@/pages/ess/Onboarding")) },
+      {
+        path: "/me",
+        element: <EssLayout />,
+        children: [
+          { index: true, element: L(() => import("@/pages/ess/Home")) },
+          { path: "attendance", element: L(() => import("@/pages/ess/Attendance")) },
+          { path: "leave", element: L(() => import("@/pages/ess/Leave")) },
+          { path: "profile", element: L(() => import("@/pages/ess/Profile")) },
+        ],
+      },
+      {
+        path: "/platform",
+        element: <PlatformLayout />,
+        children: [
+          { index: true, element: L(() => import("@/pages/platform/Overview")) },
+          { path: "tenants", element: L(() => import("@/pages/platform/Tenants")) },
+          { path: "staff", element: L(() => import("@/pages/platform/Staff")) },
+          { path: "audit", element: L(() => import("@/pages/platform/Audit")) },
+          { path: "*", element: L(() => import("@/pages/Soon")) },
+        ],
+      },
+      {
+        path: "/",
+        element: <Home />,
+        children: [
+          { index: true, element: L(() => import("@/pages/admin/Dashboard")) },
+          {
+            path: "employees",
+            element: L(() => import("@/pages/admin/employees/EmployeesLayout")),
+            children: [
+              { index: true, element: L(() => import("@/pages/admin/employees/Directory")) },
+              { path: "onboarding", element: L(() => import("@/pages/admin/employees/Onboarding")) },
+              { path: "new", element: L(() => import("@/pages/admin/employees/EmployeeForm")) },
+            ],
+          },
+          { path: "employees/:id", element: L(() => import("@/pages/admin/employees/EmployeeProfile")) },
+          { path: "employees/:id/edit", element: L(() => import("@/pages/admin/employees/EmployeeForm")) },
+          {
+            path: "attendance",
+            element: L(() => import("@/pages/admin/attendance/AttendanceLayout")),
+            children: [
+              { index: true, element: L(() => import("@/pages/admin/attendance/Today")) },
+              { path: "monthly", element: L(() => import("@/pages/admin/attendance/Monthly")) },
+              { path: "corrections", element: L(() => import("@/pages/admin/attendance/Corrections")) },
+              { path: "policies", element: L(() => import("@/pages/admin/attendance/Policies")) },
+            ],
+          },
+          {
+            path: "leave",
+            element: L(() => import("@/pages/admin/leave/LeaveLayout")),
+            children: [
+              { index: true, element: L(() => import("@/pages/admin/leave/Requests")) },
+              { path: "balances", element: L(() => import("@/pages/admin/leave/Balances")) },
+              { path: "policies", element: L(() => import("@/pages/admin/leave/Policies")) },
+              { path: "holidays", element: L(() => import("@/pages/admin/leave/Holidays")) },
+            ],
+          },
+          {
+            path: "settings",
+            element: L(() => import("@/pages/admin/settings/SettingsLayout")),
+            children: [
+              { index: true, element: L(() => import("@/pages/admin/settings/Organization")) },
+              { path: "structure", element: L(() => import("@/pages/admin/settings/Structure")) },
+              { path: "access", element: L(() => import("@/pages/admin/settings/Access")) },
+              { path: "audit", element: L(() => import("@/pages/admin/settings/Audit")) },
+            ],
+          },
+          { path: "*", element: L(() => import("@/pages/Soon")) },
+        ],
+      },
+    ],
+  },
+  { path: "*", element: <Navigate to="/" replace /> },
+]);
+
+export function App() {
+  return <RouterProvider router={router} />;
+}

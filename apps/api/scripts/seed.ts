@@ -8,6 +8,8 @@
  * Refuses to run when ENVIRONMENT=production.
  */
 import { readFileSync, existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { and, eq } from "drizzle-orm";
 import {
   attendanceCorrections,
@@ -34,8 +36,9 @@ import { applyUsage, ensureBalances } from "../src/services/leave";
 
 // ---- env ----
 const vars: Record<string, string> = {};
-if (existsSync(new URL("../.dev.vars", import.meta.url))) {
-  for (const line of readFileSync(new URL("../.dev.vars", import.meta.url), "utf8").split("\n")) {
+const devVars = join(dirname(fileURLToPath(import.meta.url)), "..", ".dev.vars");
+if (existsSync(devVars)) {
+  for (const line of readFileSync(devVars, "utf8").split("\n")) {
     const m = line.match(/^\s*([A-Z_]+)\s*=\s*"?(.*?)"?\s*$/);
     if (m) vars[m[1]!] = m[2]!;
   }

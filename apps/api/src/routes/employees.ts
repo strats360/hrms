@@ -25,7 +25,7 @@ import {
 import { z } from "zod";
 import type { AppEnv } from "../env";
 import { requirePerm } from "../lib/context";
-import { v } from "../lib/validate";
+import { v, vPatch } from "../lib/validate";
 import { badRequest, notFound } from "../lib/errors";
 import { audit } from "../lib/audit";
 import { ALLOWED_TYPES, deleteFile, MAX_UPLOAD_BYTES, putFile, safeName } from "../lib/storage";
@@ -222,7 +222,7 @@ employeeRoutes.post("/", requirePerm("employees", "edit"), v("json", employeeCre
   return c.json({ id: emp!.id, employeeCode: code, invited: sendInvite && !linked }, 201);
 });
 
-employeeRoutes.patch("/:id", requirePerm("employees", "edit"), v("json", employeeUpdateSchema), async (c) => {
+employeeRoutes.patch("/:id", requirePerm("employees", "edit"), vPatch(employeeUpdateSchema), async (c) => {
   const body = c.req.valid("json");
   const db = c.get("db");
   const tid = c.get("tenant").tenantId;

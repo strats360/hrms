@@ -1,0 +1,11 @@
+# Copy to .dev.vars for local development (never commit .dev.vars)
+DATABASE_URL=postgres://hrms:hrms@localhost:5432/hrms
+APP_URL=http://localhost:5173
+# openssl rand -base64 32
+BETTER_AUTH_SECRET=change-me
+# openssl rand -base64 32  (32 bytes, base64) - encrypts bank account numbers. Never change it after go-live.
+ENCRYPTION_KEY=change-me
+ENVIRONMENT=development
+# Optional: send real email in dev
+# RESEND_API_KEY=
+# EMAIL_FROM=Strats360 People <people@yourdomain.in>

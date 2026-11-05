@@ -14,7 +14,7 @@ import {
 import { z } from "zod";
 import type { AppEnv } from "../env";
 import { requirePerm } from "../lib/context";
-import { v } from "../lib/validate";
+import { v, vPatch } from "../lib/validate";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { audit } from "../lib/audit";
 import { toCsv } from "../lib/csv";
@@ -184,7 +184,7 @@ leaveRoutes.post("/types", requirePerm("leave", "configure"), v("json", leaveTyp
   await audit(c, { action: "leave_type.create", entity: "leave_type", entityId: row!.id, summary: `Added leave type ${row!.name}` });
   return c.json(row, 201);
 });
-leaveRoutes.patch("/types/:id", requirePerm("leave", "configure"), v("json", leaveTypeSchema.partial()), async (c) => {
+leaveRoutes.patch("/types/:id", requirePerm("leave", "configure"), vPatch(leaveTypeSchema.partial()), async (c) => {
   const [row] = await c
     .get("db")
     .update(leaveTypes)

@@ -1,0 +1,96 @@
+/* Order: Tailwind (layout utilities) -> Nocturne design system -> app theme layer. */
+@import "tailwindcss";
+/* Layered so Tailwind utilities (incl. responsive hidden/lg:flex) can override component classes. */
+@import "./nocturne.css" layer(components);
+
+/* Make Tailwind aware of the design tokens (bg-surface, text-muted, etc.). */
+@theme inline {
+  --font-sans: var(--font-body);
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-fg: var(--color-text);
+  --color-accent: var(--color-accent);
+  --color-divider: var(--color-divider);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+}
+
+/* Theme layer from the HRMS v2 design: selection, tints, status colours, and the derived light theme. */
+[data-theme] {
+  --sel-bg: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  --sel-fg: var(--color-accent-300);
+  --tint-1: color-mix(in srgb, var(--color-text) 6%, transparent);
+  --tint-2: color-mix(in srgb, var(--color-text) 14%, transparent);
+  --muted: color-mix(in srgb, var(--color-text) 60%, transparent);
+  --muted-2: color-mix(in srgb, var(--color-text) 75%, transparent);
+  --inverse-bg: var(--color-neutral-200);
+  --inverse-fg: var(--color-neutral-900);
+  --ok: oklch(0.72 0.11 150);
+  --ok-bg: oklch(0.34 0.05 150);
+  --ok-fg: oklch(0.88 0.09 150);
+  --warn: oklch(0.8 0.12 80);
+  --warn-bg: oklch(0.36 0.06 70);
+  --warn-fg: oklch(0.9 0.1 80);
+  --bad: oklch(0.7 0.14 25);
+  --bad-bg: oklch(0.34 0.07 25);
+  --bad-fg: oklch(0.88 0.08 25);
+  color-scheme: dark;
+}
+[data-theme="light"] {
+  --color-bg: color-mix(in srgb, var(--color-neutral-100) 55%, var(--color-neutral-200));
+  --color-surface: var(--color-neutral-100);
+  --color-text: var(--color-neutral-900);
+  --color-divider: color-mix(in srgb, #292b31 14%, transparent);
+  --shadow-sm: 0 0 0 1px color-mix(in srgb, #292b31 10%, transparent);
+  --shadow-md: 0 0 0 1px color-mix(in srgb, #292b31 10%, transparent), 0 6px 18px rgba(41, 43, 49, 0.12);
+  --shadow-lg: 0 0 0 1px color-mix(in srgb, #292b31 12%, transparent), 0 16px 40px rgba(41, 43, 49, 0.18);
+  --sel-fg: var(--color-accent-700);
+  --inverse-bg: var(--color-neutral-900);
+  --inverse-fg: var(--color-neutral-100);
+  --ok: oklch(0.55 0.12 150);
+  --ok-bg: oklch(0.93 0.05 150);
+  --ok-fg: oklch(0.36 0.1 150);
+  --warn: oklch(0.65 0.13 70);
+  --warn-bg: oklch(0.94 0.06 80);
+  --warn-fg: oklch(0.42 0.1 70);
+  --bad: oklch(0.58 0.16 25);
+  --bad-bg: oklch(0.93 0.05 25);
+  --bad-fg: oklch(0.4 0.12 25);
+  color-scheme: light;
+}
+[data-theme="light"] .tag-accent { background: var(--sel-bg); color: var(--color-accent-700); }
+[data-theme="light"] .tag-neutral { background: var(--tint-2); color: var(--color-neutral-900); }
+[data-theme="light"] .dialog-backdrop { background: color-mix(in srgb, var(--color-neutral-900) 35%, transparent); }
+[data-theme="light"] .btn-primary { color: var(--color-accent-700); border-color: var(--color-accent-600); }
+
+html, body, #root { min-height: 100%; }
+body { font-size: 14px; }
+button { font-family: inherit; }
+.btn { white-space: nowrap; flex: none; }
+.tag { white-space: nowrap; }
+.tag-ok { background: var(--ok-bg); color: var(--ok-fg); }
+.tag-warn { background: var(--warn-bg); color: var(--warn-fg); }
+.tag-bad { background: var(--bad-bg); color: var(--bad-fg); }
+.table th { white-space: nowrap; }
+.text-muted { color: var(--muted); }
+a { color: var(--color-accent); }
+a:hover { color: var(--sel-fg); }
+select.input { appearance: none; padding-right: 30px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239397ab' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+.input[aria-invalid="true"] { border-color: var(--bad); }
+.scroll-thin { scrollbar-width: thin; scrollbar-color: var(--tint-2) transparent; }
+.stat-value { font-family: var(--font-heading); font-size: 30px; letter-spacing: -0.02em; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.num { font-variant-numeric: tabular-nums; }
+/* checkbox styled like the design's square radio */
+.check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; position: relative; }
+.check input { position: absolute; opacity: 0; width: 0; height: 0; }
+.check .box { width: 16px; height: 16px; flex: none; border-radius: 4px; border: 1.5px solid var(--color-divider); display: grid; place-items: center; }
+.check:hover .box { border-color: var(--color-accent); }
+.check input:checked + .box { border-color: var(--color-accent); background: var(--color-accent); }
+.check input:checked + .box::after { content: ""; width: 8px; height: 4px; border-left: 2px solid var(--color-bg); border-bottom: 2px solid var(--color-bg); transform: rotate(-45deg) translate(1px, -1px); }
+.check input:indeterminate + .box { border-color: var(--color-accent); background: var(--color-accent); }
+.check input:indeterminate + .box::after { content: ""; width: 8px; height: 2px; background: var(--color-bg); }
+.check input:focus-visible + .box { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }

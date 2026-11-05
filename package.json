@@ -10,7 +10,9 @@
     "db:generate": "pnpm --filter @hrms/db generate",
     "db:migrate": "pnpm --filter @hrms/db migrate",
     "db:seed": "pnpm --filter @hrms/db seed",
-    "deploy": "pnpm build && pnpm --filter @hrms/api deploy"
+    "release": "pnpm build && pnpm --filter @hrms/api run deploy"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  }
 }

@@ -16,7 +16,8 @@ export function createAuth(env: Env, db: Database, mailer: Mailer) {
     baseURL: env.APP_URL,
     basePath: "/api/auth",
     secret: env.BETTER_AUTH_SECRET,
-    trustedOrigins: [env.APP_URL],
+    trustedOrigins:
+      env.ENVIRONMENT === "development" ? [env.APP_URL, "http://localhost:*", "http://127.0.0.1:*"] : [env.APP_URL],
     database: drizzleAdapter(db, {
       provider: "pg",
       schema: {
@@ -59,13 +60,14 @@ export function createAuth(env: Env, db: Database, mailer: Mailer) {
       window: 60,
       max: 60,
       customRules: {
-        "/sign-in/email": { window: 60, max: 5 },
+        "/sign-in/email": { window: 60, max: env.ENVIRONMENT === "development" ? 50 : 5 },
         "/request-password-reset": { window: 300, max: 3 },
       },
     },
     advanced: {
       useSecureCookies: env.APP_URL.startsWith("https://"),
       database: { generateId: () => crypto.randomUUID() },
+      ipAddress: { ipAddressHeaders: ["cf-connecting-ip", "x-forwarded-for"] },
     },
   });
 }

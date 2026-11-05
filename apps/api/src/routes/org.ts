@@ -14,7 +14,7 @@ import {
 import type { z } from "zod";
 import type { AppEnv } from "../env";
 import { requirePerm } from "../lib/context";
-import { v } from "../lib/validate";
+import { v, vPatch } from "../lib/validate";
 import { notFound, conflict } from "../lib/errors";
 import { audit } from "../lib/audit";
 
@@ -27,14 +27,14 @@ orgRoutes.get("/tenant", async (c) => {
   return c.json(t);
 });
 
-orgRoutes.patch("/tenant", requirePerm("settings", "edit"), v("json", tenantProfileSchema.partial()), async (c) => {
+orgRoutes.patch("/tenant", requirePerm("settings", "edit"), vPatch(tenantProfileSchema.partial()), async (c) => {
   const body = c.req.valid("json");
   const [t] = await c.get("db").update(tenants).set(body).where(eq(tenants.id, c.get("tenant").tenantId)).returning();
   await audit(c, { action: "tenant.update", entity: "tenant", entityId: t!.id, summary: "Updated company profile", data: body });
   return c.json(t);
 });
 
-orgRoutes.patch("/settings", requirePerm("settings", "configure"), v("json", tenantPayrollSettingsSchema.partial()), async (c) => {
+orgRoutes.patch("/settings", requirePerm("settings", "configure"), vPatch(tenantPayrollSettingsSchema.partial()), async (c) => {
   const db = c.get("db");
   const id = c.get("tenant").tenantId;
   const [cur] = await db.select({ settings: tenants.settings }).from(tenants).where(eq(tenants.id, id));
@@ -54,7 +54,12 @@ orgRoutes.post("/setup", requirePerm("settings", "configure"), v("json", company
   const patch: Partial<typeof tenants.$inferInsert> = {};
   if (body.profile) Object.assign(patch, body.profile);
   if (body.statutory) patch.statutory = { ...cur.statutory, ...body.statutory };
-  if (body.payroll) patch.settings = { ...cur.settings, ...body.payroll };
+  if (body.payroll) {
+    // drop zod defaults for keys the client didn't send
+    const sent = (await c.req.json().catch(() => ({})))?.payroll ?? {};
+    const payroll = Object.fromEntries(Object.entries(body.payroll).filter(([k]) => k in sent));
+    patch.settings = { ...cur.settings, ...payroll };
+  }
   if (body.setupStep !== undefined) patch.setupStep = String(body.setupStep);
   if (body.completed) patch.setupCompletedAt = new Date();
   const [t] = await db.update(tenants).set(patch).where(eq(tenants.id, id)).returning();
@@ -98,7 +103,7 @@ function crud<T extends Tbl>(path: string, table: T, schema: z.ZodObject<any>, e
     await audit(c, { action: `${entity}.create`, entity, entityId: (row as any).id, summary: `Added ${entity} ${body.name}` });
     return c.json(row, 201);
   });
-  orgRoutes.patch(`/${path}/:id`, requirePerm("settings", "edit"), v("json", schema.partial()), async (c) => {
+  orgRoutes.patch(`/${path}/:id`, requirePerm("settings", "edit"), vPatch(schema.partial()), async (c) => {
     const tid = c.get("tenant").tenantId;
     const body = c.req.valid("json") as Record<string, unknown>;
     const db = c.get("db");

@@ -12,7 +12,7 @@ import { audit } from "../lib/audit";
 export const platformRoutes = new Hono<AppEnv>();
 platformRoutes.use("*", requirePlatform());
 
-const empCount = sql<number>`(select count(*)::int from ${employees} e where e.tenant_id = ${tenants.id} and e.status not in ('exited','inactive'))`;
+const empCount = sql<number>`(select count(*)::int from employees e where e.tenant_id = "tenants"."id" and e.status not in ('exited','inactive'))`;
 
 platformRoutes.get("/overview", async (c) => {
   const db = c.get("db");
