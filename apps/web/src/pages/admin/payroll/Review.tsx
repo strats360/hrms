@@ -38,7 +38,7 @@ export default function Review() {
   const [q, setQ] = useState("");
   const [term, setTerm] = useState("");
   const [department, setDepartment] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<Filter>(() => (["all", "exceptions", "lop", "hold"].includes(params.get("filter") ?? "") ? (params.get("filter") as Filter) : "all"));
   const [slip, setSlip] = useState<string | null>(null);
   const [hold, setHold] = useState<PayrollItem[] | null>(null);
   const [lop, setLop] = useState<PayrollItem | null>(null);

@@ -1,5 +1,5 @@
 import { Navigate, NavLink, Outlet } from "react-router";
-import { CalendarDays, Clock, Home, LayoutDashboard, LogOut, User } from "lucide-react";
+import { CalendarDays, Clock, Home, LayoutDashboard, LogOut, User, Wallet } from "lucide-react";
 import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./Header";
@@ -9,6 +9,7 @@ const TABS = [
   { to: "/me", label: "Home", icon: Home, end: true },
   { to: "/me/attendance", label: "Attendance", icon: Clock },
   { to: "/me/leave", label: "Leave", icon: CalendarDays },
+  { to: "/me/payslips", label: "Payslips", icon: Wallet },
   { to: "/me/profile", label: "Profile", icon: User },
 ];
 
@@ -47,7 +48,7 @@ export function EssLayout() {
       <main className="mx-auto flex max-w-[1100px] flex-col gap-4 px-4 pt-5">
         <Outlet />
       </main>
-      <nav className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-4 border-t border-[var(--color-divider)] md:hidden" style={{ background: "var(--color-surface)" }} aria-label="Self-service">
+      <nav className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-5 border-t border-[var(--color-divider)] md:hidden" style={{ background: "var(--color-surface)" }} aria-label="Self-service">
         {TABS.map((t) => (
           <NavLink key={t.to} to={t.to} end={t.end} className="flex flex-col items-center gap-0.5 py-2 text-[11px] no-underline" style={({ isActive }) => ({ color: isActive ? "var(--sel-fg)" : "var(--muted)" })}>
             <t.icon size={20} />

@@ -114,8 +114,10 @@ payrollRoutes.post("/structures/:employeeId", requirePerm("payroll", "edit"), v(
     .select({ month: payrollRuns.month })
     .from(payrollRuns)
     .where(and(eq(payrollRuns.tenantId, tid(c)), inArray(payrollRuns.status, ["approved", "paid"]), gte(payrollRuns.periodEnd, b.effectiveFrom)))
+    .orderBy(desc(payrollRuns.month))
     .limit(1);
-  if (locked) throw badRequest(`Payroll for ${locked.month} is already locked. Use an effective date after it, and add arrears as a one-time earning.`);
+  const lockedLabel = locked ? new Date(locked.month + "-01T00:00:00Z").toLocaleDateString("en-IN", { month: "long", year: "numeric", timeZone: "UTC" }) : "";
+  if (locked) throw badRequest(`Payroll up to ${lockedLabel} is already locked. Use an effective date after it, and add arrears as a one-time earning.`);
   const template = await getTemplate(db, tid(c));
   const annualCtc = b.components ? structureFromComponents(b.components, template, e).annualCtc : b.annualCtc;
   const [row] = await db

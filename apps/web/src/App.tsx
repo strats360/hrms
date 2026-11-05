@@ -55,6 +55,7 @@ const router = createBrowserRouter([
           { path: "attendance", element: L(() => import("@/pages/ess/Attendance")) },
           { path: "leave", element: L(() => import("@/pages/ess/Leave")) },
           { path: "profile", element: L(() => import("@/pages/ess/Profile")) },
+          { path: "payslips", element: L(() => import("@/pages/ess/Payslips")) },
         ],
       },
       {
@@ -104,6 +105,17 @@ const router = createBrowserRouter([
               { path: "holidays", element: L(() => import("@/pages/admin/leave/Holidays")) },
             ],
           },
+          {
+            path: "payroll",
+            element: L(() => import("@/pages/admin/payroll/PayrollLayout")),
+            children: [
+              { index: true, element: L(() => import("@/pages/admin/payroll/Runs")) },
+              { path: "structure", element: L(() => import("@/pages/admin/payroll/Structure")) },
+              { path: "review", element: L(() => import("@/pages/admin/payroll/Review")) },
+              { path: "payslips", element: L(() => import("@/pages/admin/payroll/Payslips")) },
+            ],
+          },
+          { path: "payroll/run/:runId", element: L(() => import("@/pages/admin/payroll/RunWizard")) },
           {
             path: "settings",
             element: L(() => import("@/pages/admin/settings/SettingsLayout")),
