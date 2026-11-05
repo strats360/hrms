@@ -13,6 +13,8 @@ import {
   leaveRequests,
   leaveTypes,
   onboardingInvites,
+  payrollItems,
+  payrollRuns,
   tenants,
 } from "@hrms/db";
 import {
@@ -47,6 +49,7 @@ import { buildCalendar, shiftFor, upsertAttendance } from "../services/attendanc
 import { applyLeave, balanceSummary, cancelLeave } from "../services/leave";
 import { bankFields } from "../services/employees";
 import { storeUpload } from "./employees";
+import { payslipView } from "./payroll";
 
 export const essRoutes = new Hono<AppEnv>();
 essRoutes.use("*", requireEmployee);
@@ -342,4 +345,31 @@ essRoutes.post("/onboarding/submit", async (c) => {
   await c.get("db").update(onboardingInvites).set({ status: "submitted", submittedAt: new Date(), progress: 100 }).where(eq(onboardingInvites.id, row.id));
   await audit(c, { action: "onboarding.submit", entity: "employee", entityId: me(c).eid, summary: "Submitted joining details" });
   return c.json({ ok: true });
+});
+
+// ---------- payslips ----------
+const published = sql`${payrollRuns.publishedAt} is not null and ${payrollRuns.status} in ('approved','paid')`;
+
+essRoutes.get("/payslips", async (c) => {
+  const { tid, eid } = me(c);
+  const rows = await c
+    .get("db")
+    .select({ runId: payrollRuns.id, month: payrollRuns.month, payDate: payrollRuns.payDate, status: payrollRuns.status, gross: payrollItems.gross, net: payrollItems.net, totalDeductions: payrollItems.totalDeductions, onHold: payrollItems.onHold })
+    .from(payrollItems)
+    .innerJoin(payrollRuns, eq(payrollRuns.id, payrollItems.runId))
+    .where(and(eq(payrollItems.tenantId, tid), eq(payrollItems.employeeId, eid), published))
+    .orderBy(desc(payrollRuns.month));
+  return c.json(rows);
+});
+
+essRoutes.get("/payslips/:runId", async (c) => {
+  const { tid, eid } = me(c);
+  const [row] = await c
+    .get("db")
+    .select({ run: payrollRuns, item: payrollItems })
+    .from(payrollItems)
+    .innerJoin(payrollRuns, eq(payrollRuns.id, payrollItems.runId))
+    .where(and(eq(payrollItems.tenantId, tid), eq(payrollItems.employeeId, eid), eq(payrollRuns.id, c.req.param("runId")), published));
+  if (!row) throw notFound("Payslip");
+  return c.json(await payslipView(c, row.run, row.item));
 });

@@ -150,6 +150,15 @@ export const tenantPayrollSettingsSchema = z.object({
   paidDaysBasis: z.enum(["calendar", "fixed_26", "working"]).default("calendar"),
   financialYearStartMonth: z.number().int().min(1).max(12).default(4),
   weeklyOffs: z.array(z.number().int().min(0).max(6)).default([0, 6]),
+  salaryTemplate: z
+    .object({
+      basicPctOfGross: z.number().min(20).max(100),
+      hraPctOfBasic: z.number().min(0).max(100),
+      conveyance: z.number().min(0).max(100000),
+      medical: z.number().min(0).max(100000),
+      pfOnFullBasic: z.boolean(),
+    })
+    .optional(),
   employeeCodePrefix: z.string().trim().toUpperCase().regex(/^[A-Z]{2,6}$/, "2 to 6 letters").default("EMP"),
 });
 export type TenantSettings = z.infer<typeof tenantPayrollSettingsSchema>;
@@ -319,3 +328,30 @@ export const essProfileUpdateSchema = employeePersonalSchema
     emergencyContactPhone: true,
   })
   .partial();
+
+// ---------- payroll ----------
+export const monthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Use YYYY-MM");
+const amount = z.coerce.number().min(0).max(1e8);
+export const salaryComponentsSchema = z.object({ basic: amount, hra: amount, conveyance: amount, medical: amount, special: amount });
+export const structureRevisionSchema = z.object({
+  effectiveFrom: isoDate,
+  annualCtc: z.coerce.number().min(0).max(1e9),
+  components: salaryComponentsSchema.nullable().optional(),
+  reason: nullable(trimmed(200)),
+});
+export const payrollRunCreateSchema = z.object({ month: monthSchema, payDate: nullable(isoDate) });
+export const payrollAdjustmentSchema = z.object({
+  employeeId: z.string().min(1),
+  kind: z.enum(["earning", "deduction"]),
+  label: trimmed(80).min(1, "Give it a name"),
+  amount: z.coerce.number().positive("Amount must be more than zero").max(1e8),
+  taxable: z.boolean().default(true),
+  esiWage: z.boolean().default(true),
+});
+export const payrollItemPatchSchema = z.object({
+  lopOverride: z.number().min(0).max(31).nullable().optional(),
+  onHold: z.boolean().optional(),
+  holdReason: nullable(trimmed(200)),
+});
+export const markPaidSchema = z.object({ paidOn: isoDate, reference: nullable(trimmed(80)) });
+export const reopenSchema = z.object({ reason: trimmed(300).min(5, "Say why the payroll is being reopened") });

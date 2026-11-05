@@ -15,6 +15,13 @@
       "when": 1793897549414,
       "tag": "0001_auth_rate_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793900920764,
+      "tag": "0002_payroll",
+      "breakpoints": true
     }
   ]
 }

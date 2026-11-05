@@ -33,6 +33,8 @@ import { countLeaveDays, dateRange, encryptField, evaluateAttendance, sha256Hex,
 import { upsertLogin } from "../src/services/users";
 import { provisionTenant } from "../src/services/provisioning";
 import { applyUsage, ensureBalances } from "../src/services/leave";
+import { calculateRun, defaultPayDate, monthBounds } from "../src/services/payroll";
+import { payrollRuns, user } from "@hrms/db";
 
 // ---- env ----
 const vars: Record<string, string> = {};
@@ -69,7 +71,8 @@ const year = Number(today.slice(0, 4));
 async function main() {
   const [existing] = await db.select().from(tenants).where(eq(tenants.code, "TN-0142"));
   if (existing) {
-    console.log("Demo tenant already exists. To reseed, drop and recreate the database, then run migrations.");
+    const added = await seedPayroll(existing.id);
+    console.log(added ? `Added ${added} months of payroll history to the existing demo tenant.` : "Demo tenant already exists. To reseed, drop and recreate the database, then run migrations.");
     await db.$client.end();
     return;
   }
@@ -375,6 +378,9 @@ async function main() {
     if (e.inv === "invited") links.push(`${env("APP_URL") ?? "http://localhost:5173"}/onboarding/${token}`);
   }
 
+  const months = await seedPayroll(tid);
+  console.log(`Payroll history: ${months} locked months`);
+
   console.log("\nDemo data ready. All demo logins use the password:", PASSWORD);
   console.table([
     { login: "kunal.shah@strats360.com", role: "Tenant super admin" },
@@ -386,6 +392,34 @@ async function main() {
   ]);
   console.log("Try employee self-onboarding with:", links[0]);
   await db.$client.end();
+}
+
+/**
+ * Locked, paid payroll from April of the current FY up to last month, so TDS
+ * year-to-date and month-on-month comparisons are realistic. The current month
+ * is left for you to run through the wizard.
+ */
+async function seedPayroll(tid: string) {
+  const [any] = await db.select({ id: payrollRuns.id }).from(payrollRuns).where(eq(payrollRuns.tenantId, tid)).limit(1);
+  if (any) return 0;
+  const [krupa] = await db.select({ id: user.id }).from(user).where(eq(user.email, "krupa.joshi@strats360.com"));
+  const [kunal] = await db.select({ id: user.id }).from(user).where(eq(user.email, "kunal.shah@strats360.com"));
+  const [ty, tm] = today.split("-").map(Number) as [number, number];
+  const fyStartYear = tm >= 4 ? ty : ty - 1;
+  const months: string[] = [];
+  for (let d = new Date(Date.UTC(fyStartYear, 3, 1)); d < new Date(Date.UTC(ty, tm - 1, 1)); d.setUTCMonth(d.getUTCMonth() + 1)) months.push(d.toISOString().slice(0, 7));
+  const attendanceFrom = (tm === 1 ? `${ty - 1}-12` : `${ty}-${String(tm - 1).padStart(2, "0")}`);
+  for (const month of months) {
+    const { start, end } = monthBounds(month);
+    const [run] = await db.insert(payrollRuns).values({ tenantId: tid, month, periodStart: start, periodEnd: end, payDate: defaultPayDate(month), preparedBy: krupa?.id }).returning();
+    await calculateRun(db, tid, run!.id, krupa?.id ?? null, { assumePresent: month < attendanceFrom });
+    const paidAt = new Date(defaultPayDate(month) + "T12:00:00+05:30");
+    await db
+      .update(payrollRuns)
+      .set({ status: "paid", approvedBy: kunal?.id, approvedAt: paidAt, publishedAt: paidAt, bankFileExportedAt: paidAt, paidAt, paidBy: kunal?.id, paymentReference: `HDFC-${month.replace("-", "")}-SAL` })
+      .where(eq(payrollRuns.id, run!.id));
+  }
+  return months.length;
 }
 
 main().catch(async (e) => {
