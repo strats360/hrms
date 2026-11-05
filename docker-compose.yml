@@ -1,0 +1,48 @@
+# Local preview: Postgres + the app (Worker in workerd, local R2, built web app).
+#   docker compose up --build
+# Then open http://localhost:8787  (demo logins in README, password Demo@12345)
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: hrms
+      POSTGRES_PASSWORD: hrms
+      POSTGRES_DB: hrms
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hrms"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  app:
+    image: hrms-app
+    build:
+      context: .
+      # Optional: CA bundle for networks that intercept TLS. Leave the file absent otherwise.
+      secrets: [ca]
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8787:8787"
+    environment:
+      DATABASE_URL: postgres://hrms:hrms@db:5432/hrms
+      APP_URL: ${APP_URL:-http://localhost:8787}
+      # Dev-only defaults. Generate real ones with: openssl rand -base64 32
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-local-dev-secret-change-me-0123456789}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-bG9jYWwtZGV2LWVuY3J5cHRpb24ta2V5LTMyYnl0ZXM=}
+      SEED_DEMO: ${SEED_DEMO:-true}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+    volumes:
+      - r2data:/data/wrangler
+
+secrets:
+  ca:
+    file: ${CA_CERT_FILE:-./docker/no-ca.crt}
+
+volumes:
+  pgdata:
+  r2data:

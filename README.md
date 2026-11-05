@@ -69,6 +69,23 @@ Generate the two secrets with `openssl rand -base64 32`.
 
 The seed prints an onboarding invite link for a new joiner, so you can try the self-onboarding flow.
 
+### Run with Docker (local preview)
+
+This runs the whole stack with one command: Postgres, plus the Worker in `workerd` (the same runtime as Cloudflare) with local R2 storage, serving the built web app. On first start it applies migrations and loads the demo data.
+
+```bash
+docker compose up --build
+# open http://localhost:8787 and sign in with a demo login (password Demo@12345)
+```
+
+- Set `SEED_DEMO=false` to start with an empty database, and create your company at `/signup`.
+- The secrets in `docker-compose.yml` are dev-only defaults. Override `BETTER_AUTH_SECRET` and `ENCRYPTION_KEY` (`openssl rand -base64 32`) for anything shared.
+- Emails print to the container log (`docker compose logs -f app`) unless you set `RESEND_API_KEY` and `EMAIL_FROM`.
+- If your network intercepts TLS with a private CA, build with `docker build --secret id=ca,src=/path/to/ca.crt -t hrms-app .` and then run `docker compose up`.
+- Reset everything with `docker compose down -v`.
+
+This is for local preview and testing. Production runs on Cloudflare Workers + Neon (see Deploying).
+
 ### Tests
 
 ```bash
