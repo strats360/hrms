@@ -46,6 +46,15 @@ The product design lives in [`design/`](design/). `HRMS v2.dc.html` is the sourc
 | Overview | Cards per statute, a filing calendar (including 24Q quarters and Form 16), a gratuity provision estimate, EDLI members and overtime hours |
 | Rules | The rates and state tables in force, plus registrations from Settings |
 
+**TDS declarations and Form 16 are built:**
+
+| Area | What works |
+| --- | --- |
+| Computation statement | Full Form 16 Part B style statement for both regimes: HRA exemption u/s 10(13A), standard deduction, PT, 24(b) home loan interest (₹2 L cap), other income, previous employer, and Chapter VI-A deductions (80C with employee PF capped at ₹1.5 L, 80CCD(1B) ₹50,000, 80D by age, 80E, 80G, 80TTA ₹10,000). Payroll TDS uses it every month |
+| Self-service | Choose a regime with a live comparison, declare investments, upload proofs, submit to HR, view the computation, download Form 16 |
+| HR | TDS register, per-employee computation, regime switch on request, proof review, verify and lock (you can't verify your own), reminders by email |
+| 24Q and Form 16 | Quarterly return tracking with deducted vs deposited, a deductee annexure CSV for the return utility, and Form 16 (Part A summary + Part B) as a printable PDF, provisional until March is locked |
+
 **Before running real payroll, a payroll consultant or CA should confirm these:**
 - **Tax slabs:** FY 2026-27 uses the FY 2025-26 slabs from Finance Act 2025. Update `TAX_TABLES` in `packages/shared/src/payroll.ts` if the Finance Act 2026 changed them.
 - **State tables:** Professional Tax covers Gujarat, Maharashtra, Karnataka, West Bengal, Telangana, Andhra Pradesh and Madhya Pradesh (plus states with no PT). Labour Welfare Fund covers Gujarat and Maharashtra. Other states show a warning on the payslip.
@@ -54,7 +63,7 @@ The product design lives in [`design/`](design/). `HRMS v2.dc.html` is the sourc
 - **Due dates:** EPF and ESI fall on the 15th, TDS on the 7th (30 April for March), PT by state (Gujarat 15th, Maharashtra month end, Karnataka 20th, West Bengal 21st) and LWF on 15 July / 15 January. Check the ESI file's reason codes against the ESIC portal.
 - **Not in scope:** EPS age limit (58+), the ESI contribution-period rule, and mid-month salary revisions (the structure effective at month end is used).
 
-**Still to come in Phase 2:** TDS declarations and Form 16, reimbursements, payments, reports and SaaS billing. These show as "Soon" in the navigation.
+**Still to come in Phase 2:** reimbursements, payments, reports and SaaS billing. These show as "Soon" in the navigation.
 
 ## Architecture
 

@@ -346,3 +346,61 @@ export interface ContributionRow {
   lwf: number;
   tds: number;
 }
+
+// ---------- TDS ----------
+import type { TaxDeclarationData, TaxStatement, Verified } from "@hrms/shared";
+export type { TaxDeclarationData, TaxStatement, Verified };
+export interface TaxMonth {
+  month: string;
+  status: "locked" | "projected";
+  gross: number;
+  basic: number;
+  hra: number;
+  pf: number;
+  pt: number;
+  tds: number;
+}
+export interface TaxDeclaration {
+  id: string;
+  employeeId: string;
+  fy: string;
+  regime: "new" | "old";
+  data: TaxDeclarationData;
+  verified: Verified;
+  status: "draft" | "submitted" | "verified";
+  submittedAt: string | null;
+  verifiedAt: string | null;
+}
+export interface TaxProof {
+  id: string;
+  section: string;
+  fileName: string;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  status: "pending" | "accepted" | "rejected";
+  note: string | null;
+  createdAt: string;
+}
+export interface EmployeeTax {
+  employee: { id: string; name: string; code: string; pan: string | null; dateOfJoining: string; regime: "new" | "old" };
+  declaration: TaxDeclaration | null;
+  months: TaxMonth[];
+  statement: TaxStatement;
+  comparison: { new: number; old: number; better: "new" | "old"; saving: number };
+  deducted: number;
+  remaining: number;
+  monthlyEstimate: number;
+  projectedMonths: number;
+}
+export interface Form16Data {
+  fy: string;
+  assessmentYear: string;
+  provisional: boolean;
+  employer: { name: string | null; address: string | null; pan: string | null; tan: string | null };
+  employee: { id: string; name: string; code: string; pan: string | null; regime: "new" | "old" };
+  period: { from: string | null; to: string | null };
+  quarters: { quarter: string; amountPaid: number; tdsDeducted: number; tdsDeposited: number; receipt: string | null }[];
+  statement: TaxStatement;
+  tdsDeducted: number;
+  challans: { period: string; reference: string | null; paidOn: string; amount: number }[];
+}
