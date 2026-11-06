@@ -34,7 +34,7 @@ import { upsertLogin } from "../src/services/users";
 import { provisionTenant } from "../src/services/provisioning";
 import { applyUsage, ensureBalances } from "../src/services/leave";
 import { calculateRun, defaultPayDate, monthBounds } from "../src/services/payroll";
-import { payrollItems, payrollRuns, statutoryChallans, user } from "@hrms/db";
+import { payrollItems, payrollRuns, statutoryChallans, taxDeclarations, tdsReturns, user } from "@hrms/db";
 import { inArray } from "drizzle-orm";
 import { dueDate } from "@hrms/shared";
 import { obligationsForRun } from "../src/routes/compliance";
@@ -74,6 +74,7 @@ const year = Number(today.slice(0, 4));
 async function main() {
   const [existing] = await db.select().from(tenants).where(eq(tenants.code, "TN-0142"));
   if (existing) {
+    await seedTax(existing.id);
     const added = await seedPayroll(existing.id);
     await seedChallans(existing.id);
     console.log(added ? `Added ${added} months of payroll history to the existing demo tenant.` : "Demo tenant already exists. To reseed, drop and recreate the database, then run migrations.");
@@ -382,6 +383,7 @@ async function main() {
     if (e.inv === "invited") links.push(`${env("APP_URL") ?? "http://localhost:5173"}/onboarding/${token}`);
   }
 
+  await seedTax(tid);
   const months = await seedPayroll(tid);
   await seedChallans(tid);
   console.log(`Payroll history: ${months} locked months`);
@@ -425,6 +427,43 @@ async function seedPayroll(tid: string) {
       .where(eq(payrollRuns.id, run!.id));
   }
   return months.length;
+}
+
+/** Tax declarations (old-regime employees from the design) and 24Q filings. */
+async function seedTax(tid: string) {
+  const [any] = await db.select({ id: taxDeclarations.id }).from(taxDeclarations).where(eq(taxDeclarations.tenantId, tid)).limit(1);
+  if (any) return;
+  const fy = (() => {
+    const [y, m] = today.split("-").map(Number) as [number, number];
+    const s = m >= 4 ? y : y - 1;
+    return `${s}-${String((s + 1) % 100).padStart(2, "0")}`;
+  })();
+  const byCode = async (code: string) => (await db.select({ id: employees.id }).from(employees).where(and(eq(employees.tenantId, tid), eq(employees.employeeCode, code))))[0]?.id;
+  const [nisha] = await db.select({ id: user.id }).from(user).where(eq(user.email, "nisha.trivedi@strats360.com"));
+  const decls: [string, string, "draft" | "submitted" | "verified", Record<string, unknown>][] = [
+    ["STL-0042", "old", "verified", { rent: { monthlyRent: 15000, months: 12, metro: false, landlordName: "Rameshbhai Vaghela" }, sec80C: { ppf: 100000, elss: 30000 }, sec80D: { self: 18000 } }],
+    ["STL-0152", "old", "submitted", { sec80C: { lic: 60000, ppf: 90000 }, sec80D: { self: 25000, parents: 50000, parentsSenior: true }, homeLoanInterest: 200000 }],
+    ["STL-0171", "old", "submitted", { sec80C: { ppf: 150000 }, sec80CCD1B: 50000, sec80D: { self: 25000 } }],
+    ["STL-0091", "old", "draft", { sec80C: { elss: 80000 }, rent: { monthlyRent: 8000, months: 12, metro: false } }],
+    ["STL-0001", "new", "submitted", {}],
+    ["STL-0063", "new", "submitted", {}],
+  ];
+  for (const [code, regime, status, data] of decls) {
+    const employeeId = await byCode(code);
+    if (!employeeId) continue;
+    const declared = status === "verified" ? { hra: 180000, "80C": 130000, "80D": 18000 } : {};
+    await db.insert(taxDeclarations).values({
+      tenantId: tid, employeeId, fy, regime, data, status, verified: declared,
+      submittedAt: status === "draft" ? null : new Date(`${fy.slice(0, 4)}-05-10T10:00:00+05:30`),
+      verifiedAt: status === "verified" ? new Date() : null,
+      verifiedBy: status === "verified" ? nisha?.id : null,
+    });
+    await db.update(employees).set({ taxRegime: regime }).where(eq(employees.id, employeeId));
+  }
+  const y = Number(fy.slice(0, 4));
+  for (const [quarter, filedOn] of [["Q1", `${y}-07-28`], ["Q2", `${y}-10-28`]] as const) {
+    if (filedOn <= today) await db.insert(tdsReturns).values({ tenantId: tid, fy, quarter, filedOn, acknowledgement: `0200${quarter.slice(1)}${Math.floor(rnd() * 9e9)}` });
+  }
 }
 
 /** Statutory payments for every locked month except the latest (left open so it shows as due). */

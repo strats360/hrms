@@ -31,6 +31,7 @@ import {
 } from "@hrms/shared";
 import { badRequest, notFound } from "../lib/errors";
 import { buildCalendar } from "./attendance";
+import { declarationsFor } from "./tax";
 
 export function monthBounds(month: string) {
   const [y, m] = month.split("-").map(Number) as [number, number];
@@ -182,12 +183,13 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
   const statutory = tenant?.statutory ?? {};
   const emps = await payableEmployees(db, tenantId, start, end);
   const ids = emps.map((x) => x.e.id);
-  const [structs, ytd, unpaid, adjustments, existing] = await Promise.all([
+  const [structs, ytd, unpaid, adjustments, existing, decls] = await Promise.all([
     structuresAsOf(db, tenantId, ids, end),
     yearToDate(db, tenantId, run.month),
     unpaidLeaveDays(db, tenantId, start, end),
     db.select().from(payrollAdjustments).where(eq(payrollAdjustments.runId, runId)),
     db.select().from(payrollItems).where(eq(payrollItems.runId, runId)),
+    declarationsFor(db, tenantId, fyOfMonth(run.month), ids),
   ]);
   const prev = new Map(existing.map((i) => [i.employeeId, i]));
   const cal = opts.assumePresent ? null : await buildCalendar(db, tenantId, emps.map((x) => ({ id: x.e.id, shiftId: x.e.shiftId, branchId: x.e.branchId, dateOfJoining: x.e.dateOfJoining, lastWorkingDay: x.e.lastWorkingDay })), start, end);
@@ -225,7 +227,8 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
       ptApplicable: e.ptApplicable && statOn("pt"),
       state: branchState ?? tenant?.state ?? null,
       gender: e.gender,
-      regime: (e.taxRegime as Regime) ?? "new",
+      regime: ((decls.get(e.id)?.regime ?? e.taxRegime) as Regime) ?? "new",
+      taxProfile: decls.get(e.id) ? { declaration: decls.get(e.id)!.data, verified: decls.get(e.id)!.verified } : undefined,
       ytd: y ? { taxableGross: y.taxableGross, tds: y.tds, employeePf: y.employeePf, professionalTax: y.professionalTax } : ytd.hasHistory ? { taxableGross: 0, tds: 0, employeePf: 0, professionalTax: 0 } : undefined,
     });
     const warnings = [...slip.warnings];

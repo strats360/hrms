@@ -1,3 +1,5 @@
+import { computeTaxStatement, type TaxDeclarationData, type Verified } from "./tax";
+
 /**
  * Payroll engine: pure functions shared by the API (and previews in the web app).
  *
@@ -267,15 +269,25 @@ export interface TaxResult {
 
 /** Annual income tax with 87A rebate (incl. marginal relief), surcharge (with marginal relief) and 4% cess. */
 export function annualIncomeTax(input: TaxInput): TaxResult {
-  const table = (TAX_TABLES[input.financialYear] ?? TAX_TABLES["2026-27"]!)[input.regime];
+  const table = taxTable(input.financialYear, input.regime);
   let taxable = input.annualGross - table.standardDeduction;
   if (input.regime === "old") taxable -= (input.deductions ?? 0) + (input.professionalTax ?? 0) + (input.hraExemption ?? 0);
-  taxable = Math.max(0, Math.round(taxable / 10) * 10); // s.288A: round to nearest ₹10
+  return taxOnIncome(input.regime, input.financialYear, taxable);
+}
+
+export function taxTable(financialYear: string, regime: Regime): TaxTable {
+  return (TAX_TABLES[financialYear] ?? TAX_TABLES["2026-27"]!)[regime];
+}
+
+/** Tax on a total income: slabs, 87A rebate (with marginal relief), surcharge (with marginal relief), 4% cess. */
+export function taxOnIncome(regime: Regime, financialYear: string, income: number): TaxResult {
+  const table = taxTable(financialYear, regime);
+  const taxable = Math.max(0, Math.round(income / 10) * 10); // s.288A: round to nearest ₹10
 
   const base = slabTax(taxable, table.slabs);
   let rebate = 0;
   if (taxable <= table.rebateLimit) rebate = base;
-  else if (input.regime === "new") {
+  else if (regime === "new") {
     // marginal relief: tax can't exceed the income above the rebate limit
     const excess = taxable - table.rebateLimit;
     if (base > excess) rebate = base - excess;
@@ -297,6 +309,19 @@ export function annualIncomeTax(input: TaxInput): TaxResult {
   const cess = (afterRebate + surcharge) * 0.04;
   const total = Math.round(afterRebate + surcharge + cess);
   return { taxableIncome: taxable, baseTax: Math.round(base), rebate: Math.round(rebate), surcharge: Math.round(surcharge), cess: Math.round(cess), total };
+}
+
+/** Slab-by-slab breakdown for a computation statement. */
+export function slabBreakdown(regime: Regime, financialYear: string, taxable: number) {
+  const out: { from: number; to: number | null; rate: number; amount: number; tax: number }[] = [];
+  let prev = 0;
+  for (const [cap, rate] of taxTable(financialYear, regime).slabs) {
+    const amount = Math.max(0, Math.min(taxable, cap) - prev);
+    out.push({ from: prev, to: cap === Infinity ? null : cap, rate, amount, tax: Math.round(amount * rate) });
+    prev = cap;
+    if (taxable <= cap) break;
+  }
+  return out;
 }
 
 /** Months left in the financial year including `month` ("YYYY-MM"). April = 12, March = 1. */
@@ -352,6 +377,8 @@ export interface PayslipInput {
    * earlier months were paid at the same rate.
    */
   ytd?: { taxableGross: number; tds: number; employeePf: number; professionalTax: number };
+  /** The employee's tax declaration for the FY and HR-verified amounts (old regime deductions, HRA, previous employer). */
+  taxProfile?: { declaration?: TaxDeclarationData | null; verified?: Verified | null };
 }
 
 export interface PayslipResult {
@@ -422,14 +449,26 @@ export function computePayslip(input: PayslipInput): PayslipResult {
   const projectedAnnualGross = annualised
     ? fullMonthGross * 12 + (gross - nonTaxableAdj - fullMonthGross)
     : ytd.taxableGross + (gross - nonTaxableAdj) + fullMonthGross * (monthsLeft - 1);
-  const tax = annualIncomeTax({
+  // Basic and HRA for the year, in proportion to the structure (used for the HRA exemption)
+  const sg = input.structure.gross || 1;
+  const statement = computeTaxStatement({
     regime: input.regime,
     financialYear: fyOfMonth(input.month),
-    annualGross: projectedAnnualGross,
-    deductions: Math.min(150000, annualised ? fullMonthPf * 11 + employeePf : ytd.employeePf + employeePf + fullMonthPf * (monthsLeft - 1)),
-    professionalTax: Math.min(2500, annualised ? fullMonthPt * 11 + pt : ytd.professionalTax + pt + fullMonthPt * (monthsLeft - 1)),
+    salary: {
+      gross: projectedAnnualGross,
+      basic: (projectedAnnualGross * input.structure.components.basic) / sg,
+      hra: (projectedAnnualGross * input.structure.components.hra) / sg,
+    },
+    employeePf: annualised ? fullMonthPf * 11 + employeePf : ytd.employeePf + employeePf + fullMonthPf * (monthsLeft - 1),
+    professionalTax: annualised ? fullMonthPt * 11 + pt : ytd.professionalTax + pt + fullMonthPt * (monthsLeft - 1),
+    declaration: input.taxProfile?.declaration,
+    verified: input.taxProfile?.verified,
   });
-  const tds = annualised ? Math.max(0, Math.round(tax.total / 12)) : Math.max(0, Math.round((tax.total - ytd.tds) / monthsLeft));
+  const tax = statement.tax;
+  const alreadyDeducted = statement.previousEmployerTds;
+  const tds = annualised
+    ? Math.max(0, Math.round((tax.total - alreadyDeducted) / 12))
+    : Math.max(0, Math.round((tax.total - alreadyDeducted - ytd.tds) / monthsLeft));
   if (annualised && pastMonths > 0 && tds > 0) warnings.push("TDS assumes earlier months of this financial year were paid at the same rate. Add opening balances for exact figures.");
 
   const deductions: PayLine[] = [
