@@ -17,6 +17,7 @@ import { platformRoutes } from "./routes/platform";
 import { auditRoutes } from "./routes/audit";
 import { fileRoutes } from "./routes/files";
 import { payrollRoutes } from "./routes/payroll";
+import { complianceRoutes } from "./routes/compliance";
 
 /** Better Auth endpoints we expose. Sign-up and everything else stays closed. */
 const AUTH_ALLOW = [
@@ -75,6 +76,7 @@ export function buildApp() {
   t.route("/admin/attendance", attendanceRoutes);
   t.route("/admin/leave", leaveRoutes);
   t.route("/admin/payroll", payrollRoutes);
+  t.route("/admin/compliance", complianceRoutes);
   t.route("/admin/audit", auditRoutes);
   api.route("/", t);
 

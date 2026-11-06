@@ -34,7 +34,10 @@ import { upsertLogin } from "../src/services/users";
 import { provisionTenant } from "../src/services/provisioning";
 import { applyUsage, ensureBalances } from "../src/services/leave";
 import { calculateRun, defaultPayDate, monthBounds } from "../src/services/payroll";
-import { payrollRuns, user } from "@hrms/db";
+import { payrollItems, payrollRuns, statutoryChallans, user } from "@hrms/db";
+import { inArray } from "drizzle-orm";
+import { dueDate } from "@hrms/shared";
+import { obligationsForRun } from "../src/routes/compliance";
 
 // ---- env ----
 const vars: Record<string, string> = {};
@@ -72,6 +75,7 @@ async function main() {
   const [existing] = await db.select().from(tenants).where(eq(tenants.code, "TN-0142"));
   if (existing) {
     const added = await seedPayroll(existing.id);
+    await seedChallans(existing.id);
     console.log(added ? `Added ${added} months of payroll history to the existing demo tenant.` : "Demo tenant already exists. To reseed, drop and recreate the database, then run migrations.");
     await db.$client.end();
     return;
@@ -379,6 +383,7 @@ async function main() {
   }
 
   const months = await seedPayroll(tid);
+  await seedChallans(tid);
   console.log(`Payroll history: ${months} locked months`);
 
   console.log("\nDemo data ready. All demo logins use the password:", PASSWORD);
@@ -420,6 +425,23 @@ async function seedPayroll(tid: string) {
       .where(eq(payrollRuns.id, run!.id));
   }
   return months.length;
+}
+
+/** Statutory payments for every locked month except the latest (left open so it shows as due). */
+async function seedChallans(tid: string) {
+  const [any] = await db.select({ id: statutoryChallans.id }).from(statutoryChallans).where(eq(statutoryChallans.tenantId, tid)).limit(1);
+  if (any) return;
+  const runs = await db.select().from(payrollRuns).where(and(eq(payrollRuns.tenantId, tid), inArray(payrollRuns.status, ["approved", "paid"]))).orderBy(payrollRuns.month);
+  const [kunal] = await db.select({ id: user.id }).from(user).where(eq(user.email, "kunal.shah@strats360.com"));
+  for (const run of runs.slice(0, -1)) {
+    const items = await db.select().from(payrollItems).where(eq(payrollItems.runId, run.id));
+    for (const o of obligationsForRun(run, items)) {
+      const due = dueDate(o.statute, o.period, o.jurisdiction || null);
+      const paidOn = new Date(Date.parse(due + "T00:00:00Z") - 2 * 86400000).toISOString().slice(0, 10);
+      const ref = { epf: "TRRN", esi: "ESIC", pt: "PTRC", lwf: "LWF", tds: "CIN" }[o.statute] + "-" + o.period.replace("-", "") + "-" + Math.floor(rnd() * 90000 + 10000);
+      await db.insert(statutoryChallans).values({ tenantId: tid, statute: o.statute, period: o.period, jurisdiction: o.jurisdiction, amountDue: o.amount, amountPaid: o.amount, reference: ref, paidOn, createdBy: kunal?.id });
+    }
+  }
 }
 
 main().catch(async (e) => {

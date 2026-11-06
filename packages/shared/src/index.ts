@@ -6,3 +6,4 @@ export * from "./schemas";
 export * from "./attendance-rules";
 export * from "./leave-rules";
 export * from "./payroll";
+export * from "./compliance";

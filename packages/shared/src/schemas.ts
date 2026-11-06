@@ -355,3 +355,14 @@ export const payrollItemPatchSchema = z.object({
 });
 export const markPaidSchema = z.object({ paidOn: isoDate, reference: nullable(trimmed(80)) });
 export const reopenSchema = z.object({ reason: trimmed(300).min(5, "Say why the payroll is being reopened") });
+
+// ---------- compliance ----------
+export const challanSchema = z.object({
+  statute: z.enum(["epf", "esi", "pt", "lwf", "tds"]),
+  period: monthSchema,
+  jurisdiction: z.string().trim().max(60).default(""),
+  amountPaid: z.coerce.number().min(0).max(1e10),
+  reference: nullable(trimmed(60)),
+  paidOn: isoDate,
+  notes: nullable(trimmed(300)),
+});
