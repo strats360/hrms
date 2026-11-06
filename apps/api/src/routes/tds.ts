@@ -488,7 +488,7 @@ essTaxRoutes.get("/form16", v("query", fyQuery), async (c) => {
   const start = Number(currentFy().slice(0, 4)) - 1;
   const fy = c.req.valid("query").fy ?? `${start}-${String((start + 1) % 100).padStart(2, "0")}`;
   const data = await form16(c.get("db"), t, eid, fy);
-  if (!data || !data.period.from) throw notFound("Form 16");
-  return c.json(data);
+  // No salary from us in that FY: nothing to certify (200 + null keeps the console quiet)
+  return c.json(data && data.period.from ? data : null);
 });
 
