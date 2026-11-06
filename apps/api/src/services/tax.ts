@@ -126,6 +126,8 @@ export async function employeeTax(db: Database, tenantId: string, employeeId: st
     comparison: { new: comparison.new.tax.total, old: comparison.old.tax.total, better: comparison.better, saving: comparison.saving },
     deducted,
     remaining,
+    /** Deducted more than the year's liability (e.g. proofs reduced tax late in the year). */
+    excess: Math.max(0, deducted + statement.previousEmployerTds - statement.tax.total),
     monthlyEstimate: projectedMonths ? Math.round(remaining / projectedMonths) : 0,
     projectedMonths,
     payDates: Object.fromEntries(items.map((x) => [x.month, x.payDate])),
@@ -134,8 +136,10 @@ export async function employeeTax(db: Database, tenantId: string, employeeId: st
 
 /** Form 16 Part A summary (quarter-wise) and Part B (statement on actual salary). */
 export async function form16(db: Database, tenantId: string, employeeId: string, fy: string) {
-  const tax = await employeeTax(db, tenantId, employeeId, fy, { actualOnly: true });
+  // Full-year view: actual locked months plus projected ones. Part A only uses locked months.
+  const tax = await employeeTax(db, tenantId, employeeId, fy);
   if (!tax) return null;
+  const lockedRows = tax.months.filter((m) => m.status === "locked");
   const [t] = await db.select().from(tenants).where(eq(tenants.id, tenantId));
   const months = fyMonths(fy);
   const challans = await db
@@ -144,19 +148,21 @@ export async function form16(db: Database, tenantId: string, employeeId: string,
     .where(and(eq(statutoryChallans.tenantId, tenantId), eq(statutoryChallans.statute, "tds"), gte(statutoryChallans.period, months[0]!), lte(statutoryChallans.period, months[11]!)));
   const returns = await db.select().from(tdsReturns).where(and(eq(tdsReturns.tenantId, tenantId), eq(tdsReturns.fy, fy)));
   const quarters = Object.keys(QUARTERS).map((q) => {
-    const rows = tax.months.filter((m) => quarterOf(m.month) === q);
+    const rows = lockedRows.filter((m) => quarterOf(m.month) === q);
     const deposited = rows.filter((m) => challans.some((c) => c.period === m.month)).reduce((s, m) => s + m.tds, 0);
     const ret = returns.find((r) => r.quarter === q);
     return { quarter: q, amountPaid: rows.reduce((s, m) => s + m.gross, 0), tdsDeducted: rows.reduce((s, m) => s + m.tds, 0), tdsDeposited: deposited, receipt: ret?.acknowledgement ?? null };
   });
-  const closed = tax.months.some((m) => m.month === months[11]);
+  const closed = lockedRows.some((m) => m.month === months[11]);
   return {
     fy,
     assessmentYear: `${Number(fy.slice(0, 4)) + 1}-${String((Number(fy.slice(0, 4)) + 2) % 100).padStart(2, "0")}`,
     provisional: !closed,
     employer: { name: t?.legalName ?? t?.name, address: t?.registeredAddress, pan: t?.pan, tan: t?.tan },
     employee: tax.employee,
-    period: { from: tax.months[0]?.month ?? null, to: tax.months.at(-1)?.month ?? null },
+    period: { from: lockedRows[0]?.month ?? null, to: lockedRows.at(-1)?.month ?? null },
+    /** Mid-year, Part B is the projected full-year statement (deductions are annual). */
+    projectedMonths: tax.projectedMonths,
     quarters,
     statement: tax.statement,
     tdsDeducted: tax.deducted,

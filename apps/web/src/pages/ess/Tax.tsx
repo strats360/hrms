@@ -183,9 +183,10 @@ export default function EssTax() {
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Fig label="TDS deducted so far" v={inr(t.deducted)} />
-          <Fig label="Still to deduct this year" v={inr(t.remaining)} />
+          {t.excess ? <Fig label="Deducted more than your tax" v={inr(t.excess)} /> : <Fig label="Still to deduct this year" v={inr(t.remaining)} />}
           <Fig label={t.projectedMonths ? `Estimated TDS per month (${t.projectedMonths} left)` : "Estimated TDS per month"} v={t.projectedMonths ? inr(t.monthlyEstimate) : "No months left"} />
         </div>
+        {t.excess ? <div className="text-muted text-[12.5px]">No more TDS will be deducted this year. You can claim the extra {inr(t.excess)} as a refund when you file your income tax return.</div> : null}
       </Card>
 
       {!editable ? (

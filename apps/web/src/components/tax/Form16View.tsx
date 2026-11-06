@@ -86,6 +86,9 @@ export function Form16View({ f }: { f: Form16Data }) {
 
       <div>
         <div className="card-title mb-1 text-[15px]">Part B · Details of salary paid and tax deducted</div>
+        {f.provisional && f.projectedMonths ? (
+          <div className="text-muted mb-1 text-[12px]">Provisional: salary includes {f.projectedMonths} projected month{f.projectedMonths === 1 ? "" : "s"} to the end of the financial year, because deductions and tax slabs apply to the whole year.</div>
+        ) : null}
         <TaxStatementView s={f.statement} compact />
         <div className="mt-2 flex justify-between border-t border-[var(--color-divider)] pt-2 font-semibold">
           <span>Tax deducted at source by this employer</span>

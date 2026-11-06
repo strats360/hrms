@@ -48,7 +48,7 @@ export const ADMIN_NAV: NavGroup[] = [
     items: [
       { to: "/payroll", label: "Payroll", icon: Banknote, perm: ["payroll"] },
       { to: "/compliance", label: "Statutory compliance", icon: ShieldCheck, perm: ["compliance"] },
-      { to: "/tds", label: "TDS & tax", icon: BadgePercent, perm: ["tds"], soon: true },
+      { to: "/tds", label: "TDS & tax", icon: BadgePercent, perm: ["tds"] },
       { to: "/reimbursements", label: "Reimbursements", icon: Receipt, perm: ["reimbursements"], soon: true },
       { to: "/payments", label: "Payments", icon: CreditCard, perm: ["payments"], soon: true },
     ],

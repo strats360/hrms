@@ -100,6 +100,8 @@ select.input { appearance: none; padding-right: 30px; background-image: url("dat
   @page { size: A4; margin: 14mm; }
   html, body { background: #fff !important; }
   body * { visibility: hidden !important; }
+  /* dialogs render outside #root; drop the page behind them so no blank pages print */
+  body > #root { display: none !important; }
   #payslip-print, #payslip-print * { visibility: visible !important; }
   #payslip-print {
     position: absolute; left: 0; top: 0; width: 100%;

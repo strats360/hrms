@@ -389,6 +389,7 @@ export interface EmployeeTax {
   comparison: { new: number; old: number; better: "new" | "old"; saving: number };
   deducted: number;
   remaining: number;
+  excess: number;
   monthlyEstimate: number;
   projectedMonths: number;
 }
@@ -399,6 +400,7 @@ export interface Form16Data {
   employer: { name: string | null; address: string | null; pan: string | null; tan: string | null };
   employee: { id: string; name: string; code: string; pan: string | null; regime: "new" | "old" };
   period: { from: string | null; to: string | null };
+  projectedMonths: number;
   quarters: { quarter: string; amountPaid: number; tdsDeducted: number; tdsDeposited: number; receipt: string | null }[];
   statement: TaxStatement;
   tdsDeducted: number;

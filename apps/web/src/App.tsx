@@ -56,6 +56,7 @@ const router = createBrowserRouter([
           { path: "leave", element: L(() => import("@/pages/ess/Leave")) },
           { path: "profile", element: L(() => import("@/pages/ess/Profile")) },
           { path: "payslips", element: L(() => import("@/pages/ess/Payslips")) },
+          { path: "tax", element: L(() => import("@/pages/ess/Tax")) },
         ],
       },
       {
@@ -123,6 +124,16 @@ const router = createBrowserRouter([
               { path: "employee", element: L(() => import("@/pages/admin/compliance/EmployeeWise")) },
               { path: "challans", element: L(() => import("@/pages/admin/compliance/Challans")) },
               { path: "rules", element: L(() => import("@/pages/admin/compliance/Rules")) },
+            ],
+          },
+          {
+            path: "tds",
+            element: L(() => import("@/pages/admin/tds/TdsLayout")),
+            children: [
+              { index: true, element: L(() => import("@/pages/admin/tds/Summary")) },
+              { path: "compute", element: L(() => import("@/pages/admin/tds/Computation")) },
+              { path: "declarations", element: L(() => import("@/pages/admin/tds/Declarations")) },
+              { path: "form16", element: L(() => import("@/pages/admin/tds/Form16")) },
             ],
           },
           { path: "payroll/run/:runId", element: L(() => import("@/pages/admin/payroll/RunWizard")) },

@@ -35,6 +35,7 @@ describe("TDS admin", () => {
     expect(st.deductions.find((d: any) => d.key === "80D").amount).toBe(25000);
     expect(r.body.months.length).toBe(12);
     expect(r.body.deducted).toBeGreaterThan(0);
+    expect(r.body.excess).toBe(Math.max(0, r.body.deducted + st.previousEmployerTds - st.tax.total));
     const priyaTax = (await krupa.get(`/admin/tds/employees/${await idOf("STL-0042")}?fy=${fy}`)).body;
     expect(priyaTax.statement.exemptions[0].key).toBe("hra");
   });
@@ -69,6 +70,10 @@ describe("TDS admin", () => {
     expect(f.body.quarters.find((q: any) => q.quarter === "Q1").tdsDeducted).toBeGreaterThan(0);
     expect(f.body.quarters.find((q: any) => q.quarter === "Q1").tdsDeposited).toBeGreaterThan(0);
     expect(f.body.statement.taxableIncome).toBeGreaterThan(0);
+    // mid-year: Part B is the projected full year, so tax payable covers what's been deducted
+    expect(f.body.provisional).toBe(true);
+    expect(f.body.projectedMonths).toBeGreaterThan(0);
+    expect(f.body.statement.tax.total).toBeGreaterThan(f.body.tdsDeducted);
   });
 
   it("emails reminders to employees without a submitted declaration", async () => {
