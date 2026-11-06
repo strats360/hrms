@@ -366,3 +366,27 @@ export const challanSchema = z.object({
   paidOn: isoDate,
   notes: nullable(trimmed(300)),
 });
+
+// ---------- reimbursements ----------
+export const reimbursementCategorySchema = z.object({
+  name: trimmed(60).min(1),
+  limitAmount: z.coerce.number().min(0).max(1e8).nullable().optional(),
+  limitPeriod: z.enum(["claim", "day", "month", "trip", "night", "km"]).default("claim"),
+  ratePerKm: z.coerce.number().min(0).max(1000).nullable().optional(),
+  gstCapture: z.boolean().default(false),
+  approval: z.enum(["manager", "finance", "manager_finance"]).default("manager"),
+  receiptRequiredAbove: z.coerce.number().min(0).max(1e8).default(0),
+  active: z.boolean().default(true),
+});
+export const claimCreateSchema = z.object({
+  employeeId: z.string().optional(), // HR filing on behalf
+  categoryId: z.string().min(1, "Pick a category"),
+  expenseDate: isoDate,
+  amount: z.coerce.number().min(0).max(1e7).optional(),
+  km: z.coerce.number().min(0).max(10000).optional(),
+  vendor: nullable(trimmed(120)),
+  gstin: nullable(gstinSchema),
+  gstAmount: z.coerce.number().min(0).max(1e7).nullable().optional(),
+  project: nullable(trimmed(120)),
+  description: trimmed(300).min(3, "Say what the expense was for"),
+});

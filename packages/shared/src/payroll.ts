@@ -365,6 +365,8 @@ export interface PayslipInput {
   daysInMonth: number;
   paidDays: number;
   adjustments?: Adjustment[];
+  /** Approved expense reimbursements paid with this salary: not income, so outside gross, TDS, ESI and PT. */
+  reimbursement?: number;
   pfApplicable: boolean;
   esiApplicable: boolean;
   ptApplicable: boolean;
@@ -388,6 +390,7 @@ export interface PayslipResult {
   gross: number;
   totalDeductions: number;
   net: number;
+  reimbursement: number;
   employerCost: number;
   ctc: number;
   tds: number;
@@ -492,9 +495,11 @@ export function computePayslip(input: PayslipInput): PayslipResult {
   ].filter((e) => e.amount > 0);
   const employerCost = employer.reduce((s, e) => s + e.amount, 0);
 
-  const net = gross - totalDeductions;
-  if (net < 0) warnings.push("Deductions exceed earnings");
-  else if (gross > 0 && net < gross * 0.5) warnings.push("Net pay is below half of gross");
+  const reimbursement = Math.max(0, r(input.reimbursement ?? 0));
+  const net = gross - totalDeductions + reimbursement;
+  const salaryNet = net - reimbursement;
+  if (salaryNet < 0) warnings.push("Deductions exceed earnings");
+  else if (gross > 0 && salaryNet < gross * 0.5) warnings.push("Net pay is below half of gross");
   if (factor === 0) warnings.push("No paid days this month");
 
   return {
@@ -504,6 +509,7 @@ export function computePayslip(input: PayslipInput): PayslipResult {
     gross,
     totalDeductions,
     net,
+    reimbursement,
     employerCost,
     ctc: gross + employerCost,
     tds,

@@ -60,7 +60,7 @@ describe("payroll run lifecycle", () => {
     const items = (await krupa.get(`/admin/payroll/runs/${runId}/items?q=STL-0042`)).body;
     const p = items[0];
     expect(p.gross).toBeGreaterThan(0);
-    expect(p.net).toBe(p.gross - p.totalDeductions);
+    expect(p.net).toBe(Math.round((p.gross - p.totalDeductions + Number(p.reimbursement)) * 100) / 100);
     // Priya's October TDS and this month's should be close (same salary, YTD aware)
     expect(p.previousNet).not.toBeNull();
     const runs = (await krupa.get("/admin/payroll/runs")).body;
@@ -68,6 +68,19 @@ describe("payroll run lifecycle", () => {
     const prevItem = (await krupa.get(`/admin/payroll/runs/${prev.id}/items?q=STL-0042`)).body[0];
     expect(p.tds).toBeGreaterThan(0);
     expect(Math.abs(p.tds - prevItem.tds)).toBeLessThanOrEqual(5);
+  });
+  it("pays approved claims with salary, outside gross and TDS", async () => {
+    const k = (await krupa.get(`/admin/payroll/runs/${runId}/items?q=STL-0091`)).body[0];
+    expect(Number(k.reimbursement)).toBeGreaterThanOrEqual(950); // RB-1036, approved this month
+    expect(Number(k.net)).toBeCloseTo(Number(k.gross) - Number(k.totalDeductions) + Number(k.reimbursement), 2);
+    // last month's run already settled RB-1039 for Amit
+    const runs = (await krupa.get("/admin/payroll/runs")).body;
+    const prev = runs.find((x: any) => x.month < month && x.status === "paid");
+    const amit = (await krupa.get(`/admin/payroll/runs/${prev.id}/items?q=STL-0152`)).body[0];
+    expect(Number(amit.reimbursement)).toBe(1240);
+    const claim = (await kunal.get("/admin/reimbursements/claims?q=RB-1039")).body[0];
+    expect(claim.status).toBe("paid");
+    expect((await kunal.get("/admin/reimbursements/claims?q=RB-1036")).body[0].payment).toMatch(/payroll/);
   });
   it("adds a one-time incentive and recalculates", async () => {
     const before = (await krupa.get(`/admin/payroll/runs/${runId}/items?q=STL-0042`)).body[0];
@@ -121,6 +134,7 @@ describe("payroll run lifecycle", () => {
     expect((await kunal.post(`/admin/payroll/runs/${runId}/reopen`, { reason: "Need to fix an error" })).status).toBe(400); // bank file exported
     const paid = await kunal.post(`/admin/payroll/runs/${runId}/mark-paid`, { paidOn: todayIST(), reference: "HDFC-UTR-123" });
     expect(paid.body.status).toBe("paid");
+    expect((await kunal.get("/admin/reimbursements/claims?q=RB-1036")).body[0].status).toBe("paid");
   });
   it("exports the salary register", async () => {
     const r = await nisha.get(`/admin/payroll/runs/${runId}/register.csv`);

@@ -144,3 +144,16 @@ describe("TDS without history", () => {
     expect(p.tax.annualised).toBe(true);
   });
 });
+
+describe("reimbursements in payroll", () => {
+  it("adds to net pay only: not gross, TDS, ESI or PT", () => {
+    const s = structureFromCtc(240000);
+    const p = { month: "2026-11", daysInMonth: 30, paidDays: 30, pfApplicable: true, esiApplicable: true, ptApplicable: true, state: "Gujarat", regime: "new" as const, structure: s };
+    const a = computePayslip(p);
+    const b = computePayslip({ ...p, reimbursement: 4250 });
+    expect(b.gross).toBe(a.gross);
+    expect(b.totalDeductions).toBe(a.totalDeductions);
+    expect(b.reimbursement).toBe(4250);
+    expect(b.net).toBe(a.net + 4250);
+  });
+});

@@ -19,6 +19,7 @@ import { fileRoutes } from "./routes/files";
 import { payrollRoutes } from "./routes/payroll";
 import { complianceRoutes } from "./routes/compliance";
 import { essTaxRoutes, tdsRoutes } from "./routes/tds";
+import { essClaimRoutes, reimbursementRoutes } from "./routes/reimbursements";
 
 /** Better Auth endpoints we expose. Sign-up and everything else stays closed. */
 const AUTH_ALLOW = [
@@ -67,6 +68,7 @@ export function buildApp() {
   const t = new Hono<AppEnv>();
   t.use("*", requireAuth, requireTenant);
   t.route("/ess/tax", essTaxRoutes);
+  t.route("/ess/claims", essClaimRoutes);
   t.route("/ess", essRoutes);
   t.route("/files", fileRoutes);
   t.use("/admin/*", requireAdmin);
@@ -80,6 +82,7 @@ export function buildApp() {
   t.route("/admin/payroll", payrollRoutes);
   t.route("/admin/compliance", complianceRoutes);
   t.route("/admin/tds", tdsRoutes);
+  t.route("/admin/reimbursements", reimbursementRoutes);
   t.route("/admin/audit", auditRoutes);
   api.route("/", t);
 

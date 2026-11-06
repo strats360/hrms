@@ -35,6 +35,7 @@ import { badRequest, conflict, forbidden, notFound } from "../lib/errors";
 import { audit } from "../lib/audit";
 import { toCsv } from "../lib/csv";
 import { layout } from "../lib/email";
+import { settleClaims } from "../services/reimbursements";
 import { calculateRun, defaultPayDate, getTemplate, monthBounds, payableEmployees, refreshTotals, resolveStructure, structuresAsOf } from "../services/payroll";
 
 export const payrollRoutes = new Hono<AppEnv>();
@@ -403,10 +404,10 @@ payrollRoutes.get("/runs/:id/register.csv", requirePerm("payroll", "export"), as
   const erCodes = [...new Map(items.flatMap((i) => i.employer.map((e) => [e.label, e.label]))).keys()];
   const amt = (lines: { label: string; amount: number }[], l: string) => lines.find((x) => x.label === l)?.amount ?? 0;
   const csv = toCsv(
-    ["Employee ID", "Name", "Department", "Designation", "PAN", "UAN", "Days", "Paid days", "LOP", ...earnCodes, "Gross", ...dedCodes, "Total deductions", "Net pay", ...erCodes, "Employer cost", "CTC", "On hold"],
+    ["Employee ID", "Name", "Department", "Designation", "PAN", "UAN", "Days", "Paid days", "LOP", ...earnCodes, "Gross", ...dedCodes, "Total deductions", "Reimbursements", "Net pay", ...erCodes, "Employer cost", "CTC", "On hold"],
     items.map((i) => [
       i.snapshot.code, i.snapshot.name, i.snapshot.department, i.snapshot.designation, i.snapshot.pan, i.snapshot.uan, i.daysInMonth, i.paidDays, i.lopOverride ?? i.lopDays,
-      ...earnCodes.map((l) => amt(i.earnings, l)), i.gross, ...dedCodes.map((l) => amt(i.deductions, l)), i.totalDeductions, i.net, ...erCodes.map((l) => amt(i.employer, l)), i.employerCost, Number(i.gross) + Number(i.employerCost), i.onHold ? "Yes" : "",
+      ...earnCodes.map((l) => amt(i.earnings, l)), i.gross, ...dedCodes.map((l) => amt(i.deductions, l)), i.totalDeductions, i.reimbursement, i.net, ...erCodes.map((l) => amt(i.employer, l)), i.employerCost, Number(i.gross) + Number(i.employerCost), i.onHold ? "Yes" : "",
     ]),
   );
   await audit(c, { action: "payroll.register_export", entity: "payroll_run", entityId: run.id, summary: `Exported salary register for ${run.month}` });
@@ -424,6 +425,8 @@ payrollRoutes.post("/runs/:id/mark-paid", requirePerm("payroll", "approve"), v("
     .set({ status: "paid", paidAt: new Date(b.paidOn + "T12:00:00+05:30"), paidBy: uid(c), paymentReference: b.reference ?? null, publishedAt: run.publishedAt ?? new Date() })
     .where(eq(payrollRuns.id, run.id))
     .returning();
+  const held = (await c.get("db").select({ e: payrollItems.employeeId }).from(payrollItems).where(and(eq(payrollItems.runId, run.id), eq(payrollItems.onHold, true)))).map((r) => r.e);
+  await settleClaims(c.get("db"), run.id, held);
   await audit(c, { action: "payroll.paid", entity: "payroll_run", entityId: run.id, summary: `Marked ${run.month} payroll as paid${b.reference ? ` (ref ${b.reference})` : ""}` });
   return c.json(row);
 });
@@ -445,6 +448,7 @@ export async function payslipView(c: Context<AppEnv>, run: typeof payrollRuns.$i
     employer: item.employer,
     gross: item.gross,
     totalDeductions: item.totalDeductions,
+    reimbursement: item.reimbursement,
     net: item.net,
     employerCost: item.employerCost,
     tax: item.tax,

@@ -38,6 +38,8 @@ import { payrollItems, payrollRuns, statutoryChallans, taxDeclarations, tdsRetur
 import { inArray } from "drizzle-orm";
 import { dueDate } from "@hrms/shared";
 import { obligationsForRun } from "../src/routes/compliance";
+import { reimbursementCategories, reimbursementClaims } from "@hrms/db";
+import { initialStatus, settleClaims } from "../src/services/reimbursements";
 
 // ---- env ----
 const vars: Record<string, string> = {};
@@ -75,6 +77,7 @@ async function main() {
   const [existing] = await db.select().from(tenants).where(eq(tenants.code, "TN-0142"));
   if (existing) {
     await seedTax(existing.id);
+    await seedReimbursements(existing.id);
     const added = await seedPayroll(existing.id);
     await seedChallans(existing.id);
     console.log(added ? `Added ${added} months of payroll history to the existing demo tenant.` : "Demo tenant already exists. To reseed, drop and recreate the database, then run migrations.");
@@ -384,6 +387,7 @@ async function main() {
   }
 
   await seedTax(tid);
+  await seedReimbursements(tid);
   const months = await seedPayroll(tid);
   await seedChallans(tid);
   console.log(`Payroll history: ${months} locked months`);
@@ -425,6 +429,7 @@ async function seedPayroll(tid: string) {
       .update(payrollRuns)
       .set({ status: "paid", approvedBy: kunal?.id, approvedAt: paidAt, publishedAt: paidAt, bankFileExportedAt: paidAt, paidAt, paidBy: kunal?.id, paymentReference: `HDFC-${month.replace("-", "")}-SAL` })
       .where(eq(payrollRuns.id, run!.id));
+    await settleClaims(db, run!.id, []);
   }
   return months.length;
 }
@@ -481,6 +486,76 @@ async function seedChallans(tid: string) {
       const ref = { epf: "TRRN", esi: "ESIC", pt: "PTRC", lwf: "LWF", tds: "CIN" }[o.statute] + "-" + o.period.replace("-", "") + "-" + Math.floor(rnd() * 90000 + 10000);
       await db.insert(statutoryChallans).values({ tenantId: tid, statute: o.statute, period: o.period, jurisdiction: o.jurisdiction, amountDue: o.amount, amountPaid: o.amount, reference: ref, paidOn, createdBy: kunal?.id });
     }
+  }
+}
+
+/**
+ * Expense categories from the design and a set of claims at every stage. "Oct" claims
+ * are last month and "Nov" this month, so the paid one is settled by last month's run
+ * and the approved one waits for this month's payroll.
+ */
+async function seedReimbursements(tid: string) {
+  const [any] = await db.select({ id: reimbursementCategories.id }).from(reimbursementCategories).where(eq(reimbursementCategories.tenantId, tid)).limit(1);
+  if (any) return;
+  type Cat = typeof reimbursementCategories.$inferInsert;
+  const cats: Omit<Cat, "tenantId">[] = [
+    { name: "Travel", limitAmount: 25000, limitPeriod: "trip", gstCapture: true, approval: "manager_finance", receiptRequiredAbove: 500 },
+    { name: "Food", limitAmount: 500, limitPeriod: "day", approval: "manager", receiptRequiredAbove: 500 },
+    { name: "Fuel", limitPeriod: "km", ratePerKm: 8, approval: "manager", receiptRequiredAbove: 2000 },
+    { name: "Mobile", limitAmount: 1000, limitPeriod: "month", gstCapture: true, approval: "manager", receiptRequiredAbove: 0 },
+    { name: "Internet", limitAmount: 1500, limitPeriod: "month", gstCapture: true, approval: "manager", receiptRequiredAbove: 0 },
+    { name: "Hotel", limitAmount: 4000, limitPeriod: "night", gstCapture: true, approval: "manager_finance", receiptRequiredAbove: 0 },
+    { name: "Client meetings", limitAmount: 5000, limitPeriod: "claim", approval: "manager", receiptRequiredAbove: 1000 },
+    { name: "Office expenses", limitPeriod: "claim", gstCapture: true, approval: "finance", receiptRequiredAbove: 500 },
+    { name: "Other expenses", limitPeriod: "claim", approval: "manager_finance", receiptRequiredAbove: 500 },
+  ];
+  const catRows = await db.insert(reimbursementCategories).values(cats.map((c) => ({ ...c, tenantId: tid }))).returning();
+  const catByName = new Map(catRows.map((c) => [c.name, c]));
+  const emps = await db.select({ id: employees.id, code: employees.employeeCode, managerId: employees.managerId }).from(employees).where(eq(employees.tenantId, tid));
+  const empByCode = new Map(emps.map((e) => [e.code, e]));
+  const [kunal] = await db.select({ id: user.id }).from(user).where(eq(user.email, "kunal.shah@strats360.com"));
+  const [ty, tm] = today.split("-").map(Number) as [number, number];
+  const prevMonth = tm === 1 ? `${ty - 1}-12` : `${ty}-${String(tm - 1).padStart(2, "0")}`;
+  const thisMonth = today.slice(0, 7);
+  const day = (m: string, d: number) => {
+    const s = `${m}-${String(d).padStart(2, "0")}`;
+    return s > today ? today : s;
+  };
+  const at = (d: string) => new Date(`${d}T11:00:00+05:30`);
+  type Stage = "Manager" | "Finance" | "Approved" | "Paid" | "Rejected";
+  const claims: [string, string, string, string, number, string | null, string | null, Stage, string, number?][] = [
+    ["RB-1031", "STL-0078", "Other expenses", day(prevMonth, 14), 4200, null, null, "Rejected", "Laptop bag"],
+    ["RB-1036", "STL-0091", "Travel", day(prevMonth, 18), 950, null, null, "Approved", "Bank visit auto"],
+    ["RB-1039", "STL-0152", "Food", day(prevMonth, 21), 1240, null, null, "Paid", "Team dinner"],
+    ["RB-1042", "STL-0152", "Travel", day(prevMonth, 28), 8400, "24AABCS1234F1Z5", "Adani Ports, renewal", "Finance", "Ahmedabad to Mundra, cab and toll"],
+    ["RB-1043", "STL-0057", "Client meetings", day(prevMonth, 30), 2650, null, "Torrent Power, pilot", "Manager", "Lunch meeting, 3 people"],
+    ["RB-1044", "STL-0001", "Internet", day(thisMonth, 1), 1199, "24AAACJ1234K1ZP", null, "Manager", "Jio Fiber bill"],
+    ["RB-1045", "STL-0133", "Office expenses", day(thisMonth, 2), 3100, "24AAJFS7788L1Z2", null, "Finance", "Pantry and stationery"],
+    ["RB-1046", "STL-0118", "Mobile", day(thisMonth, 2), 749, null, null, "Manager", "Airtel postpaid"],
+    ["RB-1047", "STL-0042", "Fuel", day(thisMonth, 3), 1800, null, null, "Manager", "Client visit", 225],
+    ["RB-1048", "STL-0104", "Hotel", day(thisMonth, 3), 5600, "24AADCH9876M1ZQ", "Zydus, UAT", "Manager", "Hotel Fern, 2 nights"],
+  ];
+  for (const [code, empCode, catName, date, amount, gstin, project, stage, description, km] of claims) {
+    const emp = empByCode.get(empCode);
+    const cat = catByName.get(catName)!;
+    if (!emp) continue;
+    const overLimit = cat.limitAmount !== null && cat.limitPeriod !== "km" && amount > Number(cat.limitAmount);
+    const gstAmount = gstin ? Math.round((amount * 18) / 118) : null;
+    const base = { tenantId: tid, code, employeeId: emp.id, categoryId: cat.id, expenseDate: date, amount, km: km ?? null, gstin, gstAmount, project, description, overLimit, createdAt: at(date) };
+    const approved = stage === "Paid" ? at(day(prevMonth, 25)) : at(day(thisMonth, 2));
+    const status =
+      stage === "Manager" ? initialStatus(cat, !!emp.managerId) : stage === "Finance" ? "pending_finance" : stage === "Rejected" ? "rejected" : "approved";
+    await db.insert(reimbursementClaims).values({
+      ...base,
+      status,
+      managerApprovedAt: stage === "Finance" || stage === "Approved" || stage === "Paid" ? approved : null,
+      managerApprovedBy: stage === "Finance" || stage === "Approved" || stage === "Paid" ? kunal?.id : null,
+      financeApprovedAt: stage === "Approved" || stage === "Paid" ? approved : null,
+      financeApprovedBy: stage === "Approved" || stage === "Paid" ? kunal?.id : null,
+      rejectedAt: stage === "Rejected" ? at(day(prevMonth, 16)) : null,
+      rejectedBy: stage === "Rejected" ? kunal?.id : null,
+      rejectionReason: stage === "Rejected" ? "Laptop bags are not covered by the expense policy" : null,
+    });
   }
 }
 

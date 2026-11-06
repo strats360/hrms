@@ -41,6 +41,7 @@ export interface RunTotals {
   pt: number;
   lwf: number;
   onHold: number;
+  reimbursement?: number;
   lopDays: number;
   withLop: number;
 }
@@ -115,6 +116,7 @@ export const payrollItems = pgTable(
     net: money("net").notNull().default(0),
     employerCost: money("employer_cost").notNull().default(0),
     tds: money("tds").notNull().default(0),
+    reimbursement: money("reimbursement").notNull().default(0),
     taxableGross: money("taxable_gross").notNull().default(0),
     employeePf: money("employee_pf").notNull().default(0),
     professionalTax: money("professional_tax").notNull().default(0),

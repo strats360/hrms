@@ -32,6 +32,7 @@ import {
 import { badRequest, notFound } from "../lib/errors";
 import { buildCalendar } from "./attendance";
 import { declarationsFor } from "./tax";
+import { claimsForRun } from "./reimbursements";
 
 export function monthBounds(month: string) {
   const [y, m] = month.split("-").map(Number) as [number, number];
@@ -140,7 +141,7 @@ async function unpaidLeaveDays(db: Database, tenantId: string, start: string, en
 }
 
 export function emptyTotals(): RunTotals {
-  return { employees: 0, gross: 0, deductions: 0, net: 0, employerCost: 0, ctc: 0, tds: 0, pfEmployee: 0, pfEmployer: 0, esiEmployee: 0, esiEmployer: 0, pt: 0, lwf: 0, onHold: 0, lopDays: 0, withLop: 0 };
+  return { employees: 0, gross: 0, deductions: 0, net: 0, employerCost: 0, ctc: 0, tds: 0, reimbursement: 0, pfEmployee: 0, pfEmployer: 0, esiEmployee: 0, esiEmployer: 0, pt: 0, lwf: 0, onHold: 0, lopDays: 0, withLop: 0 };
 }
 
 export function totalsOf(items: (typeof payrollItems.$inferSelect)[]): RunTotals {
@@ -153,6 +154,7 @@ export function totalsOf(items: (typeof payrollItems.$inferSelect)[]): RunTotals
     t.net += Number(i.net);
     t.employerCost += Number(i.employerCost);
     t.tds += Number(i.tds);
+    t.reimbursement = (t.reimbursement ?? 0) + Number(i.reimbursement ?? 0);
     t.pfEmployee += line(i.deductions, "pf");
     t.pfEmployer += line(i.employer, "epf_er", "eps");
     t.esiEmployee += line(i.deductions, "esi");
@@ -191,6 +193,7 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
     db.select().from(payrollItems).where(eq(payrollItems.runId, runId)),
     declarationsFor(db, tenantId, fyOfMonth(run.month), ids),
   ]);
+  const claims = await claimsForRun(db, tenantId, runId, end, ids);
   const prev = new Map(existing.map((i) => [i.employeeId, i]));
   const cal = opts.assumePresent ? null : await buildCalendar(db, tenantId, emps.map((x) => ({ id: x.e.id, shiftId: x.e.shiftId, branchId: x.e.branchId, dateOfJoining: x.e.dateOfJoining, lastWorkingDay: x.e.lastWorkingDay })), start, end);
   const statOn = (k: string) => statutory[k as keyof typeof statutory]?.enabled ?? true;
@@ -228,6 +231,7 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
       state: branchState ?? tenant?.state ?? null,
       gender: e.gender,
       regime: ((decls.get(e.id)?.regime ?? e.taxRegime) as Regime) ?? "new",
+      reimbursement: claims.get(e.id) ?? 0,
       taxProfile: decls.get(e.id) ? { declaration: decls.get(e.id)!.data, verified: decls.get(e.id)!.verified } : undefined,
       ytd: y ? { taxableGross: y.taxableGross, tds: y.tds, employeePf: y.employeePf, professionalTax: y.professionalTax } : ytd.hasHistory ? { taxableGross: 0, tds: 0, employeePf: 0, professionalTax: 0 } : undefined,
     });
@@ -272,6 +276,7 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
       net: slip.net,
       employerCost: slip.employerCost,
       tds: slip.tds,
+      reimbursement: slip.reimbursement,
       taxableGross: slip.gross - nonTaxable,
       employeePf: slip.deductions.find((d) => d.code === "pf")?.amount ?? 0,
       professionalTax: slip.deductions.find((d) => d.code === "pt")?.amount ?? 0,
