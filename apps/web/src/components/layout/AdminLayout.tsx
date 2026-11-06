@@ -11,6 +11,7 @@ import { ADMIN_NAV, type NavGroup } from "./nav";
 interface DashboardBadges {
   pendingLeaveCount: number;
   pendingCorrections: number;
+  pendingClaimCount?: number;
   awaitingVerification: number;
 }
 
@@ -66,7 +67,7 @@ export function AdminLayout() {
   const b = badges.data;
   const sidebarProps = {
     groups,
-    badges: { leave: b?.pendingLeaveCount ?? 0, corrections: b?.pendingCorrections ?? 0 },
+    badges: { leave: b?.pendingLeaveCount ?? 0, corrections: b?.pendingCorrections ?? 0, claims: b?.pendingClaimCount ?? 0 },
     footer: isEmployee ? { to: "/me", label: "Employee self-service", kind: "ess" as const } : null,
   };
 
@@ -95,6 +96,7 @@ export function AdminLayout() {
           alerts={[
             { label: "Leave requests", to: "/leave", count: b?.pendingLeaveCount ?? 0 },
             { label: "Attendance corrections", to: "/attendance/corrections", count: b?.pendingCorrections ?? 0 },
+            { label: "Expense claims", to: "/reimbursements", count: b?.pendingClaimCount ?? 0 },
             { label: "Onboarding to verify", to: "/employees/onboarding", count: b?.awaitingVerification ?? 0 },
           ]}
         />

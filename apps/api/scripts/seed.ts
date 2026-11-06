@@ -522,6 +522,8 @@ async function seedReimbursements(tid: string) {
     return s > today ? today : s;
   };
   const at = (d: string) => new Date(`${d}T11:00:00+05:30`);
+  // On an existing tenant last month's payroll is already paid: settle the "paid" claim against it directly.
+  const [prevRun] = await db.select({ id: payrollRuns.id, paidAt: payrollRuns.paidAt }).from(payrollRuns).where(and(eq(payrollRuns.tenantId, tid), eq(payrollRuns.month, prevMonth), eq(payrollRuns.status, "paid")));
   type Stage = "Manager" | "Finance" | "Approved" | "Paid" | "Rejected";
   const claims: [string, string, string, string, number, string | null, string | null, Stage, string, number?][] = [
     ["RB-1031", "STL-0078", "Other expenses", day(prevMonth, 14), 4200, null, null, "Rejected", "Laptop bag"],
@@ -555,6 +557,7 @@ async function seedReimbursements(tid: string) {
       rejectedAt: stage === "Rejected" ? at(day(prevMonth, 16)) : null,
       rejectedBy: stage === "Rejected" ? kunal?.id : null,
       rejectionReason: stage === "Rejected" ? "Laptop bags are not covered by the expense policy" : null,
+      ...(stage === "Paid" && prevRun ? { status: "paid", payrollRunId: prevRun.id, paidAt: prevRun.paidAt ?? approved } : {}),
     });
   }
 }

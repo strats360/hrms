@@ -55,6 +55,17 @@ The product design lives in [`design/`](design/). `HRMS v2.dc.html` is the sourc
 | HR | TDS register, per-employee computation, regime switch on request, proof review, verify and lock (you can't verify your own), reminders by email |
 | 24Q and Form 16 | Quarterly return tracking with deducted vs deposited, a deductee annexure CSV for the return utility, and Form 16 (Part A summary + Part B) as a printable PDF, provisional until March is locked |
 
+**Reimbursements are built:**
+
+| Area | What works |
+| --- | --- |
+| Categories | Policy per category: limit per claim, day, month, trip or night, or a rate per km (fuel). GST capture, receipt-required threshold and approval chain (manager, finance, or manager then finance). The demo seed has the design's nine categories |
+| Claims | Employees submit from self-service with receipts (PDF, PNG, JPG, WebP up to 10 MB, stored on R2). HR can file on behalf. Future dates, dates before joining and duplicates (same category, date and amount) are blocked |
+| Approvals | Manager stage goes to the reporting manager (or straight to finance when there's none). Claims over the policy limit always get a finance review. Nobody approves their own claim. Rejection needs a reason and the employee gets an email. Bulk approve and reject from the queue |
+| Payout | Approved claims join the next payroll run (final approval on or before the period end). They add to net pay and the bank file, not to gross, PF, ESI or TDS. Marking the run paid marks the claims paid. Held salaries release their claims to the next run |
+| Reports | Queue with totals (waiting, approved unpaid, paid this month, GST input credit), history with filters and CSV export, claims column in the salary register and on the payslip |
+| Access | Admins and finance see every claim. Managers see their direct reports. HR and payroll admins have read-only access. Finance approval needs claim approval plus payments approval |
+
 **Before running real payroll, a payroll consultant or CA should confirm these:**
 - **Tax slabs:** FY 2026-27 uses the FY 2025-26 slabs from Finance Act 2025. Update `TAX_TABLES` in `packages/shared/src/payroll.ts` if the Finance Act 2026 changed them.
 - **State tables:** Professional Tax covers Gujarat, Maharashtra, Karnataka, West Bengal, Telangana, Andhra Pradesh and Madhya Pradesh (plus states with no PT). Labour Welfare Fund covers Gujarat and Maharashtra. Other states show a warning on the payslip.
@@ -63,7 +74,9 @@ The product design lives in [`design/`](design/). `HRMS v2.dc.html` is the sourc
 - **Due dates:** EPF and ESI fall on the 15th, TDS on the 7th (30 April for March), PT by state (Gujarat 15th, Maharashtra month end, Karnataka 20th, West Bengal 21st) and LWF on 15 July / 15 January. Check the ESI file's reason codes against the ESIC portal.
 - **Not in scope:** EPS age limit (58+), the ESI contribution-period rule, and mid-month salary revisions (the structure effective at month end is used).
 
-**Still to come in Phase 2:** reimbursements, payments, reports and SaaS billing. These show as "Soon" in the navigation.
+- **Reimbursements as non-taxable:** claims are paid outside taxable salary on the basis that they are actual business expenses backed by bills. Fixed allowances (for example a flat mobile allowance without bills) should go into the salary structure instead.
+
+**Still to come in Phase 2:** payments, reports and SaaS billing. These show as "Soon" in the navigation.
 
 ## Architecture
 
@@ -136,7 +149,7 @@ pnpm test        # shared unit tests + API integration tests
 pnpm typecheck
 ```
 
-The API tests rebuild the `hrms_test` database (`TEST_DATABASE_URL`, default `postgres://hrms:hrms@localhost:5432/hrms_test`), run migrations and the seed, then test real HTTP flows. That covers auth, tenant isolation, permissions, onboarding, leave and attendance.
+The API tests rebuild the `hrms_test` database (`TEST_DATABASE_URL`, default `postgres://hrms:hrms@localhost:5432/hrms_test`), run migrations and the seed, then test real HTTP flows. That covers auth, tenant isolation, permissions, onboarding, leave, attendance, payroll, compliance, TDS and reimbursements.
 
 ## Deploying to Cloudflare + Neon
 

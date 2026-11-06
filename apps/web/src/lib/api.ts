@@ -96,6 +96,24 @@ export async function download(path: string, fallbackName: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/** Open a protected file (receipt, document) in a new tab using the session and active company. */
+export async function openFile(path: string) {
+  const win = window.open("", "_blank");
+  try {
+    const headers: Record<string, string> = {};
+    if (activeTenant) headers["X-Tenant-Id"] = activeTenant;
+    const res = await fetch(`/api${path}`, { headers, credentials: "include" });
+    if (!res.ok) throw new ApiError(res.status, "Couldn't open the file");
+    const url = URL.createObjectURL(await res.blob());
+    if (win) win.location.href = url;
+    else window.location.href = url;
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  } catch (e) {
+    win?.close();
+    throw e;
+  }
+}
+
 export function errorMessage(e: unknown) {
   return e instanceof Error ? e.message : "Something went wrong";
 }

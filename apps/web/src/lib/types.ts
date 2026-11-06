@@ -161,6 +161,7 @@ export interface RunTotals {
   employerCost: number;
   ctc: number;
   tds: number;
+  reimbursement?: number;
   pfEmployee: number;
   pfEmployer: number;
   esiEmployee: number;
@@ -248,6 +249,8 @@ export interface PayrollItem {
   net: number;
   employerCost: number;
   tds: number;
+  /** Approved expense claims paid with this salary (not part of gross or TDS). */
+  reimbursement: number;
   onHold: boolean;
   holdReason: string | null;
   warnings: string[];
@@ -267,6 +270,7 @@ export interface PayslipView {
   gross: number;
   totalDeductions: number;
   net: number;
+  reimbursement: number;
   employerCost: number;
   tax: { taxableIncome: number; total: number; projectedAnnualGross: number; annualised?: boolean } | null;
   onHold: boolean;
@@ -405,4 +409,79 @@ export interface Form16Data {
   statement: TaxStatement;
   tdsDeducted: number;
   challans: { period: string; reference: string | null; paidOn: string; amount: number }[];
+}
+
+// ---------------------------------------------------------------------------
+// Reimbursements
+// ---------------------------------------------------------------------------
+export type LimitPeriod = "claim" | "day" | "month" | "trip" | "night" | "km";
+export type ClaimApproval = "manager" | "finance" | "manager_finance";
+export type ClaimStatus = "pending_manager" | "pending_finance" | "approved" | "paid" | "rejected" | "cancelled";
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+  limitAmount: number | null;
+  limitPeriod: LimitPeriod;
+  ratePerKm: number | null;
+  gstCapture: boolean;
+  approval: ClaimApproval;
+  receiptRequiredAbove: number;
+  active: boolean;
+}
+export interface Claim {
+  id: string;
+  code: string;
+  employeeId: string;
+  employeeName: string;
+  employeeCode: string;
+  managerName: string | null;
+  department: string | null;
+  categoryId: string;
+  category: string;
+  approval: ClaimApproval;
+  expenseDate: string;
+  amount: number;
+  km: number | null;
+  vendor: string | null;
+  gstin: string | null;
+  gstAmount: number | null;
+  project: string | null;
+  description: string;
+  status: ClaimStatus;
+  statusLabel: string;
+  overLimit: boolean;
+  managerApprovedAt: string | null;
+  financeApprovedAt: string | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
+  paidAt: string | null;
+  payment: string | null;
+  receipts: number;
+  createdAt: string;
+}
+export interface ClaimReceipt {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+}
+export interface ClaimDetail extends Claim {
+  receiptFiles: ClaimReceipt[];
+  canDecide?: boolean;
+  blockedReason?: string | null;
+}
+export interface ClaimSummary {
+  pending: { amount: number; count: number };
+  withManager: number;
+  withFinance: number;
+  approvedUnpaid: { amount: number; count: number };
+  paidThisMonth: { amount: number; count: number };
+  gstCredit: number;
+  overLimit: number;
+}
+export interface MyClaims {
+  claims: Claim[];
+  categories: ExpenseCategory[];
+  usage: { categoryId: string; name: string; limit: number; used: number }[];
+  month: string;
 }

@@ -108,6 +108,7 @@ export default function Review() {
       { id: "gross", header: "Gross", accessorFn: (r) => r.gross, meta: { align: "right" }, cell: ({ getValue }) => inr(getValue<number>()) },
       { id: "deductions", header: "Deductions", accessorFn: (r) => r.totalDeductions, meta: { align: "right" }, cell: ({ getValue }) => inr(getValue<number>()) },
       { id: "tds", header: "TDS", accessorFn: (r) => r.tds, meta: { align: "right" }, cell: ({ getValue }) => inr(getValue<number>()) },
+      { id: "claims", header: "Claims", accessorFn: (r) => Number(r.reimbursement ?? 0), meta: { align: "right" }, cell: ({ getValue }) => (getValue<number>() ? inr(getValue<number>()) : <span className="text-muted">—</span>) },
       { id: "employer", header: "Employer", accessorFn: (r) => r.employerCost, meta: { align: "right" }, cell: ({ getValue }) => inr(getValue<number>()) },
       { id: "net", header: "Net", accessorFn: (r) => r.net, meta: { align: "right" }, cell: ({ getValue }) => <span className="font-semibold">{inr(getValue<number>())}</span> },
       {
@@ -181,7 +182,7 @@ export default function Review() {
           <StatCard label="Total deductions" value={<Money v={t.deductions} />} meta={`PF ${inr(t.pfEmployee)} · PT ${inr(t.pt)}`} />
           <StatCard label="Employer contributions" value={<Money v={t.employerCost} />} meta={`PF ${inr(t.pfEmployer)} · ESI ${inr(t.esiEmployer)}`} />
           <StatCard label="TDS" value={<Money v={t.tds} />} meta="Income tax this month" />
-          <StatCard label="Net salary" value={<Money v={t.net} />} meta={t.onHold ? <Tag tone="bad">{t.onHold} on hold</Tag> : "Payable to employees"} className="!shadow-[inset_0_0_0_1px_var(--color-accent)]" />
+          <StatCard label="Net salary" value={<Money v={t.net} />} meta={t.onHold ? <Tag tone="bad">{t.onHold} on hold</Tag> : t.reimbursement ? `Includes ${inr(t.reimbursement)} claims` : "Payable to employees"} className="!shadow-[inset_0_0_0_1px_var(--color-accent)]" />
           <StatCard label="Cost to company" value={<Money v={t.ctc} />} meta={`${t.withLop} with LOP · ${t.lopDays} days`} />
         </div>
       ) : null}

@@ -1,10 +1,11 @@
 import { Hono } from "hono";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
-import { attendanceCorrections, departments, employees, leaveRequests, leaveTypes, onboardingInvites } from "@hrms/db";
+import { attendanceCorrections, departments, employees, leaveRequests, leaveTypes, onboardingInvites, reimbursementClaims } from "@hrms/db";
 import { can, todayIST } from "@hrms/shared";
 import type { AppEnv } from "../env";
 import { buildCalendar } from "../services/attendance";
 import { teamScope } from "../services/scope";
+import { isFinance } from "../services/reimbursements";
 
 export const dashboardRoutes = new Hono<AppEnv>();
 
@@ -60,6 +61,22 @@ dashboardRoutes.get("/", async (c) => {
     .from(onboardingInvites)
     .where(and(eq(onboardingInvites.tenantId, tid), eq(onboardingInvites.status, "submitted")));
 
+  // Claims this user can act on now: manager stage for their reports (or all, for admins), finance stage for finance
+  let pendingClaimCount = 0;
+  if (can(t.permissions, "reimbursements", "approve")) {
+    const admin = can(t.permissions, "reimbursements", "configure");
+    const stages = [
+      admin ? sql`${reimbursementClaims.status} = 'pending_manager'` : sql`(${reimbursementClaims.status} = 'pending_manager' and ${employees.managerId} = ${t.employeeId ?? "-"})`,
+      ...(isFinance(t.permissions) ? [sql`${reimbursementClaims.status} = 'pending_finance'`] : []),
+    ];
+    const [r] = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(reimbursementClaims)
+      .innerJoin(employees, eq(employees.id, reimbursementClaims.employeeId))
+      .where(and(eq(reimbursementClaims.tenantId, tid), sql`${reimbursementClaims.employeeId} <> ${t.employeeId ?? "-"}`, sql`(${sql.join(stages, sql` or `)})`));
+    pendingClaimCount = r?.n ?? 0;
+  }
+
   // Birthdays and work anniversaries in the next 14 days
   const celebrations = await db.execute<{ id: string; name: string; department: string | null; kind: string; date: string; years: number }>(sql`
     with e as (
@@ -82,6 +99,7 @@ dashboardRoutes.get("/", async (c) => {
     pendingLeaveCount,
     pendingLeaves,
     pendingCorrections: corr?.n ?? 0,
+    pendingClaimCount,
     awaitingVerification: ob?.n ?? 0,
     celebrations: [...celebrations],
   });

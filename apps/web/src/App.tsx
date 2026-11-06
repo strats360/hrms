@@ -57,6 +57,7 @@ const router = createBrowserRouter([
           { path: "profile", element: L(() => import("@/pages/ess/Profile")) },
           { path: "payslips", element: L(() => import("@/pages/ess/Payslips")) },
           { path: "tax", element: L(() => import("@/pages/ess/Tax")) },
+          { path: "claims", element: L(() => import("@/pages/ess/Claims")) },
         ],
       },
       {
@@ -134,6 +135,15 @@ const router = createBrowserRouter([
               { path: "compute", element: L(() => import("@/pages/admin/tds/Computation")) },
               { path: "declarations", element: L(() => import("@/pages/admin/tds/Declarations")) },
               { path: "form16", element: L(() => import("@/pages/admin/tds/Form16")) },
+            ],
+          },
+          {
+            path: "reimbursements",
+            element: L(() => import("@/pages/admin/reimbursements/ReimbursementsLayout")),
+            children: [
+              { index: true, element: L(() => import("@/pages/admin/reimbursements/Queue")) },
+              { path: "history", element: L(() => import("@/pages/admin/reimbursements/History")) },
+              { path: "categories", element: L(() => import("@/pages/admin/reimbursements/Categories")) },
             ],
           },
           { path: "payroll/run/:runId", element: L(() => import("@/pages/admin/payroll/RunWizard")) },

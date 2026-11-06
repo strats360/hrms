@@ -64,6 +64,7 @@ export function Payslip({ slip }: { slip: PayslipView }) {
           <div className="text-[12px]">Net pay</div>
           <div className="text-[26px] font-medium num">{inr(slip.net)}</div>
           <div className="text-[12px]">{rupeesInWords(slip.net)}</div>
+          {slip.reimbursement ? <div className="mt-1 text-[12px]">Includes reimbursements of {inr(slip.reimbursement)} (not taxable)</div> : null}
         </div>
         <div className="text-right text-[12.5px]">
           <div>

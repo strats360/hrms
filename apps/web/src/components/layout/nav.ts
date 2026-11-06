@@ -23,7 +23,7 @@ export interface NavItem {
   icon: LucideIcon;
   perm?: [Module, Action?];
   soon?: boolean;
-  badgeKey?: "leave" | "corrections";
+  badgeKey?: "leave" | "corrections" | "claims";
 }
 export interface NavGroup {
   key: string;
@@ -49,7 +49,7 @@ export const ADMIN_NAV: NavGroup[] = [
       { to: "/payroll", label: "Payroll", icon: Banknote, perm: ["payroll"] },
       { to: "/compliance", label: "Statutory compliance", icon: ShieldCheck, perm: ["compliance"] },
       { to: "/tds", label: "TDS & tax", icon: BadgePercent, perm: ["tds"] },
-      { to: "/reimbursements", label: "Reimbursements", icon: Receipt, perm: ["reimbursements"], soon: true },
+      { to: "/reimbursements", label: "Reimbursements", icon: Receipt, perm: ["reimbursements"], badgeKey: "claims" },
       { to: "/payments", label: "Payments", icon: CreditCard, perm: ["payments"], soon: true },
     ],
   },
