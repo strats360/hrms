@@ -438,6 +438,7 @@ async function seedChallans(tid: string) {
     for (const o of obligationsForRun(run, items)) {
       const due = dueDate(o.statute, o.period, o.jurisdiction || null);
       const paidOn = new Date(Date.parse(due + "T00:00:00Z") - 2 * 86400000).toISOString().slice(0, 10);
+      if (paidOn > today) continue; // not due yet: leave it open
       const ref = { epf: "TRRN", esi: "ESIC", pt: "PTRC", lwf: "LWF", tds: "CIN" }[o.statute] + "-" + o.period.replace("-", "") + "-" + Math.floor(rnd() * 90000 + 10000);
       await db.insert(statutoryChallans).values({ tenantId: tid, statute: o.statute, period: o.period, jurisdiction: o.jurisdiction, amountDue: o.amount, amountPaid: o.amount, reference: ref, paidOn, createdBy: kunal?.id });
     }

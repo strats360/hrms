@@ -36,14 +36,25 @@ The product design lives in [`design/`](design/). `HRMS v2.dc.html` is the sourc
 | Payslips | Published to self-service with an email to each employee, printable or "Save as PDF" in the design's layout. Data is snapshotted, so payslips never change after lock |
 | Bank file | CSV with full account numbers (decrypted only for this export). Held salaries and missing bank details are skipped, and duplicate account+amount is blocked |
 
+**Statutory compliance is built:**
+
+| Area | What works |
+| --- | --- |
+| Liabilities | Worked out automatically from each locked payroll: EPF (A/c 1, 2, 10 and 21), ESI, TDS, and Professional Tax and LWF for each state. Each has its due date and a paid, overdue or due-soon status |
+| Payments | Record each payment with its challan number, TRRN or CIN, the amount (interest included) and a receipt on R2. Edits are audited |
+| Return files | EPFO ECR 2.0 text file, ESI monthly contribution columns, PT slab summary, employee-wise TDS |
+| Overview | Cards per statute, a filing calendar (including 24Q quarters and Form 16), a gratuity provision estimate, EDLI members and overtime hours |
+| Rules | The rates and state tables in force, plus registrations from Settings |
+
 **Before running real payroll, a payroll consultant or CA should confirm these:**
 - **Tax slabs:** FY 2026-27 uses the FY 2025-26 slabs from Finance Act 2025. Update `TAX_TABLES` in `packages/shared/src/payroll.ts` if the Finance Act 2026 changed them.
 - **State tables:** Professional Tax covers Gujarat, Maharashtra, Karnataka, West Bengal, Telangana, Andhra Pradesh and Madhya Pradesh (plus states with no PT). Labour Welfare Fund covers Gujarat and Maharashtra. Other states show a warning on the payslip.
 - **CTC definition:** monthly CTC = gross + employer PF + employer ESI. PF admin and EDLI are shown as extra employer cost.
 - **Old-regime TDS:** this counts only the standard deduction, employee PF (80C) and PT. Investment declarations, HRA exemption, previous-employer income and opening balances come with the TDS module. Until then, an employee's first month on the system annualises TDS and flags it.
+- **Due dates:** EPF and ESI fall on the 15th, TDS on the 7th (30 April for March), PT by state (Gujarat 15th, Maharashtra month end, Karnataka 20th, West Bengal 21st) and LWF on 15 July / 15 January. Check the ESI file's reason codes against the ESIC portal.
 - **Not in scope:** EPS age limit (58+), the ESI contribution-period rule, and mid-month salary revisions (the structure effective at month end is used).
 
-**Still to come in Phase 2:** statutory compliance (ECR, ESI and PT returns, challans), TDS declarations and Form 16, reimbursements, payments, reports and SaaS billing. These show as "Soon" in the navigation.
+**Still to come in Phase 2:** TDS declarations and Form 16, reimbursements, payments, reports and SaaS billing. These show as "Soon" in the navigation.
 
 ## Architecture
 

@@ -35,6 +35,7 @@ export default function DashboardPage() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["dashboard"], queryFn: () => api.get<Dashboard>("/admin/dashboard") });
   const [rejecting, setRejecting] = useState<string | null>(null);
+  const compliance = useQuery({ queryKey: ["compliance", "overview"], queryFn: () => api.get<{ overdue: number; dueSoon: number }>("/admin/compliance/overview"), enabled: can("compliance") });
   const decide = useMutation({
     mutationFn: (v: { id: string; decision: "approved" | "rejected"; note?: string }) => api.post(`/admin/leave/requests/${v.id}/decision`, { decision: v.decision, note: v.note }),
     onSuccess: (_d, v) => {
@@ -138,10 +139,16 @@ export default function DashboardPage() {
             <AttentionRow to="/attendance/corrections" title="Attendance corrections" sub="Missed punches and WFH requests" count={d.pendingCorrections} show={can("attendance")} />
             <AttentionRow to="/employees/onboarding" title="Onboarding to verify" sub="New joiners who submitted their details" count={d.awaitingVerification} show={can("employees")} />
             <AttentionRow to="/attendance" title="Not marked yet today" sub="No punch recorded so far" count={a?.notMarked ?? 0} show={!!a} tone="neutral" />
-            <div className="rounded-[var(--radius-md)] px-3 py-2.5" style={{ background: "var(--color-surface)" }}>
-              <div className="font-semibold">Statutory compliance</div>
-              <div className="text-muted text-[12px]">PF, ESI and PT challans with due-date alerts are next in phase 2.</div>
-            </div>
+            {compliance.data ? (
+              <AttentionRow
+                to="/compliance"
+                title="Statutory payments"
+                sub={compliance.data.overdue ? `${compliance.data.overdue} overdue · EPF, ESI, PT and TDS` : "EPF, ESI, PT and TDS due in the next 7 days"}
+                count={compliance.data.overdue + compliance.data.dueSoon}
+                show
+                tone={compliance.data.overdue ? "warn" : "neutral"}
+              />
+            ) : null}
           </div>
         </Card>
 

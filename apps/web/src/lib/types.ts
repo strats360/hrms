@@ -287,3 +287,62 @@ export interface Structure {
   employer: { pf: number; esi: number };
   esiApplicable: boolean;
 }
+
+// ---------- compliance ----------
+export type Statute = "epf" | "esi" | "pt" | "lwf" | "tds";
+export interface Challan {
+  id: string;
+  statute: Statute;
+  period: string;
+  jurisdiction: string;
+  amountDue: number;
+  amountPaid: number;
+  reference: string | null;
+  paidOn: string;
+  receiptName: string | null;
+  notes: string | null;
+}
+export interface Obligation {
+  key: string;
+  statute: Statute;
+  label: string;
+  period: string;
+  jurisdiction: string;
+  amount: number;
+  breakup: { label: string; amount: number }[];
+  employees: number;
+  dueDate: string;
+  daysLeft: number;
+  status: "paid" | "overdue" | "due_soon" | "upcoming";
+  challan: Challan | null;
+}
+export interface ComplianceOverview {
+  latestMonth: string | null;
+  cards: Obligation[];
+  overdue: number;
+  dueSoon: number;
+  calendar: { date: string; title: string; amount: number | null; daysLeft: number; kind: "payment" | "return" }[];
+  tracked: { gratuityEligible: number; gratuityProvision: number; overtimeHours: number; edliMembers: number };
+}
+export interface ContributionRow {
+  employeeId: string;
+  name: string;
+  code: string;
+  uan: string | null;
+  esicIpNumber: string | null;
+  pan: string | null;
+  state: string | null;
+  gross: number;
+  paidDays: number;
+  ncpDays: number;
+  pfWage: number;
+  epfEe: number;
+  eps: number;
+  epfEr: number;
+  edliAdmin: number;
+  esiEe: number;
+  esiEr: number;
+  pt: number;
+  lwf: number;
+  tds: number;
+}

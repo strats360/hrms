@@ -115,6 +115,16 @@ const router = createBrowserRouter([
               { path: "payslips", element: L(() => import("@/pages/admin/payroll/Payslips")) },
             ],
           },
+          {
+            path: "compliance",
+            element: L(() => import("@/pages/admin/compliance/ComplianceLayout")),
+            children: [
+              { index: true, element: L(() => import("@/pages/admin/compliance/Overview")) },
+              { path: "employee", element: L(() => import("@/pages/admin/compliance/EmployeeWise")) },
+              { path: "challans", element: L(() => import("@/pages/admin/compliance/Challans")) },
+              { path: "rules", element: L(() => import("@/pages/admin/compliance/Rules")) },
+            ],
+          },
           { path: "payroll/run/:runId", element: L(() => import("@/pages/admin/payroll/RunWizard")) },
           {
             path: "settings",
