@@ -6,6 +6,7 @@ import type { AppEnv } from "../env";
 import { createAuth } from "./auth";
 import { ConsoleMailer, ResendMailer, type Mailer } from "./email";
 import { forbidden, unauthorized } from "./errors";
+import { featuresFor } from "../services/flags";
 
 let devMailer: ConsoleMailer | null = null;
 /** Exposed for tests: the in-memory mailer used when no RESEND_API_KEY is set. */
@@ -63,7 +64,7 @@ export const requireTenant = createMiddleware<AppEnv>(async (c, next) => {
   const wanted = c.req.header("x-tenant-id");
 
   const rows = await db
-    .select({ m: memberships, role: roles, tenantStatus: tenants.status })
+    .select({ m: memberships, role: roles, tenantStatus: tenants.status, plan: tenants.plan })
     .from(memberships)
     .innerJoin(tenants, eq(tenants.id, memberships.tenantId))
     .leftJoin(roles, eq(roles.id, memberships.roleId))
@@ -82,9 +83,19 @@ export const requireTenant = createMiddleware<AppEnv>(async (c, next) => {
     roleName: row.role?.name ?? null,
     permissions: row.role?.permissions ?? {},
     employeeId: row.m.employeeId,
+    plan: row.plan,
+    features: await featuresFor(db, { id: row.m.tenantId, plan: row.plan }),
+    readOnly: null,
   });
   await next();
 });
+
+/** Block a route group when the tenant's plan or a feature flag doesn't include it. */
+export const requireFeature = (key: string) =>
+  createMiddleware<AppEnv>(async (c, next) => {
+    if (c.get("tenant").features[key] === false) throw forbidden("This feature isn't included in your plan. Contact us to upgrade.");
+    await next();
+  });
 
 /** Require a module permission from the user's tenant role. */
 export const requirePerm = (module: Module, action: Action = "view") =>

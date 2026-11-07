@@ -15,6 +15,11 @@ export interface Membership {
   employeeId: string | null;
   employeeName: string | null;
   employeeCode: string | null;
+  plan?: string;
+  /** Feature flags for this company (plan gates and staged rollouts). */
+  features?: Record<string, boolean>;
+  /** Set when platform support is viewing the company read-only. */
+  support?: { ticketId: string; ticketNumber: number; accessId: string; expiresAt: string } | null;
 }
 export interface Me {
   user: { id: string; name: string; email: string };
@@ -29,10 +34,21 @@ interface SessionValue {
   isAdmin: boolean;
   isEmployee: boolean;
   can: (m: Module, a?: Action) => boolean;
+  /** Is a feature flag on for this company? Unknown flags count as on. */
+  has: (feature: string) => boolean;
   switchTenant: (id: string) => void;
   refresh: () => Promise<unknown>;
   signOut: () => Promise<void>;
 }
+
+/** Modules that a feature flag (or the plan) can switch off. */
+const MODULE_FEATURE: Partial<Record<Module, string>> = {
+  tds: "module.tds",
+  reimbursements: "module.reimbursements",
+  payments: "module.payments",
+  reports: "module.reports",
+  compliance: "module.compliance",
+};
 
 const Ctx = createContext<SessionValue | null>(null);
 
@@ -67,7 +83,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     tenant,
     isAdmin: !!tenant?.roleId,
     isEmployee: !!tenant?.employeeId,
-    can: (m, a = "view") => canDo(tenant?.permissions, m, a),
+    can: (m, a = "view") => canDo(tenant?.permissions, m, a) && tenant?.features?.[MODULE_FEATURE[m] ?? ""] !== false,
+    has: (f) => tenant?.features?.[f] !== false,
     switchTenant: (id) => {
       setActiveTenant(id);
       qc.invalidateQueries();

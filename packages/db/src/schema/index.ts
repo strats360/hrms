@@ -9,3 +9,4 @@ export * from "./tax";
 export * from "./reimbursements";
 export * from "./payments";
 export * from "./billing";
+export * from "./platform";

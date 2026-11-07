@@ -10,14 +10,15 @@ const TABS = [
   { to: "/me/attendance", label: "Attendance", icon: Clock },
   { to: "/me/leave", label: "Leave", icon: CalendarDays },
   { to: "/me/payslips", label: "Payslips", icon: Wallet },
-  { to: "/me/tax", label: "Tax", icon: Percent },
-  { to: "/me/claims", label: "Claims", icon: Receipt },
+  { to: "/me/tax", label: "Tax", icon: Percent, feature: "module.tds" },
+  { to: "/me/claims", label: "Claims", icon: Receipt, feature: "module.reimbursements" },
   { to: "/me/profile", label: "Profile", icon: User },
 ];
 
 /** Employee self-service: top bar on desktop, bottom tab bar on phones. */
 export function EssLayout() {
-  const { tenant, me, signOut } = useSession();
+  const { tenant, me, signOut, has } = useSession();
+  const tabs = TABS.filter((t) => !("feature" in t) || has((t as { feature: string }).feature));
   if (!tenant?.employeeId) return <Navigate to={tenant?.roleId ? "/" : "/login"} replace />;
   return (
     <div className="min-h-screen pb-20 md:pb-10" style={{ background: "var(--color-bg)", color: "var(--color-text)" }}>
@@ -27,7 +28,7 @@ export function EssLayout() {
             <Brand subtitle={tenant.tenantName} />
           </div>
           <nav className="ml-4 hidden gap-1 md:flex" aria-label="Self-service">
-            {TABS.map((t) => (
+            {tabs.map((t) => (
               <NavLink key={t.to} to={t.to} end={t.end} className="rounded-[var(--radius-md)] px-3 py-2 text-[14px] no-underline hover:bg-[var(--tint-1)]" style={({ isActive }) => ({ background: isActive ? "var(--sel-bg)" : undefined, color: isActive ? "var(--sel-fg)" : "var(--color-text)", fontWeight: isActive ? 600 : 400 })}>
                 {t.label}
               </NavLink>
@@ -50,8 +51,8 @@ export function EssLayout() {
       <main className="mx-auto flex max-w-[1100px] flex-col gap-4 px-4 pt-5">
         <Outlet />
       </main>
-      <nav className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-7 border-t border-[var(--color-divider)] md:hidden" style={{ background: "var(--color-surface)" }} aria-label="Self-service">
-        {TABS.map((t) => (
+      <nav className="fixed inset-x-0 bottom-0 z-10 grid border-t border-[var(--color-divider)] md:hidden" aria-label="Self-service" style={{ background: "var(--color-surface)", gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+        {tabs.map((t) => (
           <NavLink key={t.to} to={t.to} end={t.end} className="flex min-w-0 flex-col items-center gap-0.5 py-2 text-[10.5px] no-underline" style={({ isActive }) => ({ color: isActive ? "var(--sel-fg)" : "var(--muted)" })}>
             <t.icon size={20} />
             {t.label}

@@ -34,6 +34,11 @@ export interface TenantContext {
   roleName: string | null;
   permissions: PermissionMatrix;
   employeeId: string | null;
+  plan: string;
+  /** Feature flags evaluated for this tenant. */
+  features: Record<string, boolean>;
+  /** Platform support viewing the tenant read-only (no membership). */
+  readOnly?: { ticketId: string; accessId: string; expiresAt: string } | null;
 }
 
 export type AppEnv = {

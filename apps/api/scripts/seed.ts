@@ -42,7 +42,7 @@ import { reimbursementCategories, reimbursementClaims } from "@hrms/db";
 import { initialStatus, settleClaims } from "../src/services/reimbursements";
 import { companyBankAccounts, paymentBatches, payments } from "@hrms/db";
 import { bankInfo, bonusLines, nextBatchCode, referenceAllocator, salaryLines } from "../src/services/payments";
-import { invoices, plans } from "@hrms/db";
+import { featureFlags, invoices, plans } from "@hrms/db";
 import { issueInvoices } from "../src/services/billing";
 
 // ---- env ----
@@ -651,6 +651,17 @@ async function seedBilling(tid: string) {
       { key: "enterprise", name: "Enterprise", pricePerEmployee: null, minSeats: 500, includedAdmins: null, sortOrder: 3, description: "1,000+ employees · annual contract", features: ["Multi-entity & multi-state", "SSO, audit export, API", "Dedicated success manager", "99.9% SLA"] },
     ]);
   }
+  // plan gates from the design: Starter has no TDS, claims or bank files
+  await db
+    .insert(featureFlags)
+    .values([
+      { key: "module.tds", name: "TDS declarations and Form 16", description: "TDS module, employee tax declarations and Form 16", rollout: "plans", plans: ["trial", "growth", "enterprise"] },
+      { key: "module.reimbursements", name: "Reimbursements", description: "Expense claims with receipts and approvals", rollout: "plans", plans: ["trial", "growth", "enterprise"] },
+      { key: "module.payments", name: "Payment batches and bank files", description: "Bank files, reconciliation and failed payments", rollout: "plans", plans: ["trial", "growth", "enterprise"] },
+      { key: "module.reports", name: "Reports", description: "Downloadable reports with filters", rollout: "all" },
+      { key: "module.compliance", name: "Statutory compliance", description: "EPF, ESI, PT, LWF liabilities and return files", rollout: "all" },
+    ])
+    .onConflictDoNothing();
   const [inv] = await db.select({ id: invoices.id }).from(invoices).where(eq(invoices.tenantId, tid)).limit(1);
   if (inv) return;
   const [t] = await db.select().from(tenants).where(eq(tenants.id, tid));

@@ -473,3 +473,16 @@ export const tenantBillingSchema = z.object({
   billingEmail: nullable(z.string().trim().email()),
   paymentMethod: nullable(trimmed(80)),
 });
+
+// ---------- feature flags ----------
+export const featureFlagSchema = z.object({
+  key: z.string().trim().regex(/^[a-z][a-z0-9_.-]{2,60}$/, "Use lowercase letters, digits, dots and dashes"),
+  name: trimmed(80).min(1),
+  description: nullable(trimmed(300)),
+  enabled: z.boolean().default(true),
+  rollout: z.enum(["all", "plans", "tenants", "percent"]).default("all"),
+  plans: z.array(z.string().max(30)).max(20).default([]),
+  tenantIds: z.array(z.string()).max(5000).default([]),
+  excludedTenantIds: z.array(z.string()).max(5000).default([]),
+  percent: z.coerce.number().int().min(0).max(100).default(100),
+});

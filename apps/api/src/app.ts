@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { secureHeaders } from "hono/secure-headers";
 import type { AppEnv } from "./env";
 import { onError } from "./lib/errors";
-import { loadSession, requireAdmin, requireAuth, requireTenant, services } from "./lib/context";
+import { loadSession, requireAdmin, requireAuth, requireFeature, requireTenant, services } from "./lib/context";
 import { publicRoutes } from "./routes/public";
 import { meRoutes } from "./routes/me";
 import { orgRoutes } from "./routes/org";
@@ -23,6 +23,7 @@ import { essClaimRoutes, reimbursementRoutes } from "./routes/reimbursements";
 import { paymentRoutes } from "./routes/payments";
 import { reportRoutes } from "./routes/reports";
 import { platformBillingRoutes, tenantBillingRoutes } from "./routes/billing";
+import { flagRoutes } from "./routes/flags";
 
 /** Better Auth endpoints we expose. Sign-up and everything else stays closed. */
 const AUTH_ALLOW = [
@@ -66,11 +67,20 @@ export function buildApp() {
 
   api.use("/platform/*", requireAuth);
   api.route("/platform/billing", platformBillingRoutes);
+  api.route("/platform/flags", flagRoutes);
   api.route("/platform", platformRoutes);
 
   // Tenant-scoped routes
   const t = new Hono<AppEnv>();
   t.use("*", requireAuth, requireTenant);
+  // plan / feature-flag gates (before the routes they guard)
+  t.use("/ess/tax/*", requireFeature("module.tds"));
+  t.use("/admin/tds/*", requireFeature("module.tds"));
+  t.use("/ess/claims/*", requireFeature("module.reimbursements"));
+  t.use("/admin/reimbursements/*", requireFeature("module.reimbursements"));
+  t.use("/admin/payments/*", requireFeature("module.payments"));
+  t.use("/admin/reports/*", requireFeature("module.reports"));
+  t.use("/admin/compliance/*", requireFeature("module.compliance"));
   t.route("/ess/tax", essTaxRoutes);
   t.route("/ess/claims", essClaimRoutes);
   t.route("/ess", essRoutes);

@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { eq } from "drizzle-orm";
 import { employees, memberships, platformStaff, roles, tenants } from "@hrms/db";
 import type { AppEnv } from "../env";
+import { loadFlags } from "../services/flags";
+import { evaluateFlags } from "@hrms/shared";
 
 export const meRoutes = new Hono<AppEnv>();
 
@@ -17,6 +19,7 @@ meRoutes.get("/", async (c) => {
       tenantName: tenants.name,
       tenantCode: tenants.code,
       tenantStatus: tenants.status,
+      plan: tenants.plan,
       setupCompletedAt: tenants.setupCompletedAt,
       roleId: roles.id,
       roleName: roles.name,
@@ -32,6 +35,8 @@ meRoutes.get("/", async (c) => {
     .leftJoin(employees, eq(employees.id, memberships.employeeId))
     .where(eq(memberships.userId, s.userId));
   const [staff] = await db.select().from(platformStaff).where(eq(platformStaff.userId, s.userId));
+
+  const flags = await loadFlags(db);
 
   // touch last-active (best effort)
   await db.update(memberships).set({ lastActiveAt: new Date() }).where(eq(memberships.userId, s.userId));
@@ -53,6 +58,8 @@ meRoutes.get("/", async (c) => {
         employeeId: r.employeeId,
         employeeName: r.employeeName,
         employeeCode: r.employeeCode,
+        plan: r.plan,
+        features: evaluateFlags(flags, { id: r.tenantId, plan: r.plan }),
       })),
   });
 });
