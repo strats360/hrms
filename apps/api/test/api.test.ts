@@ -208,10 +208,11 @@ describe("attendance", () => {
     expect(today.body.summary.total).toBeGreaterThan(200);
   });
   it("approves a correction and updates the record", async () => {
-    const list = await hr.get("/admin/attendance/corrections?status=pending");
+    // the payroll tests may have approved it already (approval needs corrections resolved)
+    const list = await hr.get("/admin/attendance/corrections");
     const corr = list.body.find((x: any) => x.issue === "Biometric failed");
-    const r = await hr.post(`/admin/attendance/corrections/${corr.id}/decision`, { decision: "approved" });
-    expect(r.status).toBe(200);
+    if (corr.status === "pending") expect((await hr.post(`/admin/attendance/corrections/${corr.id}/decision`, { decision: "approved" })).status).toBe(200);
+    else expect(corr.status).toBe("approved");
     const month = await hr.get(`/admin/attendance/monthly?month=${corr.date.slice(0, 7)}`);
     const emp = month.body.rows.find((x: any) => x.employeeId === corr.employeeId);
     const idx = month.body.days.indexOf(corr.date);

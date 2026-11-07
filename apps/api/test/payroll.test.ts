@@ -125,15 +125,38 @@ describe("payroll run lifecycle", () => {
     expect(slip.earnings.some((e: any) => e.label === "Project bonus")).toBe(true);
     expect(slip.employee.name).toBe("Priya Vaghela");
   });
-  it("exports a bank file without held salaries, then marks paid", async () => {
+  it("exports a bank file without held salaries", async () => {
     expect((await kunal.post(`/admin/payroll/runs/${runId}/mark-paid`, { paidOn: todayIST() })).status).toBe(400);
     const csv = await kunal.get(`/admin/payroll/runs/${runId}/bank-file.csv`);
     expect(csv.status).toBe(200);
     expect(csv.body).toContain("034501512345"); // Priya's full account in the bank file
     expect(csv.body).not.toContain("STL-0057"); // held
     expect((await kunal.post(`/admin/payroll/runs/${runId}/reopen`, { reason: "Need to fix an error" })).status).toBe(400); // bank file exported
-    const paid = await kunal.post(`/admin/payroll/runs/${runId}/mark-paid`, { paidOn: todayIST(), reference: "HDFC-UTR-123" });
-    expect(paid.body.status).toBe("paid");
+  });
+  it("pays salary through a payment batch and marks the run paid", async () => {
+    const accounts = (await kunal.get("/admin/payments/accounts")).body;
+    const hdfc = accounts.find((a: any) => a.isDefault);
+    const body = { type: "salary", payrollRunId: runId, bankAccountId: hdfc.id, paymentDate: todayIST() };
+    const prev = await krupa.post("/admin/payments/batches/preview", body);
+    expect(prev.status).toBe(200);
+    expect(prev.body.warnings.join(" ")).toMatch(/on hold/);
+    const b = await krupa.post("/admin/payments/batches", body);
+    expect(b.status).toBe(201);
+    expect(b.body.code).toMatch(/^PB-\d{4}-S/);
+    expect((await krupa.post("/admin/payments/batches", body)).status).toBe(409); // one batch per payroll
+    // old run-level paths are closed once a batch pays the run
+    expect((await kunal.post(`/admin/payroll/runs/${runId}/mark-paid`, { paidOn: todayIST() })).status).toBe(400);
+    expect((await kunal.post(`/admin/payroll/runs/${runId}/reopen`, { reason: "Need to fix an error" })).status).toBe(400);
+    expect((await krupa.post(`/admin/payments/batches/${b.body.id}/approve`)).status).toBe(403); // payroll admin can't approve
+    expect((await kunal.post(`/admin/payments/batches/${b.body.id}/approve`)).body.status).toBe("approved");
+    const file = await krupa.get(`/admin/payments/batches/${b.body.id}/file`);
+    expect(file.status).toBe(200);
+    expect(file.body).toContain("034501512345");
+    const done = await kunal.post(`/admin/payments/batches/${b.body.id}/mark-all-paid`, {});
+    expect(done.body.errors).toHaveLength(0);
+    const run = (await krupa.get(`/admin/payroll/runs/${runId}`)).body;
+    expect(run.status).toBe("paid");
+    expect(run.paymentReference).toBe(b.body.code);
     expect((await kunal.get("/admin/reimbursements/claims?q=RB-1036")).body[0].status).toBe("paid");
   });
   it("exports the salary register", async () => {

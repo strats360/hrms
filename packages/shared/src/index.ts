@@ -8,3 +8,4 @@ export * from "./leave-rules";
 export * from "./payroll";
 export * from "./compliance";
 export * from "./tax";
+export * from "./payments";

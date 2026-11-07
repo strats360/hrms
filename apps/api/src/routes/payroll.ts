@@ -36,6 +36,7 @@ import { audit } from "../lib/audit";
 import { toCsv } from "../lib/csv";
 import { layout } from "../lib/email";
 import { settleClaims } from "../services/reimbursements";
+import { activeBatchForRun } from "../services/payments";
 import { calculateRun, defaultPayDate, getTemplate, monthBounds, payableEmployees, refreshTotals, resolveStructure, structuresAsOf } from "../services/payroll";
 
 export const payrollRoutes = new Hono<AppEnv>();
@@ -318,6 +319,8 @@ payrollRoutes.post("/runs/:id/reopen", requirePerm("payroll", "configure"), v("j
   const run = await loadRun(c, c.req.param("id"));
   if (run.status !== "approved") throw badRequest(run.status === "paid" ? "This payroll is paid. Correct it with arrears or recoveries next month." : "Only a locked, unpaid payroll can be reopened");
   if (run.bankFileExportedAt) throw badRequest("The bank file was already exported. Cancel the bank upload before reopening, then try again.");
+  const batch = await activeBatchForRun(c.get("db"), run.id);
+  if (batch) throw badRequest(`Payment batch ${batch.code} pays this payroll. Cancel it in Payments first.`);
   const [later] = await c.get("db").select({ month: payrollRuns.month }).from(payrollRuns).where(and(eq(payrollRuns.tenantId, tid(c)), sql`${payrollRuns.month} > ${run.month}`)).limit(1);
   if (later) throw badRequest(`Payroll for ${later.month} already exists. Discard it first.`);
   const [row] = await c.get("db").update(payrollRuns).set({ status: "calculated", approvedBy: null, approvedAt: null, publishedAt: null }).where(eq(payrollRuns.id, run.id)).returning();
@@ -369,6 +372,8 @@ payrollRoutes.get("/runs/:id/bank-file.csv", requirePerm("payroll", "export"), a
   const run = await loadRun(c, c.req.param("id"));
   if (run.status !== "approved" && run.status !== "paid") throw badRequest("Approve and lock the payroll first");
   const db = c.get("db");
+  const batch = await activeBatchForRun(db, run.id);
+  if (batch) throw badRequest(`Payment batch ${batch.code} pays this payroll. Download the bank file from Payments.`);
   const rows = await db
     .select({ item: payrollItems, enc: employees.accountNumberEnc, holder: employees.accountHolderName, ifsc: employees.ifsc, email: employees.workEmail })
     .from(payrollItems)
@@ -418,6 +423,8 @@ payrollRoutes.post("/runs/:id/mark-paid", requirePerm("payroll", "approve"), v("
   const run = await loadRun(c, c.req.param("id"));
   if (run.status !== "approved") throw badRequest(run.status === "paid" ? "Already marked as paid" : "Approve and lock the payroll first");
   if (!run.bankFileExportedAt) throw badRequest("Export the bank file before marking the payroll as paid");
+  const batch = await activeBatchForRun(c.get("db"), run.id);
+  if (batch) throw badRequest(`Payment batch ${batch.code} pays this payroll. Record the bank's result in Payments and the payroll is marked paid automatically.`);
   const b = c.req.valid("json");
   const [row] = await c
     .get("db")

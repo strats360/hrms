@@ -40,6 +40,8 @@ import { dueDate } from "@hrms/shared";
 import { obligationsForRun } from "../src/routes/compliance";
 import { reimbursementCategories, reimbursementClaims } from "@hrms/db";
 import { initialStatus, settleClaims } from "../src/services/reimbursements";
+import { companyBankAccounts, paymentBatches, payments } from "@hrms/db";
+import { bankInfo, bonusLines, nextBatchCode, referenceAllocator, salaryLines } from "../src/services/payments";
 
 // ---- env ----
 const vars: Record<string, string> = {};
@@ -80,6 +82,7 @@ async function main() {
     await seedReimbursements(existing.id);
     const added = await seedPayroll(existing.id);
     await seedChallans(existing.id);
+    await seedPayments(existing.id);
     console.log(added ? `Added ${added} months of payroll history to the existing demo tenant.` : "Demo tenant already exists. To reseed, drop and recreate the database, then run migrations.");
     await db.$client.end();
     return;
@@ -390,6 +393,7 @@ async function main() {
   await seedReimbursements(tid);
   const months = await seedPayroll(tid);
   await seedChallans(tid);
+  await seedPayments(tid);
   console.log(`Payroll history: ${months} locked months`);
 
   console.log("\nDemo data ready. All demo logins use the password:", PASSWORD);
@@ -559,6 +563,77 @@ async function seedReimbursements(tid: string) {
       rejectionReason: stage === "Rejected" ? "Laptop bags are not covered by the expense policy" : null,
       ...(stage === "Paid" && prevRun ? { status: "paid", payrollRunId: prevRun.id, paidAt: prevRun.paidAt ?? approved } : {}),
     });
+  }
+}
+
+/**
+ * Debit accounts, a completed salary batch for every paid payroll month (the latest
+ * one with the design's two failed transactions) and a draft statutory bonus batch.
+ */
+async function seedPayments(tid: string) {
+  const [any] = await db.select({ id: companyBankAccounts.id }).from(companyBankAccounts).where(eq(companyBankAccounts.tenantId, tid)).limit(1);
+  if (any) return;
+  const [hdfc] = await db
+    .insert(companyBankAccounts)
+    .values({ tenantId: tid, label: "Payroll", bankName: "HDFC Bank", accountNumberEnc: await encryptField("50200012345678", ENCRYPTION_KEY!), accountLast4: "5678", ifsc: "HDFC0000123", fileFormat: "hdfc_enet", clientCode: "STRATS360", isDefault: true, balance: 21400000, balanceAsOf: today })
+    .returning();
+  const [icici] = await db
+    .insert(companyBankAccounts)
+    .values({ tenantId: tid, label: "Operations", bankName: "ICICI Bank", accountNumberEnc: await encryptField("034505009012", ENCRYPTION_KEY!), accountLast4: "9012", ifsc: "ICIC0000345", fileFormat: "icici_cib" })
+    .returning();
+  const [krupa] = await db.select({ id: user.id }).from(user).where(eq(user.email, "krupa.joshi@strats360.com"));
+  const [kunal] = await db.select({ id: user.id }).from(user).where(eq(user.email, "kunal.shah@strats360.com"));
+  const runs = await db.select().from(payrollRuns).where(and(eq(payrollRuns.tenantId, tid), eq(payrollRuns.status, "paid"))).orderBy(payrollRuns.month);
+  const codeOf = new Map((await db.select({ id: employees.id, code: employees.employeeCode }).from(employees).where(eq(employees.tenantId, tid))).map((e) => [e.id, e.code]));
+  const FAILED: Record<string, { status: "failed" | "held"; reason: string }> = {
+    "STL-0160": { status: "failed", reason: "IFSC BARB0BHAVNA, account dormant" },
+    "STL-0183": { status: "held", reason: "Account closed (employee exited)" },
+  };
+  for (const [i, run] of runs.entries()) {
+    const latest = i === runs.length - 1;
+    const date = run.payDate ?? `${run.month}-28`;
+    const paidAt = run.paidAt ?? new Date(date + "T12:00:00+05:30");
+    const [batch] = await db
+      .insert(paymentBatches)
+      .values({ tenantId: tid, code: await nextBatchCode(db, tid, "salary", date), type: "salary", label: `${new Date(run.month + "-01T00:00:00Z").toLocaleString("en-IN", { month: "long", year: "numeric", timeZone: "UTC" })} salary`, payrollRunId: run.id, bankAccountId: hdfc!.id, fileFormat: "hdfc_enet", paymentDate: date, status: "completed", createdBy: krupa?.id, approvedBy: kunal?.id, approvedAt: paidAt, exportedAt: paidAt, exportCount: 1, completedAt: paidAt })
+      .returning();
+    const lines = await salaryLines(db, tid, run.id);
+    const info = await bankInfo(db, tid, lines.map((l) => l.employeeId));
+    const ref = await referenceAllocator(db, tid, "salary", date);
+    const values = lines.map((l) => {
+      const e = info.get(l.employeeId)!;
+      const f = latest ? FAILED[codeOf.get(l.employeeId) ?? ""] : undefined;
+      const missing = !e.hasAccount || !e.ifsc;
+      return {
+        tenantId: tid, batchId: batch!.id, employeeId: l.employeeId, reference: ref(), amount: l.amount,
+        beneficiaryName: e.holder ?? e.name, bankName: e.bankName, ifsc: e.ifsc, accountLast4: e.last4, attempts: 1, lastExportedAt: paidAt,
+        status: f ? f.status : missing ? "held" : "paid",
+        failureReason: f ? f.reason : missing ? "Bank details missing" : null,
+        utr: f || missing ? null : `HDFCN${run.month.replace("-", "")}${String(Math.floor(rnd() * 1e7)).padStart(7, "0")}`,
+        paidAt: f || missing ? null : paidAt,
+      };
+    });
+    for (let j = 0; j < values.length; j += 500) await db.insert(payments).values(values.slice(j, j + 500));
+  }
+  // draft statutory bonus for last FY, from the ICICI operations account
+  const [y, m] = today.split("-").map(Number) as [number, number];
+  const s = (m >= 4 ? y : y - 1) - 1;
+  const fy = `${s}-${String((s + 1) % 100).padStart(2, "0")}`;
+  const bonus = await bonusLines(db, tid, fy, 8.33);
+  if (bonus.lines.length) {
+    const [batch] = await db
+      .insert(paymentBatches)
+      .values({ tenantId: tid, code: await nextBatchCode(db, tid, "bonus", today), type: "bonus", label: `Statutory bonus FY ${fy}`, bankAccountId: icici!.id, fileFormat: "icici_cib", paymentDate: today, status: "draft", createdBy: krupa?.id, notes: "8.33% minimum bonus under the Payment of Bonus Act" })
+      .returning();
+    const info = await bankInfo(db, tid, bonus.lines.map((l) => l.employeeId));
+    const ref = await referenceAllocator(db, tid, "bonus", today);
+    await db.insert(payments).values(
+      bonus.lines.map((l) => {
+        const e = info.get(l.employeeId)!;
+        const missing = !e.hasAccount || !e.ifsc;
+        return { tenantId: tid, batchId: batch!.id, employeeId: l.employeeId, reference: ref(), amount: l.amount, description: l.description, beneficiaryName: e.holder ?? e.name, bankName: e.bankName, ifsc: e.ifsc, accountLast4: e.last4, status: missing ? "held" : "pending", failureReason: missing ? "Bank details missing" : null };
+      }),
+    );
   }
 }
 

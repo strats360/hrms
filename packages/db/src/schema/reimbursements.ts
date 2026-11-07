@@ -59,6 +59,8 @@ export const reimbursementClaims = pgTable(
     rejectedAt: timestamp("rejected_at", { withTimezone: true }),
     rejectionReason: text("rejection_reason"),
     payrollRunId: text("payroll_run_id").references(() => payrollRuns.id, { onDelete: "set null" }),
+    /** Set when the claim is paid through a reimbursement payment batch instead of payroll. */
+    paymentId: text("payment_id"),
     paidAt: timestamp("paid_at", { withTimezone: true }),
     ...timestamps,
   },

@@ -43,6 +43,13 @@
       "when": 1793961351958,
       "tag": "0005_reimbursements",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794038243219,
+      "tag": "0006_payments",
+      "breakpoints": true
     }
   ]
 }

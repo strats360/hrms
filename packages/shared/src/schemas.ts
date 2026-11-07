@@ -390,3 +390,45 @@ export const claimCreateSchema = z.object({
   project: nullable(trimmed(120)),
   description: trimmed(300).min(3, "Say what the expense was for"),
 });
+
+// ---------- payments ----------
+export const BANK_FILE_FORMATS = ["hdfc_enet", "icici_cib", "generic_csv"] as const;
+export const bankAccountSchema = z.object({
+  label: trimmed(60).min(1, "Give the account a name"),
+  bankName: trimmed(80).min(2, "Enter the bank name"),
+  accountNumber: z.string().trim().regex(/^\d{6,20}$/, "Account number should be 6 to 20 digits").optional(),
+  ifsc: ifscSchema,
+  fileFormat: z.enum(BANK_FILE_FORMATS).default("generic_csv"),
+  clientCode: nullable(trimmed(40)),
+  isDefault: z.boolean().default(false),
+  balance: z.coerce.number().min(0).max(1e12).nullable().optional(),
+  balanceAsOf: nullable(isoDate),
+  active: z.boolean().default(true),
+});
+export const PAYMENT_TYPES = ["salary", "reimbursement", "bonus", "other"] as const;
+export const paymentLineSchema = z.object({
+  employeeId: z.string().min(1),
+  amount: z.coerce.number().positive("Amount must be more than zero").max(1e8),
+  description: nullable(trimmed(120)),
+});
+export const batchCreateSchema = z.object({
+  type: z.enum(PAYMENT_TYPES),
+  payrollRunId: z.string().optional(),
+  bankAccountId: z.string().min(1, "Pick the debit account"),
+  fileFormat: z.enum(BANK_FILE_FORMATS).optional(),
+  paymentDate: isoDate,
+  label: nullable(trimmed(80)),
+  notes: nullable(trimmed(300)),
+  /** Bonus/other: the lines. Bonus can instead be generated with `bonus`. */
+  lines: z.array(paymentLineSchema).max(5000).optional(),
+  /** Reimbursement: pay only these claims (default: every approved, unpaid claim). */
+  claimIds: z.array(z.string()).max(5000).optional(),
+  bonus: z.object({ fy: z.string().regex(/^\d{4}-\d{2}$/), percent: z.coerce.number().min(8.33).max(20) }).optional(),
+});
+export const paymentUpdateSchema = z.object({
+  status: z.enum(["paid", "failed", "held", "pending", "cancelled"]),
+  utr: nullable(trimmed(40)),
+  reason: nullable(trimmed(200)),
+  paidOn: nullable(isoDate),
+});
+export const bulkPaymentUpdateSchema = paymentUpdateSchema.extend({ ids: z.array(z.string()).min(1).max(5000) });

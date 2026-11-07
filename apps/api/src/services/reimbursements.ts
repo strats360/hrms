@@ -94,6 +94,7 @@ export async function claimsForRun(db: Database, tenantId: string, runId: string
         eq(reimbursementClaims.tenantId, tenantId),
         eq(reimbursementClaims.status, "approved"),
         isNull(reimbursementClaims.payrollRunId),
+        isNull(reimbursementClaims.paymentId),
         inArray(reimbursementClaims.employeeId, employeeIds),
         sql`(${approvedOn} at time zone 'Asia/Kolkata')::date <= ${periodEnd}::date`,
       ),

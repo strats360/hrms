@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import { and, asc, desc, eq, gte, ilike, inArray, lte, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
-import { claimReceipts, departments, employees, payrollRuns, reimbursementCategories, reimbursementClaims, tenants } from "@hrms/db";
+import { claimReceipts, departments, employees, paymentBatches, payments, payrollRuns, reimbursementCategories, reimbursementClaims, tenants } from "@hrms/db";
 import { bulkDecisionSchema, claimCreateSchema, decisionSchema, inr, reimbursementCategorySchema, todayIST } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
@@ -73,10 +73,11 @@ function claimSelect() {
     category: reimbursementCategories.name,
     approval: reimbursementCategories.approval,
     runMonth: payrollRuns.month,
+    batchCode: paymentBatches.code,
     receipts: sql<number>`(select count(*)::int from claim_receipts r where r.claim_id = "reimbursement_claims"."id")`,
   };
 }
-type Row = { claim: Claim; employeeName: string; employeeCode: string; managerId: string | null; managerName: string | null; department: string | null; category: string; approval: string; runMonth: string | null; receipts: number };
+type Row = { claim: Claim; employeeName: string; employeeCode: string; managerId: string | null; managerName: string | null; department: string | null; category: string; approval: string; runMonth: string | null; batchCode: string | null; receipts: number };
 const shape = (r: Row) => ({
   ...r.claim,
   employeeName: r.employeeName,
@@ -86,7 +87,17 @@ const shape = (r: Row) => ({
   category: r.category,
   approval: r.approval,
   statusLabel: STATUS_LABEL[r.claim.status] ?? r.claim.status,
-  payment: r.claim.status === "paid" ? `Paid with ${r.runMonth ? monthLabel(r.runMonth) + " salary" : "salary"}` : r.runMonth ? `In ${monthLabel(r.runMonth)} payroll` : r.claim.status === "approved" ? "Next payroll" : null,
+  payment: r.batchCode
+    ? r.claim.status === "paid"
+      ? `Paid in batch ${r.batchCode}`
+      : `In payment batch ${r.batchCode}`
+    : r.claim.status === "paid"
+      ? `Paid with ${r.runMonth ? monthLabel(r.runMonth) + " salary" : "salary"}`
+      : r.runMonth
+        ? `In ${monthLabel(r.runMonth)} payroll`
+        : r.claim.status === "approved"
+          ? "Next payroll"
+          : null,
   receipts: r.receipts,
 });
 
@@ -100,6 +111,8 @@ function baseQuery(c: Context<AppEnv>, conds: SQL[]) {
     .leftJoin(departments, eq(departments.id, employees.departmentId))
     .innerJoin(reimbursementCategories, eq(reimbursementCategories.id, reimbursementClaims.categoryId))
     .leftJoin(payrollRuns, eq(payrollRuns.id, reimbursementClaims.payrollRunId))
+    .leftJoin(payments, eq(payments.id, reimbursementClaims.paymentId))
+    .leftJoin(paymentBatches, eq(paymentBatches.id, payments.batchId))
     .where(and(eq(reimbursementClaims.tenantId, tid(c)), ...conds));
 }
 
