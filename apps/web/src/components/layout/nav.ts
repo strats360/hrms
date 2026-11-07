@@ -57,7 +57,7 @@ export const ADMIN_NAV: NavGroup[] = [
     key: "company",
     label: "Company",
     items: [
-      { to: "/reports", label: "Reports", icon: BarChart3, perm: ["reports"], soon: true },
+      { to: "/reports", label: "Reports", icon: BarChart3, perm: ["reports"] },
       { to: "/settings", label: "Settings", icon: Settings, perm: ["settings"] },
     ],
   },

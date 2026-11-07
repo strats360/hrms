@@ -79,6 +79,18 @@ The product design lives in [`design/`](design/). `HRMS v2.dc.html` is the sourc
 | Reports | Paid and unpaid payments as CSV or Excel, filtered by type, status and date |
 | Debit accounts | Company accounts with their file format, corporate client code and an optional balance for the dashboard |
 
+**Reports are built:**
+
+All 16 reports from the design, each as CSV or Excel (.xlsx, with extra sheets where useful) and a preview. Filters for period (month, quarter or financial year), branch, department and active or exited employees apply to every report. A report needs Reports access plus view rights on the module its data comes from, and downloading needs export rights.
+
+| Group | Reports |
+| --- | --- |
+| People, attendance, leave | Employee master, employee attendance (daily punches), monthly attendance (with payroll paid days and LOP), leave register |
+| Payroll and finance | Salary register, payroll summary by department and branch, payslip register with payment status, employee cost |
+| Compliance and tax | PF (ECR), ESI, Professional Tax by state and slab, LWF, TDS |
+| Expenses and payments | Reimbursements with a by-category sheet, bank payments with a per-payment sheet |
+| Exits | Full and final settlement estimate: unpaid salary, leave encashment, gratuity and open claims |
+
 **Before running real payroll, a payroll consultant or CA should confirm these:**
 - **Tax slabs:** FY 2026-27 uses the FY 2025-26 slabs from Finance Act 2025. Update `TAX_TABLES` in `packages/shared/src/payroll.ts` if the Finance Act 2026 changed them.
 - **State tables:** Professional Tax covers Gujarat, Maharashtra, Karnataka, West Bengal, Telangana, Andhra Pradesh and Madhya Pradesh (plus states with no PT). Labour Welfare Fund covers Gujarat and Maharashtra. Other states show a warning on the payslip.
@@ -92,7 +104,9 @@ The product design lives in [`design/`](design/). `HRMS v2.dc.html` is the sourc
 - **Bank file layouts:** banks change the bulk upload columns per corporate client. Check the HDFC ENet and ICICI CIB layouts in `packages/shared/src/payments.ts` against the template your bank gives you, and test with a small file first.
 - **Statutory bonus:** this uses basic pay as "wages", the ₹7,000 calculation ceiling (or the state minimum wage if higher, which you'd need to set), the ₹21,000 eligibility limit and at least 30 working days. Bonus paid through a payment batch doesn't deduct TDS.
 
-**Still to come in Phase 2:** reports and SaaS billing. These show as "Soon" in the navigation.
+- **Full and final settlement:** the report is an estimate (gratuity after 4 years 240 days at 15/26 of basic per year, leave encashment at basic / 26 for encashable leave). Notice-pay recovery, loans and other deductions need to be added by HR.
+
+**Still to come in Phase 2:** SaaS billing. These show as "Soon" in the navigation.
 
 ## Architecture
 

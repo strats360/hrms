@@ -158,6 +158,7 @@ const router = createBrowserRouter([
               { path: "accounts", element: L(() => import("@/pages/admin/payments/Accounts")) },
             ],
           },
+          { path: "reports", element: L(() => import("@/pages/admin/reports/Reports")) },
           { path: "payments/batches/:id", element: L(() => import("@/pages/admin/payments/BatchDetail")) },
           { path: "payroll/run/:runId", element: L(() => import("@/pages/admin/payroll/RunWizard")) },
           {

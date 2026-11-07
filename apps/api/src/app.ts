@@ -21,6 +21,7 @@ import { complianceRoutes } from "./routes/compliance";
 import { essTaxRoutes, tdsRoutes } from "./routes/tds";
 import { essClaimRoutes, reimbursementRoutes } from "./routes/reimbursements";
 import { paymentRoutes } from "./routes/payments";
+import { reportRoutes } from "./routes/reports";
 
 /** Better Auth endpoints we expose. Sign-up and everything else stays closed. */
 const AUTH_ALLOW = [
@@ -85,6 +86,7 @@ export function buildApp() {
   t.route("/admin/tds", tdsRoutes);
   t.route("/admin/reimbursements", reimbursementRoutes);
   t.route("/admin/payments", paymentRoutes);
+  t.route("/admin/reports", reportRoutes);
   t.route("/admin/audit", auditRoutes);
   api.route("/", t);
 

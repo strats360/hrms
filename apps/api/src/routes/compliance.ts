@@ -33,9 +33,9 @@ import { monthLabel } from "../lib/months";
 
 export const complianceRoutes = new Hono<AppEnv>();
 const tid = (c: Context<AppEnv>) => c.get("tenant").tenantId;
-const LOCKED = ["approved", "paid"];
+export const LOCKED = ["approved", "paid"];
 
-type Item = typeof payrollItems.$inferSelect;
+export type Item = typeof payrollItems.$inferSelect;
 const line = (lines: { code: string; amount: number }[], ...codes: string[]) => lines.filter((l) => codes.includes(l.code)).reduce((s, l) => s + l.amount, 0);
 
 export interface Obligation {
@@ -274,7 +274,7 @@ async function lockedRun(c: Context<AppEnv>, month?: string) {
 
 const monthQ = z.object({ month: z.string().regex(/^\d{4}-\d{2}$/).optional() });
 
-function contributionRow(i: Item, pfOnFullBasic: boolean) {
+export function contributionRow(i: Item, pfOnFullBasic: boolean) {
   const basic = i.earnings.find((e) => e.code === "basic")?.amount ?? 0;
   const pfEe = line(i.deductions, "pf");
   const w = pfEe > 0 ? pfWages(basic, pfOnFullBasic) : { epf: 0, eps: 0, edli: 0 };
