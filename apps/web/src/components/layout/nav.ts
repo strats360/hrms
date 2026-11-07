@@ -50,7 +50,7 @@ export const ADMIN_NAV: NavGroup[] = [
       { to: "/compliance", label: "Statutory compliance", icon: ShieldCheck, perm: ["compliance"] },
       { to: "/tds", label: "TDS & tax", icon: BadgePercent, perm: ["tds"] },
       { to: "/reimbursements", label: "Reimbursements", icon: Receipt, perm: ["reimbursements"], badgeKey: "claims" },
-      { to: "/payments", label: "Payments", icon: CreditCard, perm: ["payments"], soon: true },
+      { to: "/payments", label: "Payments", icon: CreditCard, perm: ["payments"] },
     ],
   },
   {

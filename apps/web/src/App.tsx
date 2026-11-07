@@ -146,6 +146,19 @@ const router = createBrowserRouter([
               { path: "categories", element: L(() => import("@/pages/admin/reimbursements/Categories")) },
             ],
           },
+          {
+            path: "payments",
+            element: L(() => import("@/pages/admin/payments/PaymentsLayout")),
+            children: [
+              { index: true, element: L(() => import("@/pages/admin/payments/Batches").then((m) => ({ default: () => <m.default type="salary" /> }))) },
+              { path: "reimbursements", element: L(() => import("@/pages/admin/payments/Batches").then((m) => ({ default: () => <m.default type="reimbursement" /> }))) },
+              { path: "bonus", element: L(() => import("@/pages/admin/payments/Batches").then((m) => ({ default: () => <m.default type="bonus" /> }))) },
+              { path: "other", element: L(() => import("@/pages/admin/payments/Batches").then((m) => ({ default: () => <m.default type="other" /> }))) },
+              { path: "reconciliation", element: L(() => import("@/pages/admin/payments/Reconciliation")) },
+              { path: "accounts", element: L(() => import("@/pages/admin/payments/Accounts")) },
+            ],
+          },
+          { path: "payments/batches/:id", element: L(() => import("@/pages/admin/payments/BatchDetail")) },
           { path: "payroll/run/:runId", element: L(() => import("@/pages/admin/payroll/RunWizard")) },
           {
             path: "settings",

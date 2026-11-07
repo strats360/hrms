@@ -66,6 +66,19 @@ The product design lives in [`design/`](design/). `HRMS v2.dc.html` is the sourc
 | Reports | Queue with totals (waiting, approved unpaid, paid this month, GST input credit), history with filters and CSV export, claims column in the salary register and on the payslip |
 | Access | Admins and finance see every claim. Managers see their direct reports. HR and payroll admins have read-only access. Finance approval needs claim approval plus payments approval |
 
+**Payments are built:**
+
+| Area | What works |
+| --- | --- |
+| Batches | Separate sections for salary, reimbursement, bonus and other payments. Salary comes from a locked payroll run, reimbursements from approved unpaid claims, bonus from the statutory bonus calculation (or pasted amounts), and other payments from a pasted list or one by one |
+| Controls | Every batch starts as a draft and needs someone with payment approval rights to approve it (not the person who prepared it, unless they're a super admin). One live salary batch per payroll run. Same account and amount twice in a file is blocked. Possible repeat payments in the last 30 days are flagged |
+| Bank files | HDFC ENet (CSV), ICICI CIB bulk (TXT) and a generic CSV, picked per debit account or per batch. NEFT, RTGS (₹2 lakh and above) or internal transfer is chosen from the IFSC. Account numbers are decrypted only to build the file |
+| Reconciliation | Upload the bank's status file (CSV, pipe or tab) and payments are matched on reference, marked paid with the UTR or failed with the bank's reason. Or mark paid one by one, in bulk, or all at once |
+| Failed payments | Failed and held payments across batches in one list. Retry keeps the same reference and picks up the employee's latest bank details, so the next file only has the retries. Employees get an email when a payment is returned |
+| Payroll and claims | When a salary batch has no payments left pending, the payroll run is marked paid. Claims paid with salary are settled when that employee's salary payment clears. Claims in a reimbursement batch stay out of payroll |
+| Reports | Paid and unpaid payments as CSV or Excel, filtered by type, status and date |
+| Debit accounts | Company accounts with their file format, corporate client code and an optional balance for the dashboard |
+
 **Before running real payroll, a payroll consultant or CA should confirm these:**
 - **Tax slabs:** FY 2026-27 uses the FY 2025-26 slabs from Finance Act 2025. Update `TAX_TABLES` in `packages/shared/src/payroll.ts` if the Finance Act 2026 changed them.
 - **State tables:** Professional Tax covers Gujarat, Maharashtra, Karnataka, West Bengal, Telangana, Andhra Pradesh and Madhya Pradesh (plus states with no PT). Labour Welfare Fund covers Gujarat and Maharashtra. Other states show a warning on the payslip.
@@ -76,7 +89,10 @@ The product design lives in [`design/`](design/). `HRMS v2.dc.html` is the sourc
 
 - **Reimbursements as non-taxable:** claims are paid outside taxable salary on the basis that they are actual business expenses backed by bills. Fixed allowances (for example a flat mobile allowance without bills) should go into the salary structure instead.
 
-**Still to come in Phase 2:** payments, reports and SaaS billing. These show as "Soon" in the navigation.
+- **Bank file layouts:** banks change the bulk upload columns per corporate client. Check the HDFC ENet and ICICI CIB layouts in `packages/shared/src/payments.ts` against the template your bank gives you, and test with a small file first.
+- **Statutory bonus:** this uses basic pay as "wages", the ₹7,000 calculation ceiling (or the state minimum wage if higher, which you'd need to set), the ₹21,000 eligibility limit and at least 30 working days. Bonus paid through a payment batch doesn't deduct TDS.
+
+**Still to come in Phase 2:** reports and SaaS billing. These show as "Soon" in the navigation.
 
 ## Architecture
 

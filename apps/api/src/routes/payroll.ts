@@ -196,6 +196,7 @@ payrollRoutes.get("/runs/:id", requirePerm("payroll", "view"), async (c) => {
     approvedByName: n.get(run.approvedBy ?? "") ?? null,
     paidByName: n.get(run.paidBy ?? "") ?? null,
     previous: prev ? { id: prev.id, month: prev.month, status: prev.status, totals: prev.totals, approvedAt: prev.approvedAt } : null,
+    paymentBatch: await activeBatchForRun(db, run.id).then((b) => (b ? { id: b.id, code: b.code, status: b.status } : null)),
   });
 });
 

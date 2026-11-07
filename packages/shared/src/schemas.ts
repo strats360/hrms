@@ -407,7 +407,9 @@ export const bankAccountSchema = z.object({
 });
 export const PAYMENT_TYPES = ["salary", "reimbursement", "bonus", "other"] as const;
 export const paymentLineSchema = z.object({
-  employeeId: z.string().min(1),
+  /** Either the id or the employee code (from a pasted sheet). */
+  employeeId: z.string().min(1).optional(),
+  employeeCode: z.string().trim().max(30).optional(),
   amount: z.coerce.number().positive("Amount must be more than zero").max(1e8),
   description: nullable(trimmed(120)),
 });

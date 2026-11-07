@@ -581,14 +581,39 @@ export function StepPayout({ run }: { run: PayrollRun }) {
           </Button>
         </Card>
         <Card className="!gap-2" style={{ background: "var(--tint-1)" }}>
-          <div className="card-title">Bank payment file</div>
-          <div className="text-muted text-[13px]">
-            CSV · {inr(t?.net ?? 0)} · held salaries and missing bank details are skipped, duplicate account and amount pairs are blocked
-          </div>
-          {run.bankFileExportedAt ? <Tag tone="ok" className="self-start">Exported {when(run.bankFileExportedAt)}</Tag> : null}
-          <Button variant="primary" className="mt-auto self-start" disabled={!locked || !can("payroll", "export")} loading={exporting} onClick={exportBank}>
-            <Download size={15} /> Export bank CSV
-          </Button>
+          <div className="card-title">Salary payment</div>
+          {run.paymentBatch ? (
+            <>
+              <div className="text-muted text-[13px]">Paid through payment batch {run.paymentBatch.code}. Download the bank file and record the bank's result there.</div>
+              <Link to={`/payments/batches/${run.paymentBatch.id}`} className="btn btn-primary mt-auto self-start">
+                <Wallet size={15} /> Open {run.paymentBatch.code}
+              </Link>
+            </>
+          ) : can("payments", "edit") ? (
+            <>
+              <div className="text-muted text-[13px]">
+                {inr(t?.net ?? 0)} · builds a payment batch for approval, the bank's upload file, and tracks failed transfers. Held salaries and missing bank details are held back.
+              </div>
+              <div className="mt-auto flex flex-wrap gap-2">
+                <Link to={locked && run.status === "approved" ? `/payments?generate=salary&run=${run.id}` : "#"} aria-disabled={!locked || run.status !== "approved"} className={`btn btn-primary self-start ${!locked || run.status !== "approved" ? "pointer-events-none opacity-45" : ""}`}>
+                  <Wallet size={15} /> Create payment batch
+                </Link>
+                <Button disabled={!locked || !can("payroll", "export")} loading={exporting} onClick={exportBank}>
+                  <Download size={15} /> Quick CSV
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-muted text-[13px]">
+                CSV · {inr(t?.net ?? 0)} · held salaries and missing bank details are skipped, duplicate account and amount pairs are blocked
+              </div>
+              {run.bankFileExportedAt ? <Tag tone="ok" className="self-start">Exported {when(run.bankFileExportedAt)}</Tag> : null}
+              <Button variant="primary" className="mt-auto self-start" disabled={!locked || !can("payroll", "export")} loading={exporting} onClick={exportBank}>
+                <Download size={15} /> Export bank CSV
+              </Button>
+            </>
+          )}
         </Card>
         <Card className="!gap-2" style={{ background: "var(--tint-1)" }}>
           <div className="card-title">Mark paid</div>
@@ -599,7 +624,8 @@ export function StepPayout({ run }: { run: PayrollRun }) {
               {run.paymentReference ? ` · ${run.paymentReference}` : ""}
             </Tag>
           ) : null}
-          <Button variant="primary" className="mt-auto self-start" disabled={run.status !== "approved" || !run.bankFileExportedAt || !can("payroll", "approve")} onClick={() => setPaidOpen(true)}>
+          {run.paymentBatch && run.status !== "paid" ? <div className="text-muted text-[12px]">Marked paid automatically once the bank's result is recorded for every payment in {run.paymentBatch.code}.</div> : null}
+          <Button variant="primary" className="mt-auto self-start" disabled={run.status !== "approved" || !run.bankFileExportedAt || !!run.paymentBatch || !can("payroll", "approve")} onClick={() => setPaidOpen(true)}>
             <Wallet size={15} /> {run.status === "paid" ? "Completed" : "Mark as paid"}
           </Button>
           {run.status === "approved" && !run.bankFileExportedAt ? <div className="text-muted text-[12px]">Export the bank file first.</div> : null}

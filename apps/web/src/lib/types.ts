@@ -193,6 +193,7 @@ export interface PayrollRun {
   paidByName?: string | null;
   preparedByName?: string | null;
   previous?: { id: string; month: string; status: RunStatus; totals: RunTotals | null; approvedAt: string | null } | null;
+  paymentBatch?: { id: string; code: string; status: BatchStatus } | null;
 }
 export interface PayrollInputs {
   employees: number;
@@ -484,4 +485,95 @@ export interface MyClaims {
   categories: ExpenseCategory[];
   usage: { categoryId: string; name: string; limit: number; used: number }[];
   month: string;
+}
+
+// ---------------------------------------------------------------------------
+// Payments
+// ---------------------------------------------------------------------------
+export type BankFileFormat = "hdfc_enet" | "icici_cib" | "generic_csv";
+export type PaymentType = "salary" | "reimbursement" | "bonus" | "other";
+export type BatchStatus = "draft" | "approved" | "processing" | "completed" | "cancelled";
+export type PaymentStatus = "pending" | "paid" | "failed" | "held" | "cancelled";
+export interface DebitAccount {
+  id: string;
+  label: string;
+  bankName: string;
+  accountLast4: string;
+  ifsc: string;
+  fileFormat: BankFileFormat;
+  formatLabel: string;
+  clientCode: string | null;
+  isDefault: boolean;
+  balance: number | null;
+  balanceAsOf: string | null;
+  active: boolean;
+}
+export interface PaymentBatch {
+  id: string;
+  code: string;
+  type: PaymentType;
+  label: string;
+  payrollRunId: string | null;
+  bankAccountId: string | null;
+  fileFormat: BankFileFormat;
+  formatLabel: string;
+  paymentDate: string;
+  status: BatchStatus;
+  notes: string | null;
+  createdBy: string | null;
+  approvedAt: string | null;
+  exportedAt: string | null;
+  exportCount: number;
+  completedAt: string | null;
+  createdAt: string;
+  bank: string | null;
+  count: number;
+  amount: number;
+  paid: number;
+  paidAmount: number;
+  failed: number;
+  held: number;
+  pending: number;
+}
+export interface Payment {
+  id: string;
+  batchId: string;
+  employeeId: string;
+  employeeCode: string;
+  employeeName: string;
+  batchCode: string;
+  batchType: PaymentType;
+  batchLabel: string;
+  reference: string;
+  amount: number;
+  description: string | null;
+  beneficiaryName: string | null;
+  bankName: string | null;
+  ifsc: string | null;
+  accountLast4: string | null;
+  status: PaymentStatus;
+  failureReason: string | null;
+  utr: string | null;
+  paidAt: string | null;
+  attempts: number;
+  note: string | null;
+}
+export interface BatchDetail extends PaymentBatch {
+  payments: Payment[];
+  canApprove: boolean;
+  approveBlocked: string | null;
+}
+export interface PaymentsSummary {
+  readySalary: { runId: string; month: string; label: string; net: number; employees: number }[];
+  claimsUnpaid: { amount: number; claims: number; employees: number };
+  attention: { count: number; amount: number };
+  account: DebitAccount | null;
+}
+export interface BatchPreview {
+  label: string;
+  summary: { count: number; amount: number; missingBank: number; missingBankAmount: number };
+  warnings: string[];
+  duplicates: number;
+  skipped: number;
+  lines: { employeeId: string; employeeCode?: string; employeeName?: string; amount: number; description: string | null; heldReason?: string | null }[];
 }

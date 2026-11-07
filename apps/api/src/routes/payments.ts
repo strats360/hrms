@@ -210,7 +210,14 @@ async function prepare(c: Context<AppEnv>, b: z.infer<typeof batchCreateSchema>)
     label ||= `Statutory bonus FY ${b.bonus.fy}`;
     warnings.push("Bonus is taxable salary. This batch doesn't deduct TDS: include it in the TDS computation or pay it through payroll as a one-time earning.");
   } else {
-    lines = (b.lines ?? []).map((l) => ({ employeeId: l.employeeId, amount: l.amount, description: l.description ?? null }));
+    const codes = (b.lines ?? []).filter((l) => !l.employeeId && l.employeeCode).map((l) => l.employeeCode!.toUpperCase());
+    const byCode = new Map(
+      codes.length ? (await db.select({ id: employees.id, code: employees.employeeCode }).from(employees).where(and(eq(employees.tenantId, tid(c)), inArray(employees.employeeCode, codes)))).map((r) => [r.code.toUpperCase(), r.id]) : [],
+    );
+    const unknown = codes.filter((x) => !byCode.has(x));
+    if (unknown.length) throw badRequest(`Unknown employee ID${unknown.length > 1 ? "s" : ""}: ${unknown.slice(0, 5).join(", ")}`);
+    lines = (b.lines ?? []).map((l) => ({ employeeId: l.employeeId ?? byCode.get(l.employeeCode!.toUpperCase())!, amount: l.amount, description: l.description ?? null }));
+    if (lines.some((l) => !l.employeeId)) throw badRequest("Each line needs an employee");
     label ||= b.type === "bonus" ? "Bonus" : "Other payment";
     if (!lines.length) throw badRequest("Add at least one payment");
     const ids = new Set<string>();
