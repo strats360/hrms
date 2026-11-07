@@ -118,9 +118,19 @@ All 16 reports from the design, each as CSV or Excel (.xlsx, with extra sheets w
 
 - **Full and final settlement:** the report is an estimate (gratuity after 4 years 240 days at 15/26 of basic per year, leave encashment at basic / 26 for encashable leave). Notice-pay recovery, loans and other deductions need to be added by HR.
 
+- **Statutory master:** the live versions seeded from the design match the built-in rules. Publishing a new version changes payroll from its effective month, so have your CA check each draft (for example the Karnataka PT revision and the Gujarat minimum wage) before you publish.
 - **SaaS billing:** payments are recorded by hand. Connecting a payment gateway (for example Razorpay or Cashfree for UPI autopay) needs an account and API keys. GST e-invoicing (IRN) is needed once the platform's turnover crosses the threshold. Your CA should confirm the SAC code and invoice format.
 
-**Phase 2 is complete.** Support tickets, the statutory master and feature flags in the platform console still show as "Soon". These show as "Soon" in the navigation.
+**Phase 2 is complete.**
+
+**Platform operations are built:**
+
+| Area | What works |
+| --- | --- |
+| Support tickets | Tenant admins raise tickets from Help & support (area, priority, description, up to 3 attachments) and reply in a thread. The platform queue sorts P1 first and tracks first-response SLAs: P1 1 hour, P2 4 hours, P3 one business day. Assign owners, change status and priority, add internal notes the customer can't see. Both sides get email updates |
+| Read-only support access | Only when the customer allows it on the ticket. Support opens a 60-minute session into that company: view-only for every module, no changes, and no downloads (exports, bank files, receipts, documents). Each visit is noted on the ticket and in the company's audit log, and it ends when the customer withdraws consent, the ticket is resolved, or time runs out |
+| Statutory master | Versioned EPF, ESI, Professional Tax, LWF, income tax slabs and minimum wages with effective dates. Staff draft, super admins publish. Payroll, TDS projections, ECR and PT summaries use the versions in force for each month, falling back to the built-in rules. Tenants see what's in force under Compliance › Rules |
+| Feature flags | Flags by plan, named tenants or percentage, with exclusions and a kill switch. Module flags gate the API and hide the screens. The seeded plan gates follow the pricing page: Starter has no TDS, claims or bank files | These show as "Soon" in the navigation.
 
 ## Architecture
 

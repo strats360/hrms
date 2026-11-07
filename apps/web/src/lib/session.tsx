@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { can as canDo, type Action, type Module, type PermissionMatrix } from "@hrms/shared";
+import { can as canDo, MODULES, type Action, type Module, type PermissionMatrix } from "@hrms/shared";
 import { api, ApiError, getActiveTenant, setActiveTenant } from "./api";
 
 export interface Membership {
@@ -21,10 +21,44 @@ export interface Membership {
   /** Set when platform support is viewing the company read-only. */
   support?: { ticketId: string; ticketNumber: number; accessId: string; expiresAt: string } | null;
 }
+export interface SupportSession {
+  tenantId: string;
+  tenantName: string;
+  tenantCode: string;
+  tenantStatus: string;
+  plan: string;
+  features: Record<string, boolean>;
+  ticketId: string;
+  ticketNumber: number;
+  accessId: string;
+  expiresAt: string;
+}
 export interface Me {
   user: { id: string; name: string; email: string };
   platformRole: string | null;
   memberships: Membership[];
+  supportSessions?: SupportSession[];
+}
+
+/** A running support session, shaped like a view-only membership. */
+const SUPPORT_VIEW = Object.fromEntries(MODULES.map((m) => [m, ["view"]])) as PermissionMatrix;
+function supportMembership(s: SupportSession): Membership {
+  return {
+    tenantId: s.tenantId,
+    tenantName: s.tenantName,
+    tenantCode: s.tenantCode,
+    tenantStatus: s.tenantStatus,
+    setupComplete: true,
+    roleId: "support",
+    roleName: "Support (read-only)",
+    permissions: SUPPORT_VIEW,
+    employeeId: null,
+    employeeName: null,
+    employeeCode: null,
+    plan: s.plan,
+    features: s.features,
+    support: { ticketId: s.ticketId, ticketNumber: s.ticketNumber, accessId: s.accessId, expiresAt: s.expiresAt },
+  };
 }
 
 interface SessionValue {
@@ -70,7 +104,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const me = q.data ?? null;
   const tenant = useMemo(() => {
     if (!me) return null;
-    return me.memberships.find((m) => m.tenantId === getActiveTenant()) ?? me.memberships[0] ?? null;
+    const active = getActiveTenant();
+    // support sessions are only used when explicitly opened, never as the default company
+    const support = (me.supportSessions ?? []).find((x) => x.tenantId === active);
+    return me.memberships.find((m) => m.tenantId === active) ?? (support ? supportMembership(support) : null) ?? me.memberships[0] ?? null;
   }, [me]);
 
   useEffect(() => {

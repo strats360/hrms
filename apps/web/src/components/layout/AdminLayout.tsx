@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, Outlet, useLocation } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import * as D from "@radix-ui/react-dialog";
-import { api } from "@/lib/api";
+import { api, setActiveTenant } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
@@ -101,6 +101,7 @@ export function AdminLayout() {
           ]}
         />
         <main className="flex w-full max-w-[1440px] flex-col gap-5 px-4 pb-12 pt-6 sm:px-7">
+          {tenant?.support ? <SupportBanner name={tenant.tenantName} s={tenant.support} /> : null}
           {tenant?.tenantStatus === "past_due" ? (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-md)] px-4 py-3 text-[13.5px]" style={{ background: "var(--bad-bg)", color: "var(--bad-fg)" }} role="alert">
               <span>Your subscription invoice is overdue. Please pay it to avoid the account being suspended.</span>
@@ -124,4 +125,34 @@ function sessionStorageGet(k: string) {
   } catch {
     return null;
   }
+}
+
+/** Shown while platform support is viewing a company read-only. */
+function SupportBanner({ name, s }: { name: string; s: NonNullable<ReturnType<typeof useSession>["tenant"]>["support"] & object }) {
+  const exit = async () => {
+    try {
+      await api.post(`/platform/support/access/${s.accessId}/end`);
+    } catch {
+      /* already ended or expired */
+    }
+    setActiveTenant(null);
+    window.location.href = `/platform/tickets/${s.ticketId}`;
+  };
+  useEffect(() => {
+    const ms = Date.parse(s.expiresAt) - Date.now();
+    const t = setTimeout(exit, Math.max(0, ms));
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.expiresAt]);
+  const until = new Date(s.expiresAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Kolkata" }) + " IST";
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-md)] px-4 py-3 text-[13.5px]" style={{ background: "var(--warn-bg)", color: "var(--warn-fg)" }} role="status">
+      <span>
+        <strong>Read-only support view</strong> of {name} for ticket #{s.ticketNumber}. You can't change or download anything. Ends at {until}.
+      </span>
+      <button type="button" className="btn btn-secondary !py-1 !text-[13px]" onClick={exit}>
+        Exit support view
+      </button>
+    </div>
+  );
 }

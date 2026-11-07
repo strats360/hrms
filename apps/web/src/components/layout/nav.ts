@@ -59,6 +59,7 @@ export const ADMIN_NAV: NavGroup[] = [
     items: [
       { to: "/reports", label: "Reports", icon: BarChart3, perm: ["reports"] },
       { to: "/settings", label: "Settings", icon: Settings, perm: ["settings"] },
+      { to: "/support", label: "Help & support", icon: LifeBuoy },
     ],
   },
 ];
@@ -70,7 +71,7 @@ export const PLATFORM_NAV: NavGroup[] = [
     items: [
       { to: "/platform", label: "Overview", icon: Home },
       { to: "/platform/tenants", label: "Tenants", icon: Users },
-      { to: "/platform/tickets", label: "Support tickets", icon: LifeBuoy, soon: true },
+      { to: "/platform/tickets", label: "Support tickets", icon: LifeBuoy },
     ],
   },
   {

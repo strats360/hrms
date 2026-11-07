@@ -273,7 +273,7 @@ platformSupportRoutes.post("/tickets/:id/access", async (c) => {
   if (existing) return c.json(existing.access);
   const expiresAt = new Date(Date.now() + 60 * 60_000);
   const [a] = await db.insert(supportAccess).values({ ticketId: t.id, tenantId: t.tenantId, staffUserId: uid(c), expiresAt }).returning();
-  const until = expiresAt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Kolkata" });
+  const until = expiresAt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Kolkata" }) + " IST";
   await db.insert(ticketMessages).values({ ticketId: t.id, authorId: null, authorName: "System", authorKind: "system", body: `${uname(c)} (support) opened read-only access to your account until ${until}.` });
   await audit(c, { tenantId: t.tenantId, action: "support.access_start", entity: "support_ticket", entityId: t.id, summary: `Support (${uname(c)}) started read-only access for ticket #${t.number}, until ${until}` });
   return c.json(a, 201);

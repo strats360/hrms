@@ -73,6 +73,8 @@ const router = createBrowserRouter([
           { path: "settings", element: L(() => import("@/pages/platform/Settings")) },
           { path: "flags", element: L(() => import("@/pages/platform/Flags")) },
           { path: "statutory", element: L(() => import("@/pages/platform/Statutory")) },
+          { path: "tickets", element: L(() => import("@/pages/platform/Tickets")) },
+          { path: "tickets/:id", element: L(() => import("@/pages/platform/TicketDetail")) },
           { path: "*", element: L(() => import("@/pages/Soon")) },
         ],
       },
@@ -164,6 +166,7 @@ const router = createBrowserRouter([
             ],
           },
           { path: "reports", element: L(() => import("@/pages/admin/reports/Reports")) },
+          { path: "support", element: L(() => import("@/pages/admin/support/Support")) },
           { path: "payments/batches/:id", element: L(() => import("@/pages/admin/payments/BatchDetail")) },
           { path: "payroll/run/:runId", element: L(() => import("@/pages/admin/payroll/RunWizard")) },
           {

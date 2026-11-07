@@ -661,3 +661,56 @@ export interface TenantBilling {
   invoices: Invoice[];
   overdue: number;
 }
+
+// ---------------------------------------------------------------------------
+// Support
+// ---------------------------------------------------------------------------
+export type TicketStatus = "open" | "in_progress" | "waiting_on_customer" | "resolved" | "closed";
+export interface Ticket {
+  id: string;
+  number: number;
+  tenantId: string;
+  tenantName: string;
+  tenantCode: string;
+  tenantPlan: string;
+  raisedBy: string;
+  raisedByName: string | null;
+  raisedByEmail: string | null;
+  subject: string;
+  category: string;
+  priority: "P1" | "P2" | "P3";
+  status: TicketStatus;
+  assigneeId: string | null;
+  assigneeName: string | null;
+  allowAccess: boolean;
+  responseDueAt: string;
+  firstResponseAt: string | null;
+  resolvedAt: string | null;
+  lastActivityAt: string;
+  createdAt: string;
+  messages: number;
+  sla: string;
+  slaState: "met" | "breached" | "pending" | "n/a";
+}
+export interface TicketMessage {
+  id: string;
+  authorName: string;
+  authorKind: "tenant" | "platform" | "system";
+  body: string;
+  internal: boolean;
+  attachments: { name: string; type: string; size: number }[];
+  createdAt: string;
+}
+export interface TicketAccess {
+  id: string;
+  staffName: string;
+  startedAt: string;
+  expiresAt: string;
+  endedAt: string | null;
+}
+export interface TicketDetail extends Ticket {
+  thread: TicketMessage[];
+  accessLog: TicketAccess[];
+  staff?: { id: string; name: string; role: string }[];
+  myAccess?: { id: string; expiresAt: string } | null;
+}
