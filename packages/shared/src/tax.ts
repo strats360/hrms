@@ -4,7 +4,7 @@
  * with a CA when the Finance Act changes.
  */
 import { z } from "zod";
-import { slabBreakdown, taxOnIncome, taxTable, type Regime, type TaxResult } from "./payroll";
+import { slabBreakdown, taxOnIncome, taxTable, type Regime, type StatutoryRules, type TaxResult } from "./payroll";
 
 // ---------------------------------------------------------------------------
 // Declaration model (what an employee declares, and what HR verifies)
@@ -87,6 +87,8 @@ export interface StatementInput {
   declaration?: TaxDeclarationData | null;
   /** HR-verified amounts. A verified section overrides what was declared. */
   verified?: Verified | null;
+  /** Statutory rules (tax slabs) to use; defaults to the built-in tables. */
+  rules?: StatutoryRules;
 }
 
 export interface StatementLine {
@@ -126,7 +128,7 @@ export function computeTaxStatement(input: StatementInput): TaxStatement {
   const declared = declaredBySection(d);
   const eff = (k: TaxSection) => (v[k] !== undefined && v[k] !== null ? Number(v[k]) : declared[k]);
   const old = input.regime === "old";
-  const table = taxTable(input.financialYear, input.regime);
+  const table = taxTable(input.financialYear, input.regime, input.rules);
 
   const prevGross = eff("previousEmployer");
   const prevRatio = declared.previousEmployer > 0 ? prevGross / declared.previousEmployer : 1;
@@ -171,7 +173,7 @@ export function computeTaxStatement(input: StatementInput): TaxStatement {
   }
   const totalDeductions = Math.min(grossTotalIncome, deductions.reduce((s, x) => s + x.amount, 0));
   const taxableIncome = Math.max(0, Math.round((grossTotalIncome - totalDeductions) / 10) * 10);
-  const tax = taxOnIncome(input.regime, input.financialYear, taxableIncome);
+  const tax = taxOnIncome(input.regime, input.financialYear, taxableIncome, input.rules);
 
   return {
     regime: input.regime,
@@ -187,7 +189,7 @@ export function computeTaxStatement(input: StatementInput): TaxStatement {
     deductions,
     totalDeductions,
     taxableIncome,
-    slabs: slabBreakdown(input.regime, input.financialYear, taxableIncome),
+    slabs: slabBreakdown(input.regime, input.financialYear, taxableIncome, input.rules),
     tax,
     previousEmployerTds: Math.round((prev.tds ?? 0) * prevRatio),
   };

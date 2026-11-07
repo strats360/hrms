@@ -24,6 +24,7 @@ import { paymentRoutes } from "./routes/payments";
 import { reportRoutes } from "./routes/reports";
 import { platformBillingRoutes, tenantBillingRoutes } from "./routes/billing";
 import { flagRoutes } from "./routes/flags";
+import { statutoryRoutes } from "./routes/statutory";
 
 /** Better Auth endpoints we expose. Sign-up and everything else stays closed. */
 const AUTH_ALLOW = [
@@ -68,6 +69,7 @@ export function buildApp() {
   api.use("/platform/*", requireAuth);
   api.route("/platform/billing", platformBillingRoutes);
   api.route("/platform/flags", flagRoutes);
+  api.route("/platform/statutory", statutoryRoutes);
   api.route("/platform", platformRoutes);
 
   // Tenant-scoped routes

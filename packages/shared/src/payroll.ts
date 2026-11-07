@@ -43,7 +43,7 @@ export const STATUTORY = {
 } as const;
 
 /** Professional Tax monthly slabs by state. [upToMonthlyGross, amount]; Infinity for the last slab. */
-interface PtRule {
+export interface PtRule {
   slabs: [number, number][];
   /** Slabs for women where the state gives a different exemption. */
   femaleSlabs?: [number, number][];
@@ -70,7 +70,7 @@ export const NO_PT_STATES = new Set([
 ]);
 
 /** Labour Welfare Fund: deducted only in the listed months (1-12). */
-interface LwfRule {
+export interface LwfRule {
   months: number[];
   employee: number;
   employer: number;
@@ -113,10 +113,10 @@ export interface Structure {
 
 const r = (n: number) => Math.round(n);
 
-function employerPf(basic: number, t: SalaryTemplate, pfApplicable: boolean) {
+function employerPf(basic: number, t: SalaryTemplate, pfApplicable: boolean, R: StatutoryRules = DEFAULT_RULES) {
   if (!pfApplicable) return 0;
-  const wage = t.pfOnFullBasic ? basic : Math.min(basic, STATUTORY.pf.wageCeiling);
-  return r(wage * STATUTORY.pf.employerRate);
+  const wage = t.pfOnFullBasic ? basic : Math.min(basic, R.pf.wageCeiling);
+  return r(wage * R.pf.employerRate);
 }
 
 /** Split a gross into template components (allowances never push special below zero). */
@@ -136,7 +136,8 @@ export function componentsFromGross(gross: number, t: SalaryTemplate): MonthlyCo
  * Work out monthly gross and components from annual CTC, where
  * monthly CTC = gross + employer PF + employer ESI (if gross is within the ESI threshold).
  */
-export function structureFromCtc(annualCtc: number, t: SalaryTemplate = DEFAULT_SALARY_TEMPLATE, opts: { pfApplicable?: boolean; esiApplicable?: boolean } = {}): Structure {
+export function structureFromCtc(annualCtc: number, t: SalaryTemplate = DEFAULT_SALARY_TEMPLATE, opts: { pfApplicable?: boolean; esiApplicable?: boolean; rules?: StatutoryRules } = {}): Structure {
+  const R = opts.rules ?? DEFAULT_RULES;
   const pfOn = opts.pfApplicable ?? true;
   const esiOn = opts.esiApplicable ?? true;
   const monthlyCtc = r(annualCtc / 12);
@@ -144,8 +145,8 @@ export function structureFromCtc(annualCtc: number, t: SalaryTemplate = DEFAULT_
     let gross = monthlyCtc;
     for (let i = 0; i < 50; i++) {
       const basic = r((gross * t.basicPctOfGross) / 100);
-      const pf = employerPf(basic, t, pfOn);
-      const esi = withEsi ? Math.ceil(gross * STATUTORY.esi.employerRate) : 0;
+      const pf = employerPf(basic, t, pfOn, R);
+      const esi = withEsi ? Math.ceil(gross * R.esi.employerRate) : 0;
       const next = monthlyCtc - pf - esi;
       if (Math.abs(next - gross) < 0.5) {
         gross = next;
@@ -157,22 +158,23 @@ export function structureFromCtc(annualCtc: number, t: SalaryTemplate = DEFAULT_
   };
   let gross = solve(false);
   let esiApplicable = false;
-  if (esiOn && gross <= STATUTORY.esi.grossThreshold) {
+  if (esiOn && gross <= R.esi.grossThreshold) {
     gross = solve(true);
     esiApplicable = true;
   }
   const components = componentsFromGross(gross, t);
-  const pf = employerPf(components.basic, t, pfOn);
+  const pf = employerPf(components.basic, t, pfOn, R);
   const esi = esiApplicable ? monthlyCtc - gross - pf : 0; // absorbs rounding so CTC adds up exactly
   return { annualCtc, monthlyCtc, gross, components, employer: { pf, esi: Math.max(0, esi) }, esiApplicable };
 }
 
 /** Rebuild a structure from explicit (custom) monthly components. */
-export function structureFromComponents(components: MonthlyComponents, t: SalaryTemplate = DEFAULT_SALARY_TEMPLATE, opts: { pfApplicable?: boolean; esiApplicable?: boolean } = {}): Structure {
+export function structureFromComponents(components: MonthlyComponents, t: SalaryTemplate = DEFAULT_SALARY_TEMPLATE, opts: { pfApplicable?: boolean; esiApplicable?: boolean; rules?: StatutoryRules } = {}): Structure {
+  const R = opts.rules ?? DEFAULT_RULES;
   const gross = components.basic + components.hra + components.conveyance + components.medical + components.special;
-  const pf = employerPf(components.basic, t, opts.pfApplicable ?? true);
-  const esiApplicable = (opts.esiApplicable ?? true) && gross <= STATUTORY.esi.grossThreshold;
-  const esi = esiApplicable ? Math.ceil(gross * STATUTORY.esi.employerRate) : 0;
+  const pf = employerPf(components.basic, t, opts.pfApplicable ?? true, R);
+  const esiApplicable = (opts.esiApplicable ?? true) && gross <= R.esi.grossThreshold;
+  const esi = esiApplicable ? Math.ceil(gross * R.esi.employerRate) : 0;
   const monthlyCtc = gross + pf + esi;
   return { annualCtc: monthlyCtc * 12, monthlyCtc, gross, components, employer: { pf, esi }, esiApplicable };
 }
@@ -181,10 +183,10 @@ export function structureFromComponents(components: MonthlyComponents, t: Salary
 // Professional Tax and LWF
 // ---------------------------------------------------------------------------
 
-export function professionalTax(state: string | null | undefined, monthlyGross: number, month1: number, gender?: string | null): { amount: number; configured: boolean } {
+export function professionalTax(state: string | null | undefined, monthlyGross: number, month1: number, gender?: string | null, R: StatutoryRules = DEFAULT_RULES): { amount: number; configured: boolean } {
   if (!state) return { amount: 0, configured: false };
-  if (NO_PT_STATES.has(state)) return { amount: 0, configured: true };
-  const rule = PT_RULES[state];
+  if (R.noPt.includes(state)) return { amount: 0, configured: true };
+  const rule = R.pt[state];
   if (!rule) return { amount: 0, configured: false };
   const slabs = gender === "female" && rule.femaleSlabs ? rule.femaleSlabs : rule.slabs;
   const slab = slabs.find(([upTo]) => monthlyGross <= upTo) ?? slabs[slabs.length - 1]!;
@@ -194,8 +196,8 @@ export function professionalTax(state: string | null | undefined, monthlyGross: 
   return { amount, configured: true };
 }
 
-export function labourWelfareFund(state: string | null | undefined, monthlyGross: number, month1: number) {
-  const rule = state ? LWF_RULES[state] : undefined;
+export function labourWelfareFund(state: string | null | undefined, monthlyGross: number, month1: number, R: StatutoryRules = DEFAULT_RULES) {
+  const rule = state ? R.lwf[state] : undefined;
   if (!rule || !rule.months.includes(month1) || monthlyGross <= (rule.minGross ?? 0)) return { employee: 0, employer: 0 };
   return { employee: rule.employee, employer: rule.employer };
 }
@@ -206,7 +208,7 @@ export function labourWelfareFund(state: string | null | undefined, monthlyGross
 
 export type Regime = "new" | "old";
 
-interface TaxTable {
+export interface TaxTable {
   standardDeduction: number;
   slabs: [number, number][]; // [upTo, rate]
   rebateLimit: number; // taxable income up to which 87A makes tax nil
@@ -235,6 +237,30 @@ export const TAX_TABLES: Record<string, Record<Regime, TaxTable>> = {
 };
 TAX_TABLES["2026-27"] = TAX_TABLES["2025-26"]!;
 
+/**
+ * Every statutory number the engine uses, in one object. The built-in values below are
+ * the defaults; the platform's statutory master publishes newer versions, and payroll
+ * passes the set effective for the month being processed.
+ */
+export interface StatutoryRules {
+  pf: { employeeRate: number; employerRate: number; epsRate: number; edliRate: number; adminRate: number; wageCeiling: number };
+  esi: { employeeRate: number; employerRate: number; grossThreshold: number };
+  pt: Record<string, PtRule>;
+  noPt: string[];
+  lwf: Record<string, LwfRule>;
+  tax: Record<string, Record<Regime, TaxTable>>;
+  minWage: Record<string, { monthly: number; zone?: string; skill?: string }>;
+}
+export const DEFAULT_RULES: StatutoryRules = {
+  pf: { ...STATUTORY.pf },
+  esi: { ...STATUTORY.esi },
+  pt: PT_RULES,
+  noPt: [...NO_PT_STATES],
+  lwf: LWF_RULES,
+  tax: TAX_TABLES,
+  minWage: {},
+};
+
 function slabTax(income: number, slabs: [number, number][]) {
   let tax = 0;
   let prev = 0;
@@ -256,6 +282,7 @@ export interface TaxInput {
   professionalTax?: number;
   /** Old regime: HRA exemption u/s 10(13A). */
   hraExemption?: number;
+  rules?: StatutoryRules;
 }
 
 export interface TaxResult {
@@ -269,19 +296,22 @@ export interface TaxResult {
 
 /** Annual income tax with 87A rebate (incl. marginal relief), surcharge (with marginal relief) and 4% cess. */
 export function annualIncomeTax(input: TaxInput): TaxResult {
-  const table = taxTable(input.financialYear, input.regime);
+  const table = taxTable(input.financialYear, input.regime, input.rules);
   let taxable = input.annualGross - table.standardDeduction;
   if (input.regime === "old") taxable -= (input.deductions ?? 0) + (input.professionalTax ?? 0) + (input.hraExemption ?? 0);
-  return taxOnIncome(input.regime, input.financialYear, taxable);
+  return taxOnIncome(input.regime, input.financialYear, taxable, input.rules);
 }
 
-export function taxTable(financialYear: string, regime: Regime): TaxTable {
-  return (TAX_TABLES[financialYear] ?? TAX_TABLES["2026-27"]!)[regime];
+export function taxTable(financialYear: string, regime: Regime, R: StatutoryRules = DEFAULT_RULES): TaxTable {
+  // a year without its own table uses the latest one on or before it (or the earliest)
+  const years = Object.keys(R.tax).sort();
+  const fy = R.tax[financialYear] ? financialYear : ([...years].reverse().find((y) => y <= financialYear) ?? years[0]!);
+  return R.tax[fy]![regime];
 }
 
 /** Tax on a total income: slabs, 87A rebate (with marginal relief), surcharge (with marginal relief), 4% cess. */
-export function taxOnIncome(regime: Regime, financialYear: string, income: number): TaxResult {
-  const table = taxTable(financialYear, regime);
+export function taxOnIncome(regime: Regime, financialYear: string, income: number, R: StatutoryRules = DEFAULT_RULES): TaxResult {
+  const table = taxTable(financialYear, regime, R);
   const taxable = Math.max(0, Math.round(income / 10) * 10); // s.288A: round to nearest ₹10
 
   const base = slabTax(taxable, table.slabs);
@@ -312,10 +342,10 @@ export function taxOnIncome(regime: Regime, financialYear: string, income: numbe
 }
 
 /** Slab-by-slab breakdown for a computation statement. */
-export function slabBreakdown(regime: Regime, financialYear: string, taxable: number) {
+export function slabBreakdown(regime: Regime, financialYear: string, taxable: number, R: StatutoryRules = DEFAULT_RULES) {
   const out: { from: number; to: number | null; rate: number; amount: number; tax: number }[] = [];
   let prev = 0;
-  for (const [cap, rate] of taxTable(financialYear, regime).slabs) {
+  for (const [cap, rate] of taxTable(financialYear, regime, R).slabs) {
     const amount = Math.max(0, Math.min(taxable, cap) - prev);
     out.push({ from: prev, to: cap === Infinity ? null : cap, rate, amount, tax: Math.round(amount * rate) });
     prev = cap;
@@ -381,6 +411,8 @@ export interface PayslipInput {
   ytd?: { taxableGross: number; tds: number; employeePf: number; professionalTax: number };
   /** The employee's tax declaration for the FY and HR-verified amounts (old regime deductions, HRA, previous employer). */
   taxProfile?: { declaration?: TaxDeclarationData | null; verified?: Verified | null };
+  /** Statutory rules in force for the month (defaults to the built-in rules). */
+  rules?: StatutoryRules;
 }
 
 export interface PayslipResult {
@@ -400,6 +432,7 @@ export interface PayslipResult {
 
 export function computePayslip(input: PayslipInput): PayslipResult {
   const t = input.template ?? DEFAULT_SALARY_TEMPLATE;
+  const R = input.rules ?? DEFAULT_RULES;
   const month1 = Number(input.month.slice(5, 7));
   const warnings: string[] = [];
   const factor = input.daysInMonth > 0 ? Math.max(0, Math.min(1, input.paidDays / input.daysInMonth)) : 0;
@@ -417,36 +450,36 @@ export function computePayslip(input: PayslipInput): PayslipResult {
   const nonTaxableAdj = adj.filter((a) => a.kind === "earning" && a.taxable === false).reduce((s, a) => s + r(a.amount), 0);
 
   // PF
-  const pfWage = input.pfApplicable ? (t.pfOnFullBasic ? basicEarned : Math.min(basicEarned, STATUTORY.pf.wageCeiling)) : 0;
-  const pfCappedWage = Math.min(pfWage, STATUTORY.pf.wageCeiling);
-  const employeePf = r(pfWage * STATUTORY.pf.employeeRate);
-  const employerPfTotal = r(pfWage * STATUTORY.pf.employerRate);
-  const eps = Math.min(employerPfTotal, r(pfCappedWage * STATUTORY.pf.epsRate));
+  const pfWage = input.pfApplicable ? (t.pfOnFullBasic ? basicEarned : Math.min(basicEarned, R.pf.wageCeiling)) : 0;
+  const pfCappedWage = Math.min(pfWage, R.pf.wageCeiling);
+  const employeePf = r(pfWage * R.pf.employeeRate);
+  const employerPfTotal = r(pfWage * R.pf.employerRate);
+  const eps = Math.min(employerPfTotal, r(pfCappedWage * R.pf.epsRate));
   const epfEr = employerPfTotal - eps;
-  const edli = r(pfCappedWage * STATUTORY.pf.edliRate);
-  const pfAdmin = r(pfWage * STATUTORY.pf.adminRate);
+  const edli = r(pfCappedWage * R.pf.edliRate);
+  const pfAdmin = r(pfWage * R.pf.adminRate);
 
   // ESI: eligibility is decided on the full-month structure gross
-  const esiOn = input.esiApplicable && input.structure.gross <= STATUTORY.esi.grossThreshold;
+  const esiOn = input.esiApplicable && input.structure.gross <= R.esi.grossThreshold;
   const esiWage = gross - nonEsiAdj;
-  const employeeEsi = esiOn ? Math.ceil(esiWage * STATUTORY.esi.employeeRate) : 0;
-  const employerEsi = esiOn ? Math.ceil(esiWage * STATUTORY.esi.employerRate) : 0;
+  const employeeEsi = esiOn ? Math.ceil(esiWage * R.esi.employeeRate) : 0;
+  const employerEsi = esiOn ? Math.ceil(esiWage * R.esi.employerRate) : 0;
 
   // PT and LWF
   let pt = 0;
   if (input.ptApplicable) {
-    const p = professionalTax(input.state, gross, month1, input.gender);
+    const p = professionalTax(input.state, gross, month1, input.gender, R);
     pt = p.amount;
     if (!p.configured) warnings.push(`Professional Tax rules for ${input.state ?? "this branch"} aren't configured`);
   }
-  const lwf = labourWelfareFund(input.state, gross, month1);
+  const lwf = labourWelfareFund(input.state, gross, month1, R);
 
   // TDS: project the year, then spread what's left over the remaining months
   const monthsLeft = remainingFyMonths(input.month);
   const ytd = input.ytd ?? { taxableGross: 0, tds: 0, employeePf: 0, professionalTax: 0 };
   const fullMonthGross = input.structure.gross;
-  const fullMonthPf = input.pfApplicable ? r(Math.min(input.structure.components.basic, t.pfOnFullBasic ? Infinity : STATUTORY.pf.wageCeiling) * STATUTORY.pf.employeeRate) : 0;
-  const fullMonthPt = input.ptApplicable ? professionalTax(input.state, fullMonthGross, 1, input.gender).amount : 0;
+  const fullMonthPf = input.pfApplicable ? r(Math.min(input.structure.components.basic, t.pfOnFullBasic ? Infinity : R.pf.wageCeiling) * R.pf.employeeRate) : 0;
+  const fullMonthPt = input.ptApplicable ? professionalTax(input.state, fullMonthGross, 1, input.gender, R).amount : 0;
   const annualised = input.ytd === undefined;
   const pastMonths = 12 - monthsLeft;
   const projectedAnnualGross = annualised
@@ -466,6 +499,7 @@ export function computePayslip(input: PayslipInput): PayslipResult {
     professionalTax: annualised ? fullMonthPt * 11 + pt : ytd.professionalTax + pt + fullMonthPt * (monthsLeft - 1),
     declaration: input.taxProfile?.declaration,
     verified: input.taxProfile?.verified,
+    rules: R,
   });
   const tax = statement.tax;
   const alreadyDeducted = statement.previousEmployerTds;

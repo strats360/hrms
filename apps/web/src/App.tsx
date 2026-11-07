@@ -72,6 +72,7 @@ const router = createBrowserRouter([
           { path: "billing", element: L(() => import("@/pages/platform/Billing")) },
           { path: "settings", element: L(() => import("@/pages/platform/Settings")) },
           { path: "flags", element: L(() => import("@/pages/platform/Flags")) },
+          { path: "statutory", element: L(() => import("@/pages/platform/Statutory")) },
           { path: "*", element: L(() => import("@/pages/Soon")) },
         ],
       },

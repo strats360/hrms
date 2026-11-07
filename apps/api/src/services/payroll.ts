@@ -33,6 +33,7 @@ import { badRequest, notFound } from "../lib/errors";
 import { buildCalendar } from "./attendance";
 import { declarationsFor } from "./tax";
 import { claimsForRun } from "./reimbursements";
+import { rulesFor } from "./statutory";
 
 export function monthBounds(month: string) {
   const [y, m] = month.split("-").map(Number) as [number, number];
@@ -194,6 +195,7 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
     declarationsFor(db, tenantId, fyOfMonth(run.month), ids),
   ]);
   const claims = await claimsForRun(db, tenantId, runId, end, ids);
+  const rules = await rulesFor(db, run.month);
   const prev = new Map(existing.map((i) => [i.employeeId, i]));
   const cal = opts.assumePresent ? null : await buildCalendar(db, tenantId, emps.map((x) => ({ id: x.e.id, shiftId: x.e.shiftId, branchId: x.e.branchId, dateOfJoining: x.e.dateOfJoining, lastWorkingDay: x.e.lastWorkingDay })), start, end);
   const statOn = (k: string) => statutory[k as keyof typeof statutory]?.enabled ?? true;
@@ -217,6 +219,7 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
     const structure = resolveStructure(e, structs.get(e.id), template);
     const y = ytd.byEmployee.get(e.id);
     const slip = computePayslip({
+      rules,
       month: run.month,
       structure,
       template,

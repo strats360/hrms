@@ -4,18 +4,15 @@ import { attendanceRecords, employees, payrollItems, payrollRuns, statutoryChall
 import {
   challanSchema,
   daysUntil,
+  describeRule,
   dueDate,
   ecrLine,
   fmtDate,
   fyOfMonth,
   inr,
-  LWF_RULES,
-  NO_PT_STATES,
   pfWages,
-  PT_RULES,
   ptSlabSummary,
   STATUTE_LABELS,
-  STATUTORY,
   tdsReturnDueDates,
   todayIST,
   type Statute,
@@ -30,6 +27,7 @@ import { toCsv } from "../lib/csv";
 import { ALLOWED_TYPES, getFile, MAX_UPLOAD_BYTES, putFile, safeName } from "../lib/storage";
 import { getTemplate, monthBounds, resolveStructure, structuresAsOf } from "../services/payroll";
 import { monthLabel } from "../lib/months";
+import { liveRules, rulesFor } from "../services/statutory";
 
 export const complianceRoutes = new Hono<AppEnv>();
 const tid = (c: Context<AppEnv>) => c.get("tenant").tenantId;
@@ -274,10 +272,10 @@ async function lockedRun(c: Context<AppEnv>, month?: string) {
 
 const monthQ = z.object({ month: z.string().regex(/^\d{4}-\d{2}$/).optional() });
 
-export function contributionRow(i: Item, pfOnFullBasic: boolean) {
+export function contributionRow(i: Item, pfOnFullBasic: boolean, pfCeiling?: number) {
   const basic = i.earnings.find((e) => e.code === "basic")?.amount ?? 0;
   const pfEe = line(i.deductions, "pf");
-  const w = pfEe > 0 ? pfWages(basic, pfOnFullBasic) : { epf: 0, eps: 0, edli: 0 };
+  const w = pfEe > 0 ? pfWages(basic, pfOnFullBasic, pfCeiling) : { epf: 0, eps: 0, edli: 0 };
   return {
     employeeId: i.employeeId,
     name: i.snapshot.name,
@@ -312,7 +310,8 @@ complianceRoutes.get("/employee", requirePerm("compliance", "view"), v("query", 
   const template = await getTemplate(db, tid(c));
   const items = await db.select().from(payrollItems).where(eq(payrollItems.runId, run.id)).orderBy(sql`${payrollItems.snapshot}->>'name'`);
   const months = await db.select({ month: payrollRuns.month }).from(payrollRuns).where(and(eq(payrollRuns.tenantId, tid(c)), inArray(payrollRuns.status, LOCKED))).orderBy(desc(payrollRuns.month));
-  const rows = items.map((i) => contributionRow(i, template.pfOnFullBasic));
+  const ceiling = (await rulesFor(db, run.month)).pf.wageCeiling;
+  const rows = items.map((i) => contributionRow(i, template.pfOnFullBasic, ceiling));
   return c.json({
     month: run.month,
     months: months.map((m) => m.month),
@@ -334,7 +333,8 @@ complianceRoutes.get("/files/ecr.txt", requirePerm("compliance", "export"), v("q
   const db = c.get("db");
   const template = await getTemplate(db, tid(c));
   const items = await db.select().from(payrollItems).where(eq(payrollItems.runId, run.id)).orderBy(sql`${payrollItems.snapshot}->>'code'`);
-  const rows = items.map((i) => contributionRow(i, template.pfOnFullBasic)).filter((r) => r.epfEe > 0);
+  const ceiling = (await rulesFor(db, run.month)).pf.wageCeiling;
+  const rows = items.map((i) => contributionRow(i, template.pfOnFullBasic, ceiling)).filter((r) => r.epfEe > 0);
   const ok = rows.filter((r) => r.uan);
   const text = ok.map((r) => ecrLine({ uan: r.uan!, name: r.name, grossWages: r.gross, epfWages: r.pfWage, epsWages: r.epsWage, edliWages: r.edliWage, epfEe: r.epfEe, eps: r.eps, epfEr: r.epfEr, ncpDays: r.ncpDays })).join("\n");
   await audit(c, { action: "compliance.ecr", entity: "payroll_run", entityId: run.id, summary: `Generated ECR for ${monthLabel(run.month)}: ${ok.length} members` });
@@ -366,7 +366,7 @@ complianceRoutes.get("/files/pt.csv", requirePerm("compliance", "export"), v("qu
   const rows = items.map((i) => contributionRow(i, false));
   const out: unknown[][] = [];
   for (const st of [...new Set(rows.map((r) => r.state ?? ""))]) {
-    for (const s of ptSlabSummary(st, rows.filter((r) => (r.state ?? "") === st))) {
+    for (const s of ptSlabSummary(st, rows.filter((r) => (r.state ?? "") === st), await rulesFor(c.get("db"), run.month))) {
       out.push([st, s.from, s.upTo === Infinity ? "and above" : s.upTo, s.rate, s.employees, s.amount]);
     }
   }
@@ -391,20 +391,27 @@ complianceRoutes.get("/rules", requirePerm("compliance", "view"), async (c) => {
   const db = c.get("db");
   const [t] = await db.select().from(tenants).where(eq(tenants.id, tid(c)));
   const template = await getTemplate(db, tid(c));
+  const month = todayIST().slice(0, 7);
+  const R = await rulesFor(db, month);
+  const live = await liveRules(db);
+  const since = (key: string) => {
+    const v = live.filter((x) => x.key === key && x.effectiveFrom <= `${month}-01`).sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom))[0];
+    return v ? `from ${fmtDate(v.effectiveFrom)}` : "built-in";
+  };
   const states = [...new Set([t?.state, ...(await db.execute<{ state: string }>(sql`select distinct state from branches where tenant_id = ${tid(c)}`)).map((r) => r.state)].filter(Boolean) as string[])];
+  const pt = (st: string) => (R.noPt.includes(st) ? { none: true } : R.pt[st] ? { none: false, slabs: R.pt[st]!.slabs.map(([u, a]) => ({ upTo: u === Infinity ? null : u, amount: a })), februaryTop: R.pt[st]!.februaryTop ?? null } : null);
   const rules: { rule: string; value: string; scope: string; source: string }[] = [
-    { rule: "EPF wage ceiling", value: inr(STATUTORY.pf.wageCeiling), scope: "All establishments", source: "EPF Scheme, from 01 Sep 2014" },
-    { rule: "EPF contribution", value: template.pfOnFullBasic ? "12% + 12% on actual basic" : "12% + 12% on basic, capped", scope: t?.name ?? "Company", source: "Salary template" },
-    { rule: "EPS / EDLI / admin", value: "8.33% (to ₹15,000) · 0.5% · 0.5%", scope: "All establishments", source: "EPF Scheme" },
-    { rule: "ESI wage ceiling", value: inr(STATUTORY.esi.grossThreshold), scope: "All", source: "ESI Act, from 01 Jan 2017" },
-    { rule: "ESI contribution", value: "0.75% employee · 3.25% employer", scope: "All", source: "ESI Act, from 01 Jul 2019" },
+    { rule: "EPF", value: describeRule("pf", R.pf), scope: "All establishments", source: `EPF Scheme · statutory master, ${since("pf")}` },
+    { rule: "EPF on your salaries", value: template.pfOnFullBasic ? "12% + 12% on actual basic" : `12% + 12% on basic, capped at ${inr(R.pf.wageCeiling)}`, scope: t?.name ?? "Company", source: "Salary template" },
+    { rule: "ESI", value: describeRule("esi", R.esi), scope: "All", source: `ESI Act · statutory master, ${since("esi")}` },
   ];
   for (const st of states) {
-    const pt = PT_RULES[st];
-    if (pt) rules.push({ rule: "Professional Tax slabs", value: pt.slabs.map(([up, amt], i, a) => (i === a.length - 1 ? `above ${inr(a[i - 1]?.[0] ?? 0)} → ${inr(amt)}` : `up to ${inr(up)} → ${inr(amt)}`)).join(" · ") + (pt.februaryTop ? ` (Feb ${inr(pt.februaryTop)})` : ""), scope: st, source: "State PT Act" });
-    else rules.push({ rule: "Professional Tax", value: NO_PT_STATES.has(st) ? "Not levied" : "Not configured yet", scope: st, source: NO_PT_STATES.has(st) ? "No PT in this state" : "Contact support" });
-    const lwf = LWF_RULES[st];
-    if (lwf) rules.push({ rule: "Labour Welfare Fund", value: `${inr(lwf.employee)} employee + ${inr(lwf.employer)} employer, ${lwf.months.map((m) => new Date(2026, m - 1).toLocaleString("en-IN", { month: "short" })).join(" & ")}`, scope: st, source: "State LWF Act" });
+    const p = pt(st);
+    rules.push(p ? { rule: "Professional Tax", value: describeRule("pt", p), scope: st, source: `State PT Act · ${since(`pt:${st}`)}` } : { rule: "Professional Tax", value: "Not configured yet", scope: st, source: "Contact support" });
+    const l = R.lwf[st];
+    if (l) rules.push({ rule: "Labour Welfare Fund", value: describeRule("lwf", { months: l.months, employee: l.employee, employer: l.employer }), scope: st, source: `State LWF Act · ${since(`lwf:${st}`)}` });
+    const mw = R.minWage[st];
+    if (mw) rules.push({ rule: "Minimum wage", value: describeRule("minwage", mw), scope: st, source: `State notification · ${since(`minwage:${st}`)}` });
   }
   rules.push(
     { rule: "Gratuity", value: "15/26 × last basic × completed years, after 5 years, cap ₹20 L", scope: "All", source: "Payment of Gratuity Act" },

@@ -21,6 +21,7 @@ import { daysInMonth, fyOfMonth, ptSlabSummary, todayIST, type Action, type Modu
 import { contributionRow, LOCKED, type Item } from "../routes/compliance";
 import { getTemplate, resolveStructure, structuresAsOf } from "./payroll";
 import { fyMonths, QUARTERS } from "./tax";
+import { rulesFor } from "./statutory";
 
 // ---------------------------------------------------------------------------
 // Filters
@@ -329,7 +330,9 @@ export const REPORTS: ReportDef[] = [
     async run({ db, tenantId, f, period }) {
       const t = await getTemplate(db, tenantId);
       const items = await lockedItems(db, tenantId, period.months, await scopedIds(db, tenantId, f));
-      const rows = items.map((x) => ({ month: x.month, r: contributionRow(x.item as Item, t.pfOnFullBasic) })).filter((x) => x.r.epfEe > 0);
+      const ceilings = new Map<string, number>();
+      for (const m of period.months) ceilings.set(m, (await rulesFor(db, m)).pf.wageCeiling);
+      const rows = items.map((x) => ({ month: x.month, r: contributionRow(x.item as Item, t.pfOnFullBasic, ceilings.get(x.month)) })).filter((x) => x.r.epfEe > 0);
       return {
         header: ["Month", "UAN", "Employee ID", "Name", "Gross wages", "EPF wages", "EPS wages", "EDLI wages", "EPF (employee)", "EPS (employer)", "EPF (employer)", "EDLI + admin", "NCP days"],
         rows: rows.map(({ month, r }) => [month, r.uan ?? "UAN missing", r.code, r.name, r.gross, r.pfWage, r.epsWage, r.edliWage, r.epfEe, r.eps, r.epfEr, r.edliAdmin, r.ncpDays]),
@@ -371,7 +374,7 @@ export const REPORTS: ReportDef[] = [
       const rows: unknown[][] = [];
       for (const [k, list] of [...byKey.entries()].sort()) {
         const [month, state] = k.split("|") as [string, string];
-        const slabs = ptSlabSummary(state, list);
+        const slabs = ptSlabSummary(state, list, await rulesFor(db, month));
         if (!slabs.length) rows.push([month, state, "No PT in this state", "", list.length, 0]);
         for (const s of slabs) rows.push([month, state, `₹${s.from.toLocaleString("en-IN")} to ${Number.isFinite(s.upTo) ? "₹" + s.upTo.toLocaleString("en-IN") : "above"}`, s.rate, s.employees, s.amount]);
       }

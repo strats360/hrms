@@ -4,7 +4,7 @@
  * confirm for each state before go-live.
  */
 import { daysInMonth } from "./format";
-import { PT_RULES, STATUTORY } from "./payroll";
+import { DEFAULT_RULES, STATUTORY, type StatutoryRules } from "./payroll";
 
 export const STATUTES = ["epf", "esi", "pt", "lwf", "tds"] as const;
 export type Statute = (typeof STATUTES)[number];
@@ -101,15 +101,14 @@ export function ecrLine(m: EcrMember) {
 }
 
 /** PF wage and its EPS/EDLI parts from earned basic (capped unless contributing on full basic). */
-export function pfWages(basicEarned: number, onFullBasic = false) {
-  const ceiling = STATUTORY.pf.wageCeiling;
+export function pfWages(basicEarned: number, onFullBasic = false, ceiling: number = STATUTORY.pf.wageCeiling) {
   const epf = onFullBasic ? basicEarned : Math.min(basicEarned, ceiling);
   return { epf, eps: Math.min(epf, ceiling), edli: Math.min(epf, ceiling) };
 }
 
 /** Group employees into the state's PT slabs for the PT return. */
-export function ptSlabSummary(state: string, rows: { gross: number; pt: number }[]) {
-  const rule = PT_RULES[state];
+export function ptSlabSummary(state: string, rows: { gross: number; pt: number }[], R: StatutoryRules = DEFAULT_RULES) {
+  const rule = R.pt[state];
   if (!rule) return [];
   const slabs = rule.slabs.map(([upTo, amount], i) => ({ from: i === 0 ? 0 : rule.slabs[i - 1]![0] + 1, upTo, rate: amount, employees: 0, amount: 0 }));
   for (const r of rows) {

@@ -13,6 +13,7 @@ import {
   type Verified,
 } from "@hrms/shared";
 import { getTemplate, resolveStructure, structuresAsOf } from "./payroll";
+import { rulesFor } from "./statutory";
 
 export const fyMonths = (fy: string) => {
   const y = Number(fy.slice(0, 4));
@@ -67,6 +68,9 @@ export async function employeeTax(db: Database, tenantId: string, employeeId: st
   const template = await getTemplate(db, tenantId);
   const struct = resolveStructure(emp, (await structuresAsOf(db, tenantId, [emp.id], months[11] + "-28")).get(emp.id), template);
   const [t] = await db.select({ state: tenants.state }).from(tenants).where(eq(tenants.id, tenantId));
+  // rules in force now, or at the edge of the FY when looking at another year
+  const now = todayIST().slice(0, 7);
+  const rules = await rulesFor(db, now > months[11]! ? months[11]! : now < months[0]! ? months[0]! : now);
 
   const locked = new Map(items.map((x) => [x.month, x]));
   const rows: MonthRow[] = [];
@@ -91,7 +95,7 @@ export async function employeeTax(db: Database, tenantId: string, employeeId: st
     const [y, mo] = m.split("-").map(Number) as [number, number];
     const end = `${m}-${String(daysInMonth(y, mo)).padStart(2, "0")}`;
     if (m <= lastLocked || emp.dateOfJoining > end || (emp.lastWorkingDay && emp.lastWorkingDay < `${m}-01`) || emp.status === "exited") continue;
-    const pf = emp.pfApplicable ? Math.round(Math.min(struct.components.basic, template.pfOnFullBasic ? Infinity : STATUTORY.pf.wageCeiling) * STATUTORY.pf.employeeRate) : 0;
+    const pf = emp.pfApplicable ? Math.round(Math.min(struct.components.basic, template.pfOnFullBasic ? Infinity : rules.pf.wageCeiling) * rules.pf.employeeRate) : 0;
     rows.push({
       month: m,
       status: "projected",
@@ -99,7 +103,7 @@ export async function employeeTax(db: Database, tenantId: string, employeeId: st
       basic: struct.components.basic,
       hra: struct.components.hra,
       pf,
-      pt: emp.ptApplicable ? professionalTax(t?.state ?? null, struct.gross, mo, emp.gender).amount : 0,
+      pt: emp.ptApplicable ? professionalTax(t?.state ?? null, struct.gross, mo, emp.gender, rules).amount : 0,
       tds: 0,
     });
   }
@@ -111,6 +115,7 @@ export async function employeeTax(db: Database, tenantId: string, employeeId: st
     professionalTax: sum("pt"),
     declaration: (decl?.data ?? {}) as TaxDeclarationData,
     verified: (decl?.verified ?? {}) as Verified,
+    rules,
   };
   const regime = (decl?.regime ?? emp.taxRegime ?? "new") as Regime;
   const comparison = compareRegimes(base);

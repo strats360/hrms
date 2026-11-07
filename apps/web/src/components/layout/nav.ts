@@ -85,7 +85,7 @@ export const PLATFORM_NAV: NavGroup[] = [
     key: "p_ops",
     label: "Operations",
     items: [
-      { to: "/platform/statutory", label: "Statutory master", icon: ShieldCheck, soon: true },
+      { to: "/platform/statutory", label: "Statutory master", icon: ShieldCheck },
       { to: "/platform/flags", label: "Feature flags", icon: SlidersHorizontal },
     ],
   },
