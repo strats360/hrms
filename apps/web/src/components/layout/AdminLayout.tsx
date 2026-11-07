@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate, Outlet, useLocation } from "react-router";
+import { Link, Navigate, Outlet, useLocation } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import * as D from "@radix-ui/react-dialog";
 import { api } from "@/lib/api";
@@ -101,6 +101,16 @@ export function AdminLayout() {
           ]}
         />
         <main className="flex w-full max-w-[1440px] flex-col gap-5 px-4 pb-12 pt-6 sm:px-7">
+          {tenant?.tenantStatus === "past_due" ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-md)] px-4 py-3 text-[13.5px]" style={{ background: "var(--bad-bg)", color: "var(--bad-fg)" }} role="alert">
+              <span>Your subscription invoice is overdue. Please pay it to avoid the account being suspended.</span>
+              {can("billing") ? (
+                <Link to="/settings/billing" className="font-medium" style={{ color: "inherit" }}>
+                  View invoice
+                </Link>
+              ) : null}
+            </div>
+          ) : null}
           <Outlet />
         </main>
       </div>

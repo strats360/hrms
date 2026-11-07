@@ -91,6 +91,18 @@ All 16 reports from the design, each as CSV or Excel (.xlsx, with extra sheets w
 | Expenses and payments | Reimbursements with a by-category sheet, bank payments with a per-payment sheet |
 | Exits | Full and final settlement estimate: unpaid salary, leave encashment, gratuity and open claims |
 
+**SaaS billing is built:**
+
+| Area | What works |
+| --- | --- |
+| Plans | Starter, Growth and Enterprise from the design, priced per active employee per month, with a minimum seat count, employee limit and included admins. Platform super admins add and edit plans. Enterprise uses a contract rate set on the tenant |
+| Billing run | Platform finance runs billing for a finished month. Each billable tenant gets one invoice for its active employees (at least the plan minimum). Trials, cancelled tenants and tenants without a price are skipped with a reason. Running it twice doesn't double-bill |
+| GST invoices | Tax invoices with SAC 998314, CGST + SGST when the tenant is in the same state as the invoicing entity and IGST otherwise (from the GSTIN, or the state). Seller and buyer details are frozen on the invoice. Printable as PDF |
+| Collections | Record payments (UPI, NEFT, RTGS, card, cheque), send reminders, void unpaid invoices. A GSTR-1 CSV export for each month's invoices |
+| Dunning | Reminders at 1, 7 and 15 days overdue, past due at 15 days (a banner for every tenant admin), suspension at 45 days. Platform finance reviews the list before running it. Paying the overdue invoice restores the account |
+| Tenant view | Settings › Billing & invoices: plan, seats used, next invoice estimate, payment method, invoice history with PDFs, billing details and this month's usage |
+| Platform settings | The invoicing entity: legal name, GSTIN, PAN, address, state, SAC, invoice prefix, payment terms, UPI and bank details |
+
 **Before running real payroll, a payroll consultant or CA should confirm these:**
 - **Tax slabs:** FY 2026-27 uses the FY 2025-26 slabs from Finance Act 2025. Update `TAX_TABLES` in `packages/shared/src/payroll.ts` if the Finance Act 2026 changed them.
 - **State tables:** Professional Tax covers Gujarat, Maharashtra, Karnataka, West Bengal, Telangana, Andhra Pradesh and Madhya Pradesh (plus states with no PT). Labour Welfare Fund covers Gujarat and Maharashtra. Other states show a warning on the payslip.
@@ -106,7 +118,9 @@ All 16 reports from the design, each as CSV or Excel (.xlsx, with extra sheets w
 
 - **Full and final settlement:** the report is an estimate (gratuity after 4 years 240 days at 15/26 of basic per year, leave encashment at basic / 26 for encashable leave). Notice-pay recovery, loans and other deductions need to be added by HR.
 
-**Still to come in Phase 2:** SaaS billing. These show as "Soon" in the navigation.
+- **SaaS billing:** payments are recorded by hand. Connecting a payment gateway (for example Razorpay or Cashfree for UPI autopay) needs an account and API keys. GST e-invoicing (IRN) is needed once the platform's turnover crosses the threshold. Your CA should confirm the SAC code and invoice format.
+
+**Phase 2 is complete.** Support tickets, the statutory master and feature flags in the platform console still show as "Soon". These show as "Soon" in the navigation.
 
 ## Architecture
 

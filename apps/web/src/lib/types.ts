@@ -577,3 +577,87 @@ export interface BatchPreview {
   skipped: number;
   lines: { employeeId: string; employeeCode?: string; employeeName?: string; amount: number; description: string | null; heldReason?: string | null }[];
 }
+
+// ---------------------------------------------------------------------------
+// SaaS billing
+// ---------------------------------------------------------------------------
+export interface Plan {
+  id: string;
+  key: string;
+  name: string;
+  pricePerEmployee: number | null;
+  minSeats: number;
+  maxEmployees: number | null;
+  includedAdmins: number | null;
+  description: string | null;
+  features: string[];
+  active: boolean;
+  sortOrder: number;
+  tenants?: number;
+}
+export interface InvoiceParty {
+  name: string;
+  legalName?: string | null;
+  gstin: string | null;
+  address: string | null;
+  state: string | null;
+  stateCode: string | null;
+}
+export type InvoiceStatus = "issued" | "paid" | "void" | "overdue";
+export interface Invoice {
+  id: string;
+  tenantId: string;
+  tenantName: string;
+  number: string;
+  period: string;
+  periodLabel: string;
+  issuedOn: string;
+  dueOn: string;
+  planKey: string;
+  planName: string;
+  seats: number;
+  rate: number;
+  lines: { description: string; sac: string; quantity: number; rate: number; amount: number }[];
+  subtotal: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  total: number;
+  seller: InvoiceParty;
+  buyer: InvoiceParty;
+  status: "issued" | "paid" | "void";
+  displayStatus: InvoiceStatus;
+  paidOn: string | null;
+  paymentMethod: string | null;
+  paymentReference: string | null;
+  remindersSent: number;
+  voidReason: string | null;
+}
+export interface InvoicingEntity {
+  legalName: string;
+  gstin: string | null;
+  pan: string | null;
+  address: string | null;
+  state: string | null;
+  sac: string;
+  invoicePrefix: string;
+  dueDays: number;
+  bankDetails: string | null;
+  upiId: string | null;
+  email: string | null;
+}
+export interface InvoiceDetail extends Invoice {
+  entity: InvoicingEntity;
+}
+export interface TenantBilling {
+  status: string;
+  trialEndsAt: string | null;
+  plan: { key: string; name: string; price: number; custom: boolean; maxEmployees: number | null; includedAdmins: number | null; minSeats: number; features: string[] };
+  seats: { active: number; billable: number };
+  admins: number;
+  nextInvoice: { period: string; periodLabel: string; date: string; subtotal: number; gst: number; total: number; note: string | null } | null;
+  usage: { payslips: number; bankFiles: number };
+  billing: { legalName: string; gstin: string | null; state: string | null; address: string | null; billingEmail: string | null; paymentMethod: string | null };
+  invoices: Invoice[];
+  overdue: number;
+}

@@ -77,8 +77,8 @@ export const PLATFORM_NAV: NavGroup[] = [
     key: "p_rev",
     label: "Revenue",
     items: [
-      { to: "/platform/plans", label: "Plans & pricing", icon: CreditCard, soon: true },
-      { to: "/platform/billing", label: "Billing & invoices", icon: Receipt, soon: true },
+      { to: "/platform/plans", label: "Plans & pricing", icon: CreditCard },
+      { to: "/platform/billing", label: "Billing & invoices", icon: Receipt },
     ],
   },
   {
@@ -95,6 +95,7 @@ export const PLATFORM_NAV: NavGroup[] = [
     items: [
       { to: "/platform/staff", label: "Platform staff", icon: Users },
       { to: "/platform/audit", label: "Audit log", icon: FileText },
+      { to: "/platform/settings", label: "Platform settings", icon: SlidersHorizontal },
     ],
   },
 ];

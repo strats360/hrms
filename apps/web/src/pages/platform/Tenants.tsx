@@ -11,6 +11,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, Segmented, Select } from "@/components/ui/field";
 import { KV, Loading, PageHeader } from "@/components/ui/page";
+import type { Plan } from "@/lib/types";
 import { StatusTag } from "@/components/ui/tag";
 
 interface TenantRow {
@@ -85,7 +86,7 @@ export default function Tenants() {
             { label: "View details", onSelect: () => setView(t.id) },
             ...(superAdmin
               ? [
-                  { label: "Change plan", onSelect: () => setPlan(t) },
+                  { label: "Plan & billing", onSelect: () => setPlan(t) },
                   t.status === "suspended" ? { label: "Reactivate", onSelect: () => update.mutate({ id: t.id, status: "active" }) } : { label: "Suspend (blocks sign-in)", danger: true, onSelect: () => confirm(`Suspend ${t.name}? Their users won't be able to sign in.`) && update.mutate({ id: t.id, status: "suspended" }) },
                   ...(t.status === "past_due" || t.status === "trial" ? [{ label: "Mark as active (paid)", onSelect: () => update.mutate({ id: t.id, status: "active" }) }] : []),
                 ]
@@ -94,30 +95,7 @@ export default function Tenants() {
         />
       </TableCard>
       <TenantDialog id={view} onClose={() => setView(null)} />
-      <Dialog
-        open={!!plan}
-        onOpenChange={(v) => !v && setPlan(null)}
-        title={`Change plan · ${plan?.name ?? ""}`}
-        footer={
-          <>
-            <Button onClick={() => setPlan(null)}>Cancel</Button>
-            <Button variant="primary" loading={update.isPending} onClick={() => plan && update.mutateAsync({ id: plan.id, plan: plan.plan }).then(() => setPlan(null))}>
-              Save plan
-            </Button>
-          </>
-        }
-      >
-        {plan ? (
-          <Field label="Plan">
-            <Select value={plan.plan} onChange={(e) => setPlan({ ...plan, plan: e.target.value })}>
-              <option value="trial">Trial</option>
-              <option value="starter">Starter</option>
-              <option value="growth">Growth</option>
-              <option value="enterprise">Enterprise</option>
-            </Select>
-          </Field>
-        ) : null}
-      </Dialog>
+      <TenantBillingDialog tenant={plan} onClose={() => setPlan(null)} />
     </>
   );
 }
@@ -162,6 +140,67 @@ function TenantDialog({ id, onClose }: { id: string | null; onClose: () => void 
           </table>
           <div className="text-muted text-[12.5px]">Platform staff can't read a tenant's employee data from here. Support access to a tenant account is planned with the support tickets module, and every access will be logged.</div>
         </>
+      )}
+    </Dialog>
+  );
+}
+
+/** Plan, contract rate and billing contact for a tenant. */
+function TenantBillingDialog({ tenant, onClose }: { tenant: TenantRow | null; onClose: () => void }) {
+  const qc = useQueryClient();
+  const plans = useQuery({ queryKey: ["platform", "plans"], queryFn: () => api.get<Plan[]>("/platform/billing/plans"), enabled: !!tenant });
+  const detail = useQuery({ queryKey: ["platform", "tenant", tenant?.id], queryFn: () => api.get<TenantDetail & { customPrice: number | null; billingEmail: string | null; paymentMethod: string | null }>(`/platform/tenants/${tenant!.id}`), enabled: !!tenant });
+  const [f, setF] = useState({ plan: "", customPrice: "", billingEmail: "", paymentMethod: "" });
+  useEffect(() => {
+    const d = detail.data;
+    if (d) setF({ plan: d.plan, customPrice: d.customPrice === null ? "" : String(d.customPrice), billingEmail: d.billingEmail ?? "", paymentMethod: d.paymentMethod ?? "" });
+  }, [detail.data]);
+  const save = useMutation({
+    mutationFn: () => api.patch(`/platform/billing/tenants/${tenant!.id}`, { plan: f.plan, customPrice: f.customPrice === "" ? null : Number(f.customPrice), billingEmail: f.billingEmail.trim() || null, paymentMethod: f.paymentMethod.trim() || null }),
+    onSuccess: () => {
+      toast.success("Billing updated. It applies from the next billing run.");
+      qc.invalidateQueries({ queryKey: ["platform"] });
+      onClose();
+    },
+  });
+  const chosen = plans.data?.find((p) => p.key === f.plan);
+  return (
+    <Dialog
+      open={!!tenant}
+      onOpenChange={(v) => !v && onClose()}
+      title={`Plan & billing · ${tenant?.name ?? ""}`}
+      footer={
+        <>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button variant="primary" loading={save.isPending} disabled={!detail.data} onClick={() => save.mutate()}>
+            Save
+          </Button>
+        </>
+      }
+    >
+      {!detail.data ? <Loading /> : (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Plan">
+            <Select value={f.plan} onChange={(e) => setF({ ...f, plan: e.target.value })}>
+              <option value="trial">Trial</option>
+              {(plans.data ?? []).filter((p) => p.active || p.key === f.plan).map((p) => (
+                <option key={p.key} value={p.key}>
+                  {p.name}
+                  {p.pricePerEmployee !== null ? ` · ₹${p.pricePerEmployee}` : " · custom"}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Contract rate per employee (₹)" hint={chosen?.pricePerEmployee !== null && chosen ? `Blank uses the plan price (₹${chosen.pricePerEmployee})` : "Required for custom-priced plans"}>
+            <Input inputMode="decimal" value={f.customPrice} onChange={(e) => setF({ ...f, customPrice: e.target.value.replace(/[^\d.]/g, "") })} />
+          </Field>
+          <Field label="Billing email" hint="Blank uses the company contact email">
+            <Input type="email" value={f.billingEmail} onChange={(e) => setF({ ...f, billingEmail: e.target.value })} />
+          </Field>
+          <Field label="Payment method (shown to the tenant)">
+            <Input value={f.paymentMethod} onChange={(e) => setF({ ...f, paymentMethod: e.target.value })} placeholder="UPI autopay · company@hdfcbank" />
+          </Field>
+        </div>
       )}
     </Dialog>
   );
