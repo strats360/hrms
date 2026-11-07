@@ -22,6 +22,7 @@ import { essTaxRoutes, tdsRoutes } from "./routes/tds";
 import { essClaimRoutes, reimbursementRoutes } from "./routes/reimbursements";
 import { paymentRoutes } from "./routes/payments";
 import { reportRoutes } from "./routes/reports";
+import { platformBillingRoutes, tenantBillingRoutes } from "./routes/billing";
 
 /** Better Auth endpoints we expose. Sign-up and everything else stays closed. */
 const AUTH_ALLOW = [
@@ -64,6 +65,7 @@ export function buildApp() {
   api.route("/me", meRoutes);
 
   api.use("/platform/*", requireAuth);
+  api.route("/platform/billing", platformBillingRoutes);
   api.route("/platform", platformRoutes);
 
   // Tenant-scoped routes
@@ -87,6 +89,7 @@ export function buildApp() {
   t.route("/admin/reimbursements", reimbursementRoutes);
   t.route("/admin/payments", paymentRoutes);
   t.route("/admin/reports", reportRoutes);
+  t.route("/admin/billing", tenantBillingRoutes);
   t.route("/admin/audit", auditRoutes);
   api.route("/", t);
 

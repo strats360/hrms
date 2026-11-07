@@ -434,3 +434,42 @@ export const paymentUpdateSchema = z.object({
   paidOn: nullable(isoDate),
 });
 export const bulkPaymentUpdateSchema = paymentUpdateSchema.extend({ ids: z.array(z.string()).min(1).max(5000) });
+
+// ---------- SaaS billing ----------
+export const planSchema = z.object({
+  key: z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9_]{1,30}$/, "Use lowercase letters, numbers and underscores"),
+  name: trimmed(40).min(1),
+  pricePerEmployee: z.coerce.number().min(0).max(100000).nullable().optional(),
+  minSeats: z.coerce.number().int().min(0).max(100000).default(0),
+  maxEmployees: z.coerce.number().int().min(1).max(1000000).nullable().optional(),
+  includedAdmins: z.coerce.number().int().min(1).max(10000).nullable().optional(),
+  description: nullable(trimmed(200)),
+  features: z.array(trimmed(80)).max(20).default([]),
+  active: z.boolean().default(true),
+  sortOrder: z.coerce.number().int().min(0).max(100).default(0),
+});
+export const invoicingEntitySchema = z.object({
+  legalName: trimmed(120).min(2),
+  gstin: nullable(gstinSchema),
+  pan: nullable(z.string().trim().toUpperCase().regex(/^[A-Z]{5}\d{4}[A-Z]$/, "Enter a valid PAN")),
+  address: nullable(trimmed(300)),
+  state: nullable(trimmed(60)),
+  sac: trimmed(10).default("998314"),
+  invoicePrefix: z.string().trim().regex(/^[A-Z0-9-]{2,12}$/, "Use capitals, digits and dashes").default("INV-P-"),
+  dueDays: z.coerce.number().int().min(0).max(90).default(7),
+  bankDetails: nullable(trimmed(300)),
+  upiId: nullable(trimmed(80)),
+  email: nullable(z.string().trim().email()),
+});
+export const billingRunSchema = z.object({ period: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/), tenantIds: z.array(z.string()).max(5000).optional() });
+export const invoicePaymentSchema = z.object({
+  paidOn: isoDate,
+  method: z.enum(["upi", "neft", "rtgs", "card", "cheque", "other"]),
+  reference: nullable(trimmed(80)),
+});
+export const tenantBillingSchema = z.object({
+  plan: z.string().trim().min(2).max(30).optional(),
+  customPrice: z.coerce.number().min(0).max(100000).nullable().optional(),
+  billingEmail: nullable(z.string().trim().email()),
+  paymentMethod: nullable(trimmed(80)),
+});

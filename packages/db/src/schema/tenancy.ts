@@ -1,4 +1,4 @@
-import { boolean, index, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { numeric, boolean, index, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import type { PermissionMatrix, TenantSettings } from "@hrms/shared";
 import { user } from "./auth";
 import { id, timestamps } from "./_helpers";
@@ -28,6 +28,10 @@ export const tenants = pgTable(
     plan: text("plan").notNull().default("trial"), // trial | starter | growth | enterprise
     status: text("status").notNull().default("trial"), // trial | active | past_due | suspended | cancelled
     trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+    /** Billing: negotiated rate per employee (overrides the plan), billing email, how they pay. */
+    customPrice: numeric("custom_price", { precision: 14, scale: 2, mode: "number" }),
+    billingEmail: text("billing_email"),
+    paymentMethod: text("payment_method"),
     setupStep: text("setup_step").notNull().default("0"),
     setupCompletedAt: timestamp("setup_completed_at", { withTimezone: true }),
     settings: jsonb("settings").$type<Partial<TenantSettings>>().notNull().default({}),

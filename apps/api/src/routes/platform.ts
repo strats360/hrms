@@ -59,7 +59,7 @@ platformRoutes.get("/tenants/:id", async (c) => {
 platformRoutes.patch(
   "/tenants/:id",
   requirePlatform("super_admin"),
-  v("json", z.object({ status: z.enum(["trial", "active", "past_due", "suspended", "cancelled"]).optional(), plan: z.enum(["trial", "starter", "growth", "enterprise"]).optional(), trialEndsAt: z.string().datetime().optional() })),
+  v("json", z.object({ status: z.enum(["trial", "active", "past_due", "suspended", "cancelled"]).optional(), plan: z.string().trim().min(2).max(30).optional(), trialEndsAt: z.string().datetime().optional() })),
   async (c) => {
     const body = c.req.valid("json");
     const [row] = await c

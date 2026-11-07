@@ -42,6 +42,8 @@ import { reimbursementCategories, reimbursementClaims } from "@hrms/db";
 import { initialStatus, settleClaims } from "../src/services/reimbursements";
 import { companyBankAccounts, paymentBatches, payments } from "@hrms/db";
 import { bankInfo, bonusLines, nextBatchCode, referenceAllocator, salaryLines } from "../src/services/payments";
+import { invoices, plans } from "@hrms/db";
+import { issueInvoices } from "../src/services/billing";
 
 // ---- env ----
 const vars: Record<string, string> = {};
@@ -83,6 +85,7 @@ async function main() {
     const added = await seedPayroll(existing.id);
     await seedChallans(existing.id);
     await seedPayments(existing.id);
+    await seedBilling(existing.id);
     console.log(added ? `Added ${added} months of payroll history to the existing demo tenant.` : "Demo tenant already exists. To reseed, drop and recreate the database, then run migrations.");
     await db.$client.end();
     return;
@@ -394,6 +397,7 @@ async function main() {
   const months = await seedPayroll(tid);
   await seedChallans(tid);
   await seedPayments(tid);
+  await seedBilling(tid);
   console.log(`Payroll history: ${months} locked months`);
 
   console.log("\nDemo data ready. All demo logins use the password:", PASSWORD);
@@ -634,6 +638,34 @@ async function seedPayments(tid: string) {
         return { tenantId: tid, batchId: batch!.id, employeeId: l.employeeId, reference: ref(), amount: l.amount, description: l.description, beneficiaryName: e.holder ?? e.name, bankName: e.bankName, ifsc: e.ifsc, accountLast4: e.last4, status: missing ? "held" : "pending", failureReason: missing ? "Bank details missing" : null };
       }),
     );
+  }
+}
+
+/** The design's three plans, the demo company on Growth, and its paid invoices for this FY. */
+async function seedBilling(tid: string) {
+  const [anyPlan] = await db.select({ id: plans.id }).from(plans).limit(1);
+  if (!anyPlan) {
+    await db.insert(plans).values([
+      { key: "starter", name: "Starter", pricePerEmployee: 99, minSeats: 10, maxEmployees: 100, includedAdmins: 2, sortOrder: 1, description: "Per employee / month · up to 100 employees", features: ["Employees, attendance, leave", "Payroll + payslips", "PF / ESI / PT reports", "2 admin users"] },
+      { key: "growth", name: "Growth", pricePerEmployee: 149, minSeats: 50, maxEmployees: 1000, includedAdmins: 10, sortOrder: 2, description: "Per employee / month · 100 to 1,000 employees", features: ["Everything in Starter", "TDS, Form 16, reimbursements", "Bank files & reconciliation", "10 admin users · custom roles"] },
+      { key: "enterprise", name: "Enterprise", pricePerEmployee: null, minSeats: 500, includedAdmins: null, sortOrder: 3, description: "1,000+ employees · annual contract", features: ["Multi-entity & multi-state", "SSO, audit export, API", "Dedicated success manager", "99.9% SLA"] },
+    ]);
+  }
+  const [inv] = await db.select({ id: invoices.id }).from(invoices).where(eq(invoices.tenantId, tid)).limit(1);
+  if (inv) return;
+  const [t] = await db.select().from(tenants).where(eq(tenants.id, tid));
+  // a customer since 2019, on Growth, paying by UPI autopay
+  await db.update(tenants).set({ plan: "growth", status: t?.status === "trial" ? "active" : t?.status, createdAt: new Date("2019-06-01T00:00:00+05:30"), billingEmail: "accounts@strats360.com", paymentMethod: "UPI autopay · strats360@hdfcbank" }).where(eq(tenants.id, tid));
+  const [y, m] = today.split("-").map(Number) as [number, number];
+  const fyStart = m >= 4 ? y : y - 1;
+  for (let d = new Date(Date.UTC(fyStart, 3, 1)); d < new Date(Date.UTC(y, m - 1, 1)); d.setUTCMonth(d.getUTCMonth() + 1)) {
+    const period = d.toISOString().slice(0, 7);
+    const issued = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
+    if (issued > today) continue;
+    const paidOn = new Date(Date.parse(issued) + 2 * 86400000).toISOString().slice(0, 10);
+    // last month's invoice is still open (issued on the 1st, due in a week)
+    const open = issued.slice(0, 7) === today.slice(0, 7);
+    await issueInvoices(db, period, null, { tenantIds: [tid], issuedOn: issued, status: open ? "issued" : "paid", paidOn });
   }
 }
 
