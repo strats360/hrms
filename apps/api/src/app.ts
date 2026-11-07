@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { secureHeaders } from "hono/secure-headers";
 import type { AppEnv } from "./env";
 import { onError } from "./lib/errors";
-import { loadSession, requireAdmin, requireAuth, requireFeature, requireTenant, services } from "./lib/context";
+import { loadSession, readOnlyGuard, requireAdmin, requireAuth, requireFeature, requireTenant, services } from "./lib/context";
 import { publicRoutes } from "./routes/public";
 import { meRoutes } from "./routes/me";
 import { orgRoutes } from "./routes/org";
@@ -25,6 +25,7 @@ import { reportRoutes } from "./routes/reports";
 import { platformBillingRoutes, tenantBillingRoutes } from "./routes/billing";
 import { flagRoutes } from "./routes/flags";
 import { statutoryRoutes } from "./routes/statutory";
+import { platformSupportRoutes, tenantSupportRoutes } from "./routes/support";
 
 /** Better Auth endpoints we expose. Sign-up and everything else stays closed. */
 const AUTH_ALLOW = [
@@ -70,11 +71,12 @@ export function buildApp() {
   api.route("/platform/billing", platformBillingRoutes);
   api.route("/platform/flags", flagRoutes);
   api.route("/platform/statutory", statutoryRoutes);
+  api.route("/platform/support", platformSupportRoutes);
   api.route("/platform", platformRoutes);
 
   // Tenant-scoped routes
   const t = new Hono<AppEnv>();
-  t.use("*", requireAuth, requireTenant);
+  t.use("*", requireAuth, requireTenant, readOnlyGuard);
   // plan / feature-flag gates (before the routes they guard)
   t.use("/ess/tax/*", requireFeature("module.tds"));
   t.use("/admin/tds/*", requireFeature("module.tds"));
@@ -102,6 +104,7 @@ export function buildApp() {
   t.route("/admin/payments", paymentRoutes);
   t.route("/admin/reports", reportRoutes);
   t.route("/admin/billing", tenantBillingRoutes);
+  t.route("/admin/support", tenantSupportRoutes);
   t.route("/admin/audit", auditRoutes);
   api.route("/", t);
 

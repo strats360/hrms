@@ -42,7 +42,7 @@ import { reimbursementCategories, reimbursementClaims } from "@hrms/db";
 import { initialStatus, settleClaims } from "../src/services/reimbursements";
 import { companyBankAccounts, paymentBatches, payments } from "@hrms/db";
 import { bankInfo, bonusLines, nextBatchCode, referenceAllocator, salaryLines } from "../src/services/payments";
-import { featureFlags, invoices, plans, statutoryRules } from "@hrms/db";
+import { featureFlags, invoices, plans, statutoryRules, supportTickets, ticketMessages } from "@hrms/db";
 import { builtInValue } from "@hrms/shared";
 import { issueInvoices } from "../src/services/billing";
 
@@ -679,6 +679,28 @@ async function seedBilling(tid: string) {
       { key: "module.compliance", name: "Statutory compliance", description: "EPF, ESI, PT, LWF liabilities and return files", rollout: "all" },
     ])
     .onConflictDoNothing();
+  // two support tickets from the design: one open (with read-only access allowed), one resolved
+  const [anyTicket] = await db.select({ id: supportTickets.id }).from(supportTickets).where(eq(supportTickets.tenantId, tid)).limit(1);
+  if (!anyTicket) {
+    const [nishaU] = await db.select({ id: user.id }).from(user).where(eq(user.email, "nisha.trivedi@strats360.com"));
+    const [krupaU] = await db.select({ id: user.id }).from(user).where(eq(user.email, "krupa.joshi@strats360.com"));
+    const [meera] = await db.select({ id: user.id }).from(user).where(eq(user.email, "platform@strats360people.in"));
+    const ago = (h: number) => new Date(Date.now() - h * 3600_000);
+    const [open] = await db
+      .insert(supportTickets)
+      .values({ number: 4812, tenantId: tid, raisedBy: krupaU!.id, subject: "ESI challan amount mismatch for October", category: "compliance", priority: "P2", status: "open", allowAccess: true, responseDueAt: new Date(ago(2).getTime() + 4 * 3600_000), lastActivityAt: ago(2), createdAt: ago(2) })
+      .returning();
+    await db.insert(ticketMessages).values({ ticketId: open!.id, authorId: krupaU!.id, authorName: "Krupa Joshi", authorKind: "tenant", body: "The ESI amount on the October challan is a little lower than the employer + employee total in the payroll register. Can you check if ESI is rounding per employee or on the total?", createdAt: ago(2) });
+    const [done] = await db
+      .insert(supportTickets)
+      .values({ number: 4790, tenantId: tid, raisedBy: nishaU!.id, subject: "Form 16 Part B: previous employer income", category: "tax", priority: "P3", status: "resolved", assigneeId: meera?.id, responseDueAt: ago(24), firstResponseAt: ago(46), resolvedAt: ago(40), lastActivityAt: ago(40), createdAt: ago(48) })
+      .returning();
+    await db.insert(ticketMessages).values([
+      { ticketId: done!.id, authorId: nishaU!.id, authorName: "Nisha Trivedi", authorKind: "tenant", body: "A new joiner had a previous employer this year. Where do we enter that salary and TDS so Form 16 Part B picks it up?", createdAt: ago(48) },
+      { ticketId: done!.id, authorId: meera?.id, authorName: "Meera Iyer", authorKind: "platform", body: "The employee adds it in self-service under Tax › Declarations › Previous employer (salary and TDS), and you verify it in TDS & tax › Declarations. Part B and the monthly TDS then include it.", createdAt: ago(46) },
+      { ticketId: done!.id, authorId: nishaU!.id, authorName: "Nisha Trivedi", authorKind: "tenant", body: "Found it, thanks. Closing this.", createdAt: ago(40) },
+    ]);
+  }
   const [inv] = await db.select({ id: invoices.id }).from(invoices).where(eq(invoices.tenantId, tid)).limit(1);
   if (inv) return;
   const [t] = await db.select().from(tenants).where(eq(tenants.id, tid));

@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { employees, memberships, platformStaff, roles, tenants } from "@hrms/db";
 import type { AppEnv } from "../env";
 import { loadFlags } from "../services/flags";
+import { activeAccess } from "../services/support";
 import { evaluateFlags } from "@hrms/shared";
 
 export const meRoutes = new Hono<AppEnv>();
@@ -41,8 +42,15 @@ meRoutes.get("/", async (c) => {
   // touch last-active (best effort)
   await db.update(memberships).set({ lastActiveAt: new Date() }).where(eq(memberships.userId, s.userId));
 
+  // platform support: running read-only sessions show up as extra (view-only) companies
+  const support = staff?.status === "active" ? await activeAccess(db, s.userId) : [];
+  const supportTenants = support.length ? await db.select({ id: tenants.id, name: tenants.name, code: tenants.code, status: tenants.status, plan: tenants.plan }).from(tenants) : [];
   return c.json({
     user: { id: s.userId, name: s.name, email: s.email },
+    supportSessions: support.map((a) => {
+      const t = supportTenants.find((x) => x.id === a.access.tenantId)!;
+      return { tenantId: t.id, tenantName: t.name, tenantCode: t.code, tenantStatus: t.status, plan: t.plan, features: evaluateFlags(flags, { id: t.id, plan: t.plan }), ticketId: a.access.ticketId, ticketNumber: a.number, accessId: a.access.id, expiresAt: a.access.expiresAt };
+    }),
     platformRole: staff?.status === "active" ? staff.role : null,
     memberships: rows
       .filter((r) => r.status === "active")
