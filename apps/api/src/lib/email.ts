@@ -20,6 +20,16 @@ export class ConsoleMailer implements Mailer {
 }
 
 /** Resend (https://resend.com) over plain fetch so it runs on Workers. */
+/**
+ * Production without an email provider: nothing is sent, and the message body is
+ * never logged (it can hold password-reset and invite links).
+ */
+export class UnconfiguredMailer implements Mailer {
+  async send(msg: EmailMessage) {
+    console.warn(`[email] not sent (RESEND_API_KEY / EMAIL_FROM not set): "${msg.subject}" to ${msg.to.replace(/^[^@]+/, "***")}`);
+  }
+}
+
 export class ResendMailer implements Mailer {
   constructor(
     private apiKey: string,

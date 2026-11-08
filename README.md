@@ -207,32 +207,9 @@ The API tests rebuild the `hrms_test` database (`TEST_DATABASE_URL`, default `po
 
 ## Deploying to Cloudflare + Neon
 
-1. **Neon:** create a project (region `aws-ap-south-1`, Mumbai, keeps data in India). Copy the connection string, then run the migrations from your machine:
-   ```bash
-   DATABASE_URL="postgres://...neon.tech/neondb?sslmode=require" pnpm db:migrate
-   ```
-2. **Hyperdrive:** create it, then paste the id into `apps/api/wrangler.jsonc`:
-   ```bash
-   cd apps/api
-   npx wrangler hyperdrive create hrms-db --connection-string="postgres://...neon.tech/neondb?sslmode=require"
-   ```
-3. **R2:** `npx wrangler r2 bucket create hrms-files`
-4. **Secrets:**
-   ```bash
-   npx wrangler secret put BETTER_AUTH_SECRET   # openssl rand -base64 32
-   npx wrangler secret put ENCRYPTION_KEY       # openssl rand -base64 32, back it up, never rotate without re-encrypting
-   npx wrangler secret put RESEND_API_KEY
-   ```
-5. **Vars:** set `APP_URL` (your domain) and `EMAIL_FROM` (a verified Resend sender) in `wrangler.jsonc`.
-6. **Deploy:** run `pnpm release` from the repo root. It builds the web app and deploys one Worker with the static assets. Then add your custom domain in the Cloudflare dashboard.
-7. **First platform admin:** create your SaaS operator login:
-   ```bash
-   DATABASE_URL="postgres://...neon.tech/neondb?sslmode=require" pnpm --filter @hrms/api platform-admin -- --email you@yourcompany.in --name "Your Name"
-   ```
+Production runs as one Cloudflare Worker (API and web app), with Neon Postgres in Mumbai behind Hyperdrive and files in R2. The **Deploy** GitHub workflow does everything: tests, migrations, reference data (plans, statutory master, feature flags; never demo data), the R2 bucket and Hyperdrive, the Worker and its secrets, and a smoke test. **Rollback** undoes a bad deploy.
 
-The `Deploy` GitHub workflow does steps 1 and 6 on demand. It needs these repository secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` and `DATABASE_URL`.
-
-**Recommended Cloudflare settings:** add a WAF rate-limiting rule on `/api/public/*` and `/api/auth/*`, turn on Bot Fight Mode, and require Always Use HTTPS.
+You add the credentials to a `staging` and a `production` GitHub environment, then run the workflow. The step-by-step runbook, with the Cloudflare token permissions, Neon settings, secrets and day-to-day operations, is in [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Security notes
 

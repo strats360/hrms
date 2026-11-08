@@ -10,7 +10,8 @@
     "test": "vitest run",
     "cf-typegen": "wrangler types",
     "seed": "tsx scripts/seed.ts",
-    "platform-admin": "tsx scripts/create-platform-admin.ts"
+    "platform-admin": "tsx scripts/create-platform-admin.ts",
+    "bootstrap": "tsx scripts/reference-data.ts"
   },
   "dependencies": {
     "@hono/zod-validator": "^0.9.1",

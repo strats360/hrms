@@ -270,3 +270,14 @@ describe("access management", () => {
     expect((await kunal.patch(`/admin/access/members/${me.id}`, { status: "disabled" })).status).toBe(400);
   });
 });
+
+describe("health", () => {
+  it("reports database and configuration for the deploy smoke test", async () => {
+    const c = new Client();
+    const r = await c.get("/health?deep=1");
+    expect(r.status).toBe(200);
+    expect(r.body.checks.database).toBe(true);
+    expect(r.body.migrations).toBeGreaterThanOrEqual(9);
+    expect((await c.get("/health")).body.version).toBeTruthy();
+  });
+});

@@ -4,7 +4,7 @@ import { createDb, memberships, platformStaff, roles, tenants } from "@hrms/db";
 import { can, MODULES, type Action, type Module, type PermissionMatrix } from "@hrms/shared";
 import type { AppEnv } from "../env";
 import { createAuth } from "./auth";
-import { ConsoleMailer, ResendMailer, type Mailer } from "./email";
+import { ConsoleMailer, ResendMailer, UnconfiguredMailer, type Mailer } from "./email";
 import { forbidden, unauthorized } from "./errors";
 import { featuresFor } from "../services/flags";
 import { activeAccess, OPEN_STATUSES } from "../services/support";
@@ -22,7 +22,11 @@ export const services = createMiddleware<AppEnv>(async (c, next) => {
   if (!url) throw new Error("No database configured (HYPERDRIVE binding or DATABASE_URL)");
   const db = createDb(url, { max: 5 });
   const mailer: Mailer =
-    c.env.RESEND_API_KEY && c.env.EMAIL_FROM ? new ResendMailer(c.env.RESEND_API_KEY, c.env.EMAIL_FROM) : getDevMailer();
+    c.env.RESEND_API_KEY && c.env.EMAIL_FROM
+      ? new ResendMailer(c.env.RESEND_API_KEY, c.env.EMAIL_FROM)
+      : c.env.ENVIRONMENT === "production" || c.env.ENVIRONMENT === "staging"
+        ? new UnconfiguredMailer()
+        : getDevMailer();
   c.set("db", db);
   c.set("mailer", mailer);
   c.set("auth", createAuth(c.env, db, mailer));

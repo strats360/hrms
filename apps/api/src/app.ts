@@ -23,7 +23,9 @@ import { essClaimRoutes, reimbursementRoutes } from "./routes/reimbursements";
 import { paymentRoutes } from "./routes/payments";
 import { reportRoutes } from "./routes/reports";
 import { platformBillingRoutes, tenantBillingRoutes } from "./routes/billing";
-import { flagRoutes } from "./routes/flags";
+import { flagRoutes, RELEASE } from "./routes/flags";
+import { createDb } from "@hrms/db";
+import { sql } from "drizzle-orm";
 import { statutoryRoutes } from "./routes/statutory";
 import { platformSupportRoutes, tenantSupportRoutes } from "./routes/support";
 
@@ -50,7 +52,39 @@ export function buildApp() {
     await next();
     c.header("Cache-Control", "no-store");
   });
-  api.get("/health", (c) => c.json({ ok: true }));
+  api.get("/health", async (c) => {
+    const base = { ok: true, version: RELEASE.version, environment: c.env.ENVIRONMENT ?? "development" };
+    if (!c.req.query("deep")) return c.json(base);
+    // deep check for the deploy smoke test: database, storage and configuration
+    const checks: Record<string, boolean> = {
+      authSecret: (c.env.BETTER_AUTH_SECRET ?? "").length >= 32,
+      encryptionKey: !!c.env.ENCRYPTION_KEY,
+      files: !!c.env.FILES,
+      email: !!(c.env.RESEND_API_KEY && c.env.EMAIL_FROM),
+      database: false,
+    };
+    let migrations = 0;
+    const url = c.env.HYPERDRIVE?.connectionString ?? c.env.DATABASE_URL;
+    if (url) {
+      const db = createDb(url, { max: 1 });
+      try {
+        const [r] = await db.execute<{ n: number }>(sql`select count(*)::int as n from drizzle.__drizzle_migrations`);
+        migrations = r?.n ?? 0;
+        checks.database = true;
+      } catch (err) {
+        console.error("health: database check failed", err);
+      } finally {
+        const close = db.$client.end({ timeout: 5 });
+        try {
+          c.executionCtx.waitUntil(close);
+        } catch {
+          void close; // no execution context (Node tests)
+        }
+      }
+    }
+    const ok = checks.database && checks.authSecret && checks.encryptionKey;
+    return c.json({ ...base, ok, checks, migrations }, ok ? 200 : 503);
+  });
   api.use("*", services);
 
   api.on(["GET", "POST"], "/auth/*", (c) => {
