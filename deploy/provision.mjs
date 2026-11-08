@@ -11,6 +11,7 @@
  *   CUSTOM_DOMAIN                                 optional, e.g. hrms.strats360.com (zone must be on this account)
  *   APP_URL                                       optional; defaults to https://CUSTOM_DOMAIN or the workers.dev URL
  *   EMAIL_FROM                                    optional, e.g. "Strats360 People <people@strats360.com>"
+ *   CASHFREE_ENV                                  sandbox | production (default sandbox)
  *
  *   node deploy/provision.mjs [--dry-run]
  *
@@ -132,7 +133,7 @@ export function workerConfig({ hyperdriveId, appUrl, emailFrom, customDomain }) 
     observability: { enabled: true },
     workers_dev: !customDomain,
     ...(customDomain ? { routes: [{ pattern: customDomain, custom_domain: true }] } : {}),
-    vars: { APP_URL: appUrl, EMAIL_FROM: emailFrom ?? "", ENVIRONMENT: deployEnv },
+    vars: { APP_URL: appUrl, EMAIL_FROM: emailFrom ?? "", ENVIRONMENT: deployEnv, CASHFREE_ENV: env.CASHFREE_ENV === "production" ? "production" : "sandbox" },
     hyperdrive: [{ binding: "HYPERDRIVE", id: hyperdriveId }],
     r2_buckets: [{ binding: "FILES", bucket_name: bucket }],
   };

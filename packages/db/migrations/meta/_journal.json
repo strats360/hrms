@@ -64,6 +64,13 @@
       "when": 1794051805665,
       "tag": "0008_platform_ops",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794123431340,
+      "tag": "0009_invoice_payments",
+      "breakpoints": true
     }
   ]
 }

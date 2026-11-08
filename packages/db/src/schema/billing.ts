@@ -88,3 +88,39 @@ export const platformSettings = pgTable("platform_settings", {
   updatedBy: text("updated_by"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Online payment attempts against an invoice (one Cashfree order each). The webhook
+ * and the return page both settle the invoice; settling is idempotent.
+ */
+export const invoicePayments = pgTable(
+  "invoice_payments",
+  {
+    id: id(),
+    invoiceId: text("invoice_id")
+      .notNull()
+      .references(() => invoices.id, { onDelete: "cascade" }),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    gateway: text("gateway").notNull().default("cashfree"),
+    /** Our order id sent to the gateway (unique, retried payments get a new one). */
+    orderId: text("order_id").notNull(),
+    gatewayOrderId: text("gateway_order_id"),
+    paymentSessionId: text("payment_session_id"),
+    amount: money("amount").notNull(),
+    currency: text("currency").notNull().default("INR"),
+    /** created | paid | failed | dropped | expired */
+    status: text("status").notNull().default("created"),
+    gatewayPaymentId: text("gateway_payment_id"),
+    method: text("method"),
+    bankReference: text("bank_reference"),
+    failureReason: text("failure_reason"),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    raw: jsonb("raw").$type<Record<string, unknown>>(),
+    createdBy: text("created_by"),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("invoice_payments_order_uq").on(t.orderId), index("invoice_payments_invoice_idx").on(t.invoiceId)],
+);

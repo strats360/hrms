@@ -10,6 +10,8 @@ import { badRequest, notFound } from "../lib/errors";
 import { audit } from "../lib/audit";
 import { toCsv } from "../lib/csv";
 import { layout } from "../lib/email";
+import { attemptsFor } from "../services/online-payments";
+import { cashfreeConfig } from "../services/cashfree";
 import { activeEmployeeCounts, daysBetween, draftInvoices, getEntity, invoiceStatus, issueInvoices, overdueInvoices, periodLabel, restoreIfClear, type Invoice } from "../services/billing";
 
 const uid = (c: Context<AppEnv>) => c.get("session")!.userId;
@@ -32,7 +34,7 @@ async function emailInvoice(c: Context<AppEnv>, inv: Invoice, kind: "issued" | "
           : `Invoice ${inv.number} for ${inr(Number(inv.total))} was due on ${inv.dueOn}${overdue > 0 ? ` and is ${overdue} day${overdue === 1 ? "" : "s"} overdue` : ""}. Please pay to keep your account active.`,
         ...(entity.upiId ? [`Pay by UPI to ${entity.upiId}${entity.bankDetails ? ` or by bank transfer: ${entity.bankDetails}` : ""}. Quote ${inv.number} as the reference.`] : []),
       ],
-      cta: { label: "View invoice", url: `${c.env.APP_URL}/settings/billing` },
+      cta: cashfreeConfig(c.env) ? { label: "Pay online", url: `${c.env.APP_URL}/settings/billing?pay=${inv.id}` } : { label: "View invoice", url: `${c.env.APP_URL}/settings/billing` },
     });
     await c.get("mailer").send({ to, subject: kind === "issued" ? `Invoice ${inv.number} · ${inr(Number(inv.total))}` : `Reminder: invoice ${inv.number} is overdue`, html, text });
     return true;
@@ -136,7 +138,12 @@ platformBillingRoutes.get("/invoices", v("query", listQ), async (c) => {
 platformBillingRoutes.get("/invoices/:id", async (c) => {
   const [r] = await c.get("db").select({ inv: invoices, name: tenants.name }).from(invoices).innerJoin(tenants, eq(tenants.id, invoices.tenantId)).where(eq(invoices.id, c.req.param("id")));
   if (!r) throw notFound("Invoice");
-  return c.json({ ...shape(r.inv, r.name), entity: await getEntity(c.get("db")) });
+  return c.json({ ...shape(r.inv, r.name), entity: await getEntity(c.get("db")), onlinePayments: await attemptsFor(c.get("db"), r.inv.id) });
+});
+
+platformBillingRoutes.get("/gateway", async (c) => {
+  const cfg = cashfreeConfig(c.env);
+  return c.json({ provider: "cashfree", configured: !!cfg, mode: cfg?.mode ?? null, apiVersion: cfg?.apiVersion ?? null, webhookUrl: `${c.env.APP_URL}/api/public/payments/cashfree/webhook` });
 });
 
 // ---- billing run ----
@@ -266,13 +273,15 @@ tenantBillingRoutes.get("/", requirePerm("billing", "view"), async (c) => {
     billing: { legalName: t.legalName ?? t.name, gstin: t.gstin, state: t.state, address: t.registeredAddress, billingEmail: t.billingEmail ?? t.contactEmail, paymentMethod: t.paymentMethod },
     invoices: list.map((i) => shape(i)),
     overdue: list.filter((i) => invoiceStatus(i) === "overdue").reduce((s, i) => s + Number(i.total), 0),
+    payOnline: !!cashfreeConfig(c.env),
+    contactPhone: t.contactPhone,
   });
 });
 
 tenantBillingRoutes.get("/invoices/:id", requirePerm("billing", "view"), async (c) => {
   const [inv] = await c.get("db").select().from(invoices).where(and(eq(invoices.id, c.req.param("id")), eq(invoices.tenantId, tid(c))));
   if (!inv) throw notFound("Invoice");
-  return c.json({ ...shape(inv), entity: await getEntity(c.get("db")) });
+  return c.json({ ...shape(inv), entity: await getEntity(c.get("db")), onlinePayments: await attemptsFor(c.get("db"), inv.id), payOnline: !!cashfreeConfig(c.env) && inv.status === "issued" });
 });
 
 tenantBillingRoutes.patch("/details", requirePerm("billing", "edit"), v("json", z.object({ billingEmail: z.string().trim().email().nullable() })), async (c) => {

@@ -4,6 +4,7 @@ import type { AppEnv } from "./env";
 import { onError } from "./lib/errors";
 import { loadSession, readOnlyGuard, requireAdmin, requireAuth, requireFeature, requireTenant, services } from "./lib/context";
 import { publicRoutes } from "./routes/public";
+import { cashfreeWebhook, tenantPayRoutes } from "./routes/cashfree";
 import { meRoutes } from "./routes/me";
 import { orgRoutes } from "./routes/org";
 import { accessRoutes } from "./routes/access";
@@ -61,6 +62,7 @@ export function buildApp() {
       encryptionKey: !!c.env.ENCRYPTION_KEY,
       files: !!c.env.FILES,
       email: !!(c.env.RESEND_API_KEY && c.env.EMAIL_FROM),
+      payments: !!(c.env.CASHFREE_APP_ID && c.env.CASHFREE_SECRET_KEY),
       database: false,
     };
     let migrations = 0;
@@ -96,6 +98,7 @@ export function buildApp() {
   });
 
   api.use("*", loadSession);
+  api.route("/public/payments", cashfreeWebhook);
   api.route("/public", publicRoutes);
 
   api.use("/me/*", requireAuth);
@@ -137,6 +140,7 @@ export function buildApp() {
   t.route("/admin/reimbursements", reimbursementRoutes);
   t.route("/admin/payments", paymentRoutes);
   t.route("/admin/reports", reportRoutes);
+  t.route("/admin/billing", tenantPayRoutes);
   t.route("/admin/billing", tenantBillingRoutes);
   t.route("/admin/support", tenantSupportRoutes);
   t.route("/admin/audit", auditRoutes);

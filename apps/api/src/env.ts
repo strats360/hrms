@@ -19,6 +19,13 @@ export interface Env {
   EMAIL_FROM?: string;
   RESEND_API_KEY?: string;
   ENVIRONMENT?: string;
+  /** Cashfree Payment Gateway (subscription invoices). App ID and secret are Worker secrets. */
+  CASHFREE_APP_ID?: string;
+  CASHFREE_SECRET_KEY?: string;
+  /** sandbox | production (default sandbox) */
+  CASHFREE_ENV?: string;
+  /** PG API version header (default 2023-08-01). */
+  CASHFREE_API_VERSION?: string;
 }
 
 export interface Session {

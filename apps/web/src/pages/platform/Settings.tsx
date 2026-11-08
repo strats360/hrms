@@ -8,12 +8,14 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { ErrorState, Loading, Notice, PageHeader } from "@/components/ui/page";
+import { Tag } from "@/components/ui/tag";
 
 export default function PlatformSettings() {
   const { me } = useSession();
   const superAdmin = me?.platformRole === "super_admin";
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["platform", "settings"], queryFn: () => api.get<{ entity: InvoicingEntity }>("/platform/billing/settings") });
+  const gw = useQuery({ queryKey: ["platform", "gateway"], queryFn: () => api.get<{ provider: string; configured: boolean; mode: string | null; apiVersion: string | null; webhookUrl: string }>("/platform/billing/gateway") });
   const [f, setF] = useState<InvoicingEntity | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -34,6 +36,22 @@ export default function PlatformSettings() {
   return (
     <>
       <PageHeader title="Platform settings" sub="The company that issues invoices to tenants" />
+      <Card style={{ padding: 22 }} className="!gap-3">
+        <CardHeader title="Payment gateway · Cashfree" sub="Tenants pay invoices online by UPI, card or netbanking. Paid invoices settle automatically from Cashfree's webhook." />
+        {gw.data ? (
+          <div className="grid gap-3 text-[13.5px] sm:grid-cols-3">
+            <div>
+              <div className="text-muted text-[12px]">Status</div>
+              {gw.data.configured ? <Tag tone="ok">Connected · {gw.data.mode}</Tag> : <Tag tone="warn">Not connected</Tag>}
+            </div>
+            <div className="sm:col-span-2">
+              <div className="text-muted text-[12px]">Webhook URL (add it in Cashfree › Developers › Webhooks, for payment events)</div>
+              <code className="break-all text-[12.5px]">{gw.data.webhookUrl}</code>
+            </div>
+          </div>
+        ) : null}
+        {gw.data && !gw.data.configured ? <Notice tone="sel">Set CASHFREE_APP_ID and CASHFREE_SECRET_KEY as GitHub environment secrets and CASHFREE_ENV (sandbox or production) as a variable, then deploy. See docs/DEPLOY.md.</Notice> : null}
+      </Card>
       <Card style={{ padding: 22 }} className="!gap-3">
         <CardHeader title="Invoicing entity" sub="Printed on every invoice. Its state decides CGST + SGST or IGST." />
         <div className="grid gap-3 sm:grid-cols-2">

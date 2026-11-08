@@ -72,6 +72,8 @@ On each environment, add:
 | `BETTER_AUTH_SECRET` | from step 4 |
 | `ENCRYPTION_KEY` | from step 4 |
 | `RESEND_API_KEY` | optional at first. Without it, nothing is emailed and the deploy shows a warning |
+| `CASHFREE_APP_ID` | optional. Cashfree App ID (sandbox keys on staging, production keys on production) |
+| `CASHFREE_SECRET_KEY` | optional. Cashfree Secret Key |
 | `PLATFORM_ADMIN_PASSWORD` | only for the first deploy that creates your platform admin (at least 10 characters). Delete it afterwards |
 
 **Variables**
@@ -81,6 +83,7 @@ On each environment, add:
 | `CUSTOM_DOMAIN` | `hrms.strats360.com` (production), `hrms-staging.strats360.com` | the `workers.dev` address |
 | `EMAIL_FROM` | `Strats360 People <people@strats360.com>` | none (email off) |
 | `WORKER_NAME` | `strats360-hrms` | `strats360-hrms`, or `strats360-hrms-staging` |
+| `CASHFREE_ENV` | `production` on production, `sandbox` on staging | `sandbox` |
 
 ## 6. Deploy
 
@@ -101,6 +104,26 @@ From the platform console, create your first company under Tenants, or let compa
   - SSL/TLS › Edge Certificates: turn on Always Use HTTPS and set Minimum TLS to 1.2.
 - **Logs:** Workers & Pages › your Worker › Logs. Errors and slow requests show there (observability is on).
 
+## Online payments with Cashfree
+
+Tenants pay their subscription invoices from Settings › Billing & invoices, or from the "Pay online" link in the invoice email. They pay by UPI, card or netbanking on Cashfree's checkout. The invoice is marked paid as soon as Cashfree confirms it, and a past-due account is restored.
+
+1. In the Cashfree merchant dashboard, use **Payment Gateway** (sandbox first). Under Developers › API Keys, copy the App ID and Secret Key into the environment's `CASHFREE_APP_ID` and `CASHFREE_SECRET_KEY` secrets. Set `CASHFREE_ENV`, then deploy.
+2. Under Developers › Webhooks, add the webhook URL shown in the platform console (Platform settings › Payment gateway): `https://<your domain>/api/public/payments/cashfree/webhook`. Subscribe it to the payment success, failed and user-dropped events. Webhooks are verified with your Secret Key.
+3. For production, Cashfree has to approve your account (KYC) and whitelist your domain for checkout (Developers › Whitelisting).
+4. Test in sandbox: pay an invoice with Cashfree's test UPI ID or test cards, and check the invoice shows as paid with the Cashfree payment ID.
+5. If you use the WAF rate limit on `/api/public/*`, exclude `/api/public/payments/` so Cashfree's webhook retries aren't blocked.
+
+How it's kept safe:
+- The order amount always equals the invoice total.
+- A payment is applied only after the server asks Cashfree's API for the order status. The webhook only says which order to check, and its signature and timestamp must be valid.
+- A paid amount that doesn't match isn't applied.
+- Settling is idempotent, so retries can't double-record a payment.
+- A payment that arrives for an invoice that's already paid or void is flagged in the audit log for a refund.
+- The Secret Key lives only as a Worker secret.
+
+The API version defaults to `2023-08-01`. If Cashfree asks you to move to a newer version, set the `CASHFREE_API_VERSION` Worker variable after testing in sandbox.
+
 ## Day-to-day operations
 
 | Task | How |
@@ -108,6 +131,7 @@ From the platform console, create your first company under Tenants, or let compa
 | Deploy a change | Merge to the branch, then run **Deploy** for staging, then production |
 | Undo a bad deploy | Actions › **Rollback** (code only; database migrations aren't undone) |
 | Restore data | Neon › Branches › Restore, to a point in time. Restore into a new branch first and check it |
+| Rotate the Cashfree keys | Generate new keys in Cashfree, replace the two secrets and deploy |
 | Rotate the Cloudflare or Resend key | Replace the GitHub secret and run Deploy |
 | Rotate `BETTER_AUTH_SECRET` | Replace it and deploy. Everyone has to sign in again |
 | Add a platform staff member | Run Deploy with their email in platform_admin_email and a temporary `PLATFORM_ADMIN_PASSWORD`, or use `pnpm --filter @hrms/api platform-admin` locally with the Neon URL |

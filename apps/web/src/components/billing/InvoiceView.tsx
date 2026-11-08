@@ -115,6 +115,21 @@ export function InvoiceView({ inv }: { inv: InvoiceDetail }) {
         </div>
       </div>
       {inv.status === "void" ? <div className="text-[13px]" style={{ color: "var(--bad)" }}>Void: {inv.voidReason}</div> : null}
+      {inv.onlinePayments?.length ? (
+        <div className="no-print border-t border-[var(--color-divider)] pt-3 text-[12.5px]" data-print="hide">
+          <div className="text-muted mb-1 text-[11px] uppercase tracking-[0.08em]">Online payment attempts (Cashfree)</div>
+          {inv.onlinePayments.map((p) => (
+            <div key={p.id} className="flex flex-wrap justify-between gap-2 py-0.5">
+              <span>
+                {new Date(p.createdAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Kolkata" })} · {p.orderId}
+              </span>
+              <span>
+                {p.status === "paid" ? `Paid by ${p.method ?? "online"}${p.bankReference ? ` · ${p.bankReference}` : ""}` : p.status === "created" ? "Checkout open" : `${p.status[0]!.toUpperCase()}${p.status.slice(1)}${p.failureReason ? `: ${p.failureReason}` : ""}`}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -129,7 +144,7 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 /** Loads an invoice (platform or tenant endpoint) and shows it with a print button. */
-export function InvoiceDialog({ path, onClose }: { path: string | null; onClose: () => void }) {
+export function InvoiceDialog({ path, onClose, onPay }: { path: string | null; onClose: () => void; onPay?: (id: string) => void }) {
   const q = useQuery({ queryKey: ["invoice", path], queryFn: () => api.get<InvoiceDetail>(path!), enabled: !!path });
   return (
     <Dialog
@@ -140,9 +155,14 @@ export function InvoiceDialog({ path, onClose }: { path: string | null; onClose:
       footer={
         <>
           <Button onClick={onClose}>Close</Button>
-          <Button variant="primary" disabled={!q.data} onClick={() => window.print()}>
+          <Button variant={onPay && q.data?.payOnline ? "secondary" : "primary"} disabled={!q.data} onClick={() => window.print()}>
             <Printer size={15} /> Download PDF
           </Button>
+          {onPay && q.data?.payOnline ? (
+            <Button variant="primary" onClick={() => onPay(q.data!.id)}>
+              Pay {inr(q.data.total)} now
+            </Button>
+          ) : null}
         </>
       }
     >

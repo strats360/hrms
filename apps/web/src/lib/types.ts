@@ -646,8 +646,22 @@ export interface InvoicingEntity {
   upiId: string | null;
   email: string | null;
 }
+export interface OnlinePayment {
+  id: string;
+  orderId: string;
+  amount: number;
+  status: "created" | "paid" | "failed" | "dropped" | "expired";
+  method: string | null;
+  gatewayPaymentId: string | null;
+  bankReference: string | null;
+  failureReason: string | null;
+  paidAt: string | null;
+  createdAt: string;
+}
 export interface InvoiceDetail extends Invoice {
   entity: InvoicingEntity;
+  onlinePayments?: OnlinePayment[];
+  payOnline?: boolean;
 }
 export interface TenantBilling {
   status: string;
@@ -660,6 +674,8 @@ export interface TenantBilling {
   billing: { legalName: string; gstin: string | null; state: string | null; address: string | null; billingEmail: string | null; paymentMethod: string | null };
   invoices: Invoice[];
   overdue: number;
+  payOnline: boolean;
+  contactPhone: string | null;
 }
 
 // ---------------------------------------------------------------------------

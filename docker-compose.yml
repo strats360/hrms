@@ -36,6 +36,10 @@ services:
       SEED_DEMO: ${SEED_DEMO:-true}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
+      # Cashfree sandbox keys to try online invoice payments locally
+      CASHFREE_APP_ID: ${CASHFREE_APP_ID:-}
+      CASHFREE_SECRET_KEY: ${CASHFREE_SECRET_KEY:-}
+      CASHFREE_ENV: ${CASHFREE_ENV:-sandbox}
     volumes:
       - r2data:/data/wrangler
 
