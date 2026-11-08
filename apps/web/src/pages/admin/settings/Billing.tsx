@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
 import { ErrorState, KV, Loading, Notice } from "@/components/ui/page";
 import { InvoiceDialog, InvoiceStatusTag } from "@/components/billing/InvoiceView";
+import { AutopayCard } from "@/components/billing/AutopayCard";
 
 export default function Billing() {
   const { can } = useSession();
@@ -151,6 +152,7 @@ export default function Billing() {
         <StatCard label="Next invoice" value={d.nextInvoice ? inr(d.nextInvoice.total) : "—"} meta={d.nextInvoice ? `${fmtDate(d.nextInvoice.date)} · ${inr(d.nextInvoice.subtotal)} + 18% GST` : "Nothing due"} />
         <StatCard label="Payment method" value={d.billing.paymentMethod?.split(" · ")[0] ?? (d.payOnline ? "Pay online" : "Bank transfer")} meta={d.billing.paymentMethod?.split(" · ").slice(1).join(" · ") || (d.payOnline ? "UPI, cards or netbanking through Cashfree" : "UPI or NEFT against each invoice")} />
       </div>
+      <AutopayCard />
       <TableCard>
         <CardHeader title="Invoices" sub="Download any invoice as a PDF for your records and GST input credit" />
         <DataTable

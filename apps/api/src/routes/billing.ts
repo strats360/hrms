@@ -11,6 +11,7 @@ import { audit } from "../lib/audit";
 import { toCsv } from "../lib/csv";
 import { layout } from "../lib/email";
 import { attemptsFor } from "../services/online-payments";
+import { activeMandate, methodLabel, scheduleAutopay } from "../services/autopay";
 import { cashfreeConfig } from "../services/cashfree";
 import { activeEmployeeCounts, daysBetween, draftInvoices, getEntity, invoiceStatus, issueInvoices, overdueInvoices, periodLabel, restoreIfClear, type Invoice } from "../services/billing";
 
@@ -32,6 +33,7 @@ async function emailInvoice(c: Context<AppEnv>, inv: Invoice, kind: "issued" | "
         kind === "issued"
           ? `Your invoice for ${periodLabel(inv.period)} is ${inr(Number(inv.total))} (${inv.seats} employees on the ${inv.planName} plan, GST included). It's due on ${inv.dueOn}.`
           : `Invoice ${inv.number} for ${inr(Number(inv.total))} was due on ${inv.dueOn}${overdue > 0 ? ` and is ${overdue} day${overdue === 1 ? "" : "s"} overdue` : ""}. Please pay to keep your account active.`,
+        ...(kind === "issued" && (await activeMandate(c.get("db"), inv.tenantId)) ? ["It will be collected by autopay after your bank's pre-debit notice, unless it's above your autopay limit."] : []),
         ...(entity.upiId ? [`Pay by UPI to ${entity.upiId}${entity.bankDetails ? ` or by bank transfer: ${entity.bankDetails}` : ""}. Quote ${inv.number} as the reference.`] : []),
       ],
       cta: cashfreeConfig(c.env) ? { label: "Pay online", url: `${c.env.APP_URL}/settings/billing?pay=${inv.id}` } : { label: "View invoice", url: `${c.env.APP_URL}/settings/billing` },
@@ -138,7 +140,20 @@ platformBillingRoutes.get("/invoices", v("query", listQ), async (c) => {
 platformBillingRoutes.get("/invoices/:id", async (c) => {
   const [r] = await c.get("db").select({ inv: invoices, name: tenants.name }).from(invoices).innerJoin(tenants, eq(tenants.id, invoices.tenantId)).where(eq(invoices.id, c.req.param("id")));
   if (!r) throw notFound("Invoice");
-  return c.json({ ...shape(r.inv, r.name), entity: await getEntity(c.get("db")), onlinePayments: await attemptsFor(c.get("db"), r.inv.id) });
+  const m = await activeMandate(c.get("db"), r.inv.tenantId);
+  return c.json({ ...shape(r.inv, r.name), entity: await getEntity(c.get("db")), onlinePayments: await attemptsFor(c.get("db"), r.inv.id), autopay: m ? { label: methodLabel(m), maxAmount: Number(m.maxAmount) } : null });
+});
+
+/** Charge an unpaid invoice against the tenant's autopay mandate (e.g. after a failure, once the bank is sorted). */
+platformBillingRoutes.post("/invoices/:id/autopay", finance, async (c) => {
+  const cfg = cashfreeConfig(c.env);
+  if (!cfg) throw badRequest("Cashfree isn't configured");
+  const [inv] = await c.get("db").select().from(invoices).where(eq(invoices.id, c.req.param("id")));
+  if (!inv) throw notFound("Invoice");
+  const r = await scheduleAutopay(c.get("db"), cfg, inv, uid(c));
+  if (!r.scheduled) throw badRequest(r.reason);
+  await audit(c, { tenantId: inv.tenantId, action: "platform.autopay_charge", entity: "invoice", entityId: inv.id, summary: `Scheduled an autopay charge for ${inv.number}` });
+  return c.json({ scheduledFor: r.attempt.scheduledFor, orderId: r.attempt.orderId });
 });
 
 platformBillingRoutes.get("/gateway", async (c) => {
@@ -158,9 +173,15 @@ platformBillingRoutes.post("/run", finance, v("json", billingRunSchema), async (
   if (b.period >= todayIST().slice(0, 7)) throw badRequest("Bill a month after it ends. The current month can be billed from the 1st of next month.");
   const created = await issueInvoices(c.get("db"), b.period, uid(c), { tenantIds: b.tenantIds });
   let emailed = 0;
-  for (const inv of created) if (await emailInvoice(c, inv, "issued")) emailed++;
+  let autopay = 0;
+  const cfg = cashfreeConfig(c.env);
+  for (const inv of created) {
+    // charge tenants with an active mandate (debited after the bank's pre-debit notice)
+    if (cfg && (await scheduleAutopay(c.get("db"), cfg, inv, uid(c))).scheduled) autopay++;
+    if (await emailInvoice(c, inv, "issued")) emailed++;
+  }
   await audit(c, { tenantId: null, action: "platform.billing_run", entity: "invoice", summary: `Billing run for ${periodLabel(b.period)}: ${created.length} invoices, ${inr(created.reduce((s, i) => s + Number(i.total), 0))}` });
-  return c.json({ created: created.length, emailed, total: created.reduce((s, i) => s + Number(i.total), 0) }, 201);
+  return c.json({ created: created.length, emailed, autopay, total: created.reduce((s, i) => s + Number(i.total), 0) }, 201);
 });
 
 // ---- payments, voids, reminders ----

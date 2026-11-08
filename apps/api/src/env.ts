@@ -26,6 +26,8 @@ export interface Env {
   CASHFREE_ENV?: string;
   /** PG API version header (default 2023-08-01). */
   CASHFREE_API_VERSION?: string;
+  /** Subscriptions (autopay) API version header (default 2025-01-01). */
+  CASHFREE_SUBS_API_VERSION?: string;
 }
 
 export interface Session {

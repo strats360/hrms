@@ -672,7 +672,7 @@ async function seedBilling(tid: string) {
   if (inv) return;
   const [t] = await db.select().from(tenants).where(eq(tenants.id, tid));
   // a customer since 2019, on Growth, paying by UPI autopay
-  await db.update(tenants).set({ plan: "growth", status: t?.status === "trial" ? "active" : t?.status, createdAt: new Date("2019-06-01T00:00:00+05:30"), billingEmail: "accounts@strats360.com", paymentMethod: "UPI autopay · strats360@hdfcbank" }).where(eq(tenants.id, tid));
+  await db.update(tenants).set({ plan: "growth", status: t?.status === "trial" ? "active" : t?.status, createdAt: new Date("2019-06-01T00:00:00+05:30"), billingEmail: "accounts@strats360.com", paymentMethod: null }).where(eq(tenants.id, tid));
   const [y, m] = today.split("-").map(Number) as [number, number];
   const fyStart = m >= 4 ? y : y - 1;
   for (let d = new Date(Date.UTC(fyStart, 3, 1)); d < new Date(Date.UTC(y, m - 1, 1)); d.setUTCMonth(d.getUTCMonth() + 1)) {

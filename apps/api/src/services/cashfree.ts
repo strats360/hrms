@@ -10,6 +10,8 @@ export interface CashfreeConfig {
   mode: "sandbox" | "production";
   base: string;
   apiVersion: string;
+  /** Subscriptions API version (autopay). */
+  subsApiVersion: string;
 }
 
 export function cashfreeConfig(env: Env): CashfreeConfig | null {
@@ -21,6 +23,7 @@ export function cashfreeConfig(env: Env): CashfreeConfig | null {
     mode,
     base: mode === "production" ? "https://api.cashfree.com/pg" : "https://sandbox.cashfree.com/pg",
     apiVersion: env.CASHFREE_API_VERSION || "2023-08-01",
+    subsApiVersion: env.CASHFREE_SUBS_API_VERSION || "2025-01-01",
   };
 }
 
@@ -34,11 +37,11 @@ export class CashfreeError extends Error {
   }
 }
 
-async function call<T>(cfg: CashfreeConfig, method: "GET" | "POST", path: string, body?: unknown, idempotencyKey?: string): Promise<T> {
+export async function call<T>(cfg: CashfreeConfig, method: "GET" | "POST", path: string, body?: unknown, idempotencyKey?: string, apiVersion?: string): Promise<T> {
   const headers: Record<string, string> = {
     "x-client-id": cfg.appId,
     "x-client-secret": cfg.secret,
-    "x-api-version": cfg.apiVersion,
+    "x-api-version": apiVersion ?? cfg.apiVersion,
     Accept: "application/json",
   };
   if (body) headers["Content-Type"] = "application/json";

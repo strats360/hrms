@@ -127,6 +127,7 @@ export default function Billing() {
               ? [
                   { label: "Record payment", onSelect: () => setPaying(i) },
                   { label: "Send reminder", onSelect: () => remind.mutate(i.id) },
+                  { label: "Charge via autopay", onSelect: () => api.post<{ scheduledFor: string }>(`/platform/billing/invoices/${i.id}/autopay`).then((r) => toast.success(`Autopay debit scheduled for ${fmtDate(r.scheduledFor.slice(0, 10))}`)).catch((e) => toast.error(errorMessage(e))) },
                   ...(me?.platformRole === "super_admin" ? [{ label: "Void invoice", danger: true, onSelect: () => setVoiding(i) }] : []),
                 ]
               : []),
@@ -243,9 +244,9 @@ function RunDialog({ open, onClose, onDone }: { open: boolean; onClose: () => vo
   const [period, setPeriod] = useState(prevMonth());
   const preview = useQuery({ queryKey: ["platform", "billing", "preview", period], queryFn: () => api.post<{ drafts: Draft[]; count: number; total: number }>("/platform/billing/run/preview", { period }), enabled: open });
   const run = useMutation({
-    mutationFn: () => api.post<{ created: number; emailed: number; total: number }>("/platform/billing/run", { period }),
+    mutationFn: () => api.post<{ created: number; emailed: number; autopay: number; total: number }>("/platform/billing/run", { period }),
     onSuccess: (r) => {
-      toast.success(`${r.created} invoice${r.created === 1 ? "" : "s"} issued (${inr(r.total)}), ${r.emailed} emailed`);
+      toast.success(`${r.created} invoice${r.created === 1 ? "" : "s"} issued (${inr(r.total)}), ${r.emailed} emailed${r.autopay ? `, ${r.autopay} on autopay` : ""}`);
       onDone();
       onClose();
     },

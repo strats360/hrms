@@ -1,0 +1,99 @@
+import { and, desc, eq, inArray, ne } from "drizzle-orm";
+import { billingMandates, invoicePayments, tenants, type Database } from "@hrms/db";
+import type { CashfreeConfig, CfPayment } from "./cashfree";
+import { chargeSubscription, getSubscription, getSubscriptionPayment, mandateStatus, type CfSubPayment } from "./cashfree-subscriptions";
+import { applyPayment, type Attempt } from "./online-payments";
+import type { Invoice } from "./billing";
+
+export type Mandate = typeof billingMandates.$inferSelect;
+export const AUTOPAY_GATEWAY = "cashfree_autopay";
+/** UPI needs the bank's pre-debit notice at least 24 hours before the debit. */
+const PRE_DEBIT_HOURS = 26;
+
+export async function activeMandate(db: Database, tenantId: string) {
+  const [m] = await db.select().from(billingMandates).where(and(eq(billingMandates.tenantId, tenantId), eq(billingMandates.status, "active"))).orderBy(desc(billingMandates.authorizedAt)).limit(1);
+  return m ?? null;
+}
+
+export async function latestMandate(db: Database, tenantId: string) {
+  const [m] = await db.select().from(billingMandates).where(eq(billingMandates.tenantId, tenantId)).orderBy(desc(billingMandates.createdAt)).limit(1);
+  return m ?? null;
+}
+
+export const methodLabel = (m: Pick<Mandate, "method" | "payer">) => `${m.method === "upi" ? "UPI autopay" : "Bank e-mandate"}${m.payer ? ` · ${m.payer}` : ""}`;
+
+/** Refresh a mandate from Cashfree. Activating one retires any older active mandate. */
+export async function syncMandate(db: Database, cfg: CashfreeConfig, m: Mandate) {
+  const s = await getSubscription(cfg, m.subscriptionId);
+  const status = mandateStatus(s.status);
+  const [row] = await db
+    .update(billingMandates)
+    .set({
+      status,
+      gatewayStatus: s.status,
+      gatewaySubscriptionId: s.cfSubscriptionId ?? m.gatewaySubscriptionId,
+      payer: s.payer ?? m.payer,
+      authorizedAt: status === "active" && !m.authorizedAt ? new Date() : m.authorizedAt,
+      cancelledAt: status === "cancelled" && !m.cancelledAt ? new Date() : m.cancelledAt,
+      raw: s.raw,
+    })
+    .where(eq(billingMandates.id, m.id))
+    .returning();
+  const fresh = row ?? m;
+  if (status === "active" && m.status !== "active") {
+    await db.update(billingMandates).set({ status: "cancelled", cancelledAt: new Date(), failureReason: "Replaced by a newer mandate" }).where(and(eq(billingMandates.tenantId, m.tenantId), eq(billingMandates.status, "active"), ne(billingMandates.id, m.id)));
+    await db.update(tenants).set({ paymentMethod: methodLabel(fresh) }).where(eq(tenants.id, m.tenantId));
+  }
+  if ((status === "cancelled" || status === "expired") && m.status === "active") await db.update(tenants).set({ paymentMethod: null }).where(eq(tenants.id, m.tenantId));
+  return { mandate: fresh, changed: status !== m.status };
+}
+
+export type ScheduleResult = { scheduled: true; attempt: Attempt } | { scheduled: false; reason: string };
+
+/** Charge an invoice against the tenant's active mandate (no-op if one is already pending or paid). */
+export async function scheduleAutopay(db: Database, cfg: CashfreeConfig, inv: Invoice, userId: string | null): Promise<ScheduleResult> {
+  if (inv.status !== "issued") return { scheduled: false, reason: "Invoice isn't open" };
+  const m = await activeMandate(db, inv.tenantId);
+  if (!m) return { scheduled: false, reason: "No active autopay mandate" };
+  if (Number(inv.total) > Number(m.maxAmount)) return { scheduled: false, reason: `Invoice is above the autopay limit of ₹${Number(m.maxAmount).toLocaleString("en-IN")}` };
+  const [existing] = await db
+    .select()
+    .from(invoicePayments)
+    .where(and(eq(invoicePayments.invoiceId, inv.id), eq(invoicePayments.gateway, AUTOPAY_GATEWAY), inArray(invoicePayments.status, ["created", "paid"])))
+    .limit(1);
+  if (existing) return { scheduled: true, attempt: existing };
+  const paymentId = `AP-${inv.number}-${crypto.randomUUID().replace(/-/g, "").slice(0, 6)}`;
+  const scheduleAt = new Date(Date.now() + PRE_DEBIT_HOURS * 3600_000);
+  const [attempt] = await db
+    .insert(invoicePayments)
+    .values({ invoiceId: inv.id, tenantId: inv.tenantId, gateway: AUTOPAY_GATEWAY, orderId: paymentId, amount: Number(inv.total), mandateId: m.id, scheduledFor: scheduleAt, method: m.method, createdBy: userId })
+    .returning();
+  try {
+    const p = await chargeSubscription(cfg, { subscriptionId: m.subscriptionId, paymentId, amount: Number(inv.total), scheduleAt, remarks: `${inv.number} subscription` });
+    const [a] = await db.update(invoicePayments).set({ gatewayPaymentId: p.cfPaymentId, raw: p.raw }).where(eq(invoicePayments.id, attempt!.id)).returning();
+    // a charge can also come back already settled or rejected
+    if (p.status === "SUCCESS" || p.status === "FAILED") await applyPayment(db, a ?? attempt!, toCfPayment(p, m.method));
+    return { scheduled: true, attempt: a ?? attempt! };
+  } catch (e) {
+    await db.update(invoicePayments).set({ status: "failed", failureReason: (e as Error).message }).where(eq(invoicePayments.id, attempt!.id));
+    return { scheduled: false, reason: `Cashfree didn't accept the charge: ${(e as Error).message}` };
+  }
+}
+
+function toCfPayment(p: CfSubPayment, method: string): CfPayment {
+  const st = p.status === "SUCCESS" ? "SUCCESS" : ["FAILED", "CANCELLED", "DECLINED", "REJECTED"].includes(p.status) ? "FAILED" : "PENDING";
+  return { cf_payment_id: p.cfPaymentId ?? p.paymentId, payment_status: st, payment_amount: p.amount, payment_group: (p.method ?? method).toLowerCase().includes("upi") ? "upi" : "enach", bank_reference: p.bankReference, payment_time: p.time ?? undefined, payment_message: p.message ?? undefined };
+}
+
+/** Refresh an autopay charge from Cashfree and settle the invoice if it went through. */
+export async function syncCharge(db: Database, cfg: CashfreeConfig, attempt: Attempt) {
+  const [m] = attempt.mandateId ? await db.select().from(billingMandates).where(eq(billingMandates.id, attempt.mandateId)) : [];
+  if (!m) return null;
+  const p = await getSubscriptionPayment(cfg, m.subscriptionId, attempt.orderId);
+  return applyPayment(db, attempt, toCfPayment(p, m.method));
+}
+
+/** A sensible limit: half as much again as the latest invoice, rounded up to ₹1,000. */
+export function suggestedLimit(latestTotal: number) {
+  return Math.max(5000, Math.ceil((latestTotal * 1.5) / 1000) * 1000);
+}

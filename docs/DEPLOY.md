@@ -122,6 +122,18 @@ How it's kept safe:
 - A payment that arrives for an invoice that's already paid or void is flagged in the audit log for a refund.
 - The Secret Key lives only as a Worker secret.
 
+### Autopay (Cashfree Subscriptions)
+
+Tenants can switch on autopay under Settings › Billing & invoices. Each company has one on-demand mandate with a limit per invoice. Every billing run then schedules a debit for each new invoice under that limit, at least 26 hours ahead, so the bank's pre-debit notice goes out first. The invoice settles from the webhook, checked against Cashfree's API, and a failed debit emails the tenant. Platform finance can retry a charge from Billing & invoices › Charge via autopay.
+
+1. Ask Cashfree to enable **Subscriptions** (UPI autopay and eNACH) on your account. It's a separate product from Payment Gateway, with its own approval.
+2. In the Subscriptions section of the dashboard, add the same webhook URL and subscribe it to the subscription status and payment events.
+3. Test in sandbox: set up a mandate, approve it with the sandbox flow, run billing for a month, then trigger a test debit from the Cashfree dashboard.
+
+**Limits to explain to customers:** under RBI e-mandate rules, UPI autopay debits above ₹15,000 need the payer to approve each one, so the app only offers UPI autopay up to ₹15,000 a month. Larger invoices should use a bank e-mandate (eNACH), which needs net banking or a debit card to approve, and a day or two for the bank to activate.
+
+The Subscriptions API version defaults to `2025-01-01` (`CASHFREE_SUBS_API_VERSION` to change it).
+
 The API version defaults to `2023-08-01`. If Cashfree asks you to move to a newer version, set the `CASHFREE_API_VERSION` Worker variable after testing in sandbox.
 
 ## Day-to-day operations

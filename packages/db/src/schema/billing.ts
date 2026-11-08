@@ -119,8 +119,43 @@ export const invoicePayments = pgTable(
     paidAt: timestamp("paid_at", { withTimezone: true }),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     raw: jsonb("raw").$type<Record<string, unknown>>(),
+    /** Autopay: the mandate charged, and when the debit is scheduled. */
+    mandateId: text("mandate_id"),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
     createdBy: text("created_by"),
     ...timestamps,
   },
   (t) => [uniqueIndex("invoice_payments_order_uq").on(t.orderId), index("invoice_payments_invoice_idx").on(t.invoiceId)],
+);
+
+/**
+ * Autopay mandate (Cashfree Subscriptions, on-demand plan): the tenant authorises
+ * debits up to maxAmount each time, by UPI autopay or bank e-mandate (eNACH).
+ * Status: initialized | pending | active | paused | cancelled | failed | expired
+ */
+export const billingMandates = pgTable(
+  "billing_mandates",
+  {
+    id: id(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    gateway: text("gateway").notNull().default("cashfree"),
+    subscriptionId: text("subscription_id").notNull(),
+    gatewaySubscriptionId: text("gateway_subscription_id"),
+    sessionId: text("session_id"),
+    method: text("method").notNull().default("upi"), // upi | enach
+    maxAmount: money("max_amount").notNull(),
+    status: text("status").notNull().default("initialized"),
+    gatewayStatus: text("gateway_status"),
+    /** Masked payer detail for display (VPA or bank account). */
+    payer: text("payer"),
+    authorizedAt: timestamp("authorized_at", { withTimezone: true }),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    failureReason: text("failure_reason"),
+    raw: jsonb("raw").$type<Record<string, unknown>>(),
+    createdBy: text("created_by"),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("billing_mandates_sub_uq").on(t.subscriptionId), index("billing_mandates_tenant_idx").on(t.tenantId, t.status)],
 );
