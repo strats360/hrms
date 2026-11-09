@@ -100,7 +100,12 @@ export default function Requests() {
       },
       { id: "code", header: "Request", accessorFn: (r) => r.code },
       { id: "applied", header: "Applied", accessorFn: (r) => r.createdAt, cell: ({ getValue }) => fmtDate(getValue() as string) },
-      { id: "status", header: "Status", accessorFn: (r) => r.status, cell: ({ getValue }) => <StatusTag status={getValue() as string} /> },
+      { id: "status", header: "Status", accessorFn: (r) => r.status, cell: ({ row: { original: r } }) => (
+        <div>
+          <StatusTag status={r.status} />
+          {r.status === "pending" && r.waitingOn ? <div className={`text-[12px] ${r.waitingOn.yourTurn ? "font-medium" : "text-muted"}`}>{r.waitingOn.yourTurn && !r.waitingOn.asHr ? "Your approval" : `With ${r.waitingOn.label}${r.waitingOn.asHr ? " (HR can approve)" : ""}`}{r.waitingOn.of > 1 ? ` · step ${r.waitingOn.at} of ${r.waitingOn.of}` : ""}</div> : null}
+        </div>
+      ) },
     ],
     [],
   );
@@ -141,19 +146,19 @@ export default function Requests() {
           bulkActions={
             canApprove && status === "pending"
               ? [
-                  { label: "Approve", onRun: async (sel) => void (await decide.mutateAsync({ ids: sel.filter((r) => !isOwn(r)).map((r) => r.id), decision: "approved" })) },
-                  { label: "Reject", onRun: (sel) => setReject(sel.filter((r) => !isOwn(r)).map((r) => r.id)) },
+                  { label: "Approve", onRun: async (sel) => void (await decide.mutateAsync({ ids: sel.filter((r) => !isOwn(r) && r.waitingOn?.yourTurn !== false).map((r) => r.id), decision: "approved" })) },
+                  { label: "Reject", onRun: (sel) => setReject(sel.filter((r) => !isOwn(r) && r.waitingOn?.yourTurn !== false).map((r) => r.id)) },
                 ]
               : undefined
           }
           rowActions={(r) => {
             const items = [];
-            if (r.status === "pending" && canApprove && !isOwn(r)) {
+            if (r.status === "pending" && canApprove && !isOwn(r) && r.waitingOn?.yourTurn !== false) {
               items.push({ label: "Approve", onSelect: () => decide.mutate({ ids: [r.id], decision: "approved" }) });
               items.push({ label: "Reject", danger: true, onSelect: () => setReject([r.id]) });
             }
             if ((r.status === "approved" || r.status === "pending") && can("leave", "edit")) items.push({ label: "Cancel leave", danger: true, onSelect: () => setCancel(r) });
-            if (!items.length) items.push({ label: isOwn(r) && r.status === "pending" ? "You can't decide your own leave" : "No actions", disabled: true, onSelect: () => {} });
+            if (!items.length) items.push({ label: isOwn(r) && r.status === "pending" ? "You can't decide your own leave" : r.status === "pending" && r.waitingOn ? `Waiting for ${r.waitingOn.label}` : "No actions", disabled: true, onSelect: () => {} });
             return items;
           }}
         />

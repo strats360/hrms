@@ -121,7 +121,17 @@ export interface LeaveType {
   active: boolean;
 }
 
+export interface WaitingOn {
+  step: "manager" | "skip_manager" | "hr";
+  label: string;
+  at: number;
+  of: number;
+  yourTurn: boolean;
+  /** HR stepping in for another approver's step. */
+  asHr?: boolean;
+}
 export interface LeaveRequest {
+  waitingOn?: WaitingOn | null;
   id: string;
   code: string;
   employeeId: string;

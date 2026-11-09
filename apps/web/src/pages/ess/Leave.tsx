@@ -84,6 +84,7 @@ export default function EssLeavePage() {
               </div>
               <div className="flex items-center gap-2">
                 <StatusTag status={r.status} />
+                {r.status === "pending" && r.waitingOn ? <div className="text-muted text-[11.5px]">With {r.waitingOn.label}{r.waitingOn.of > 1 ? ` (${r.waitingOn.at} of ${r.waitingOn.of})` : ""}</div> : null}
                 {cancellable ? (
                   <Button size="sm" variant="ghost" loading={cancel.isPending && cancel.variables === r.id} onClick={() => { if (confirm(`Cancel ${r.code}?`)) cancel.mutate(r.id); }}>
                     Cancel

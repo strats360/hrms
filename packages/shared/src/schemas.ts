@@ -10,6 +10,7 @@ import {
 } from "./constants";
 import { EXIT_TYPES } from "./fnf";
 import { validIpRule } from "./punch-rules";
+import { APPROVAL_STEPS } from "./approvals";
 import { WAGE_CATEGORIES } from "./statutory";
 
 // ---------- primitives ----------
@@ -563,3 +564,10 @@ export const compOffRequestSchema = z.object({
   reason: trimmed(300).min(3, "Say briefly what the work was"),
 });
 export const compOffGrantSchema = compOffRequestSchema.extend({ employeeId: z.string().min(1), days: z.union([z.literal(0.5), z.literal(1)]) });
+
+// ---------- approval chains ----------
+const stepList = z.array(z.enum(APPROVAL_STEPS)).min(1, "Add at least one step").max(3);
+export const approvalPolicySchema = z.object({
+  leave: z.object({ steps: stepList, longLeaveDays: z.coerce.number().int().min(1).max(365).nullable(), longSteps: stepList }),
+  attendance: z.object({ steps: stepList }),
+});

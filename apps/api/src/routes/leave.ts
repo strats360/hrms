@@ -2,6 +2,9 @@ import { Hono, type Context } from "hono";
 import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { departments, employees, holidays, leaveBalances, leaveRequests, leaveTypes } from "@hrms/db";
 import {
+  can,
+  waitingLabel,
+  type ResolvedStep,
   bulkDecisionSchema,
   decisionSchema,
   fmtDate,
@@ -20,6 +23,8 @@ import { audit } from "../lib/audit";
 import { toCsv } from "../lib/csv";
 import { applyLeave, balanceSummary, cancelLeave, decideLeave, ensureBalances } from "../services/leave";
 import { inScope, teamScope } from "../services/scope";
+import { approvalPolicy, approvalScope, chainFor, recordDecision, waitingOn } from "../services/approvals";
+import { layout } from "../lib/email";
 import { notifyLeaveDecision } from "../services/notify";
 
 export const leaveRoutes = new Hono<AppEnv>();
@@ -35,7 +40,7 @@ const listQuery = z.object({
 leaveRoutes.get("/requests", requirePerm("leave", "view"), v("query", listQuery), async (c) => {
   const q = c.req.valid("query");
   const tid = c.get("tenant").tenantId;
-  const scope = await teamScope(c, "leave");
+  const scope = await approvalScope(c, "leave", "leave");
   const conds = [eq(leaveRequests.tenantId, tid)];
   if (q.status) conds.push(inArray(leaveRequests.status, q.status.split(",")));
   if (scope) conds.push(inArray(leaveRequests.employeeId, scope.length ? scope : ["-"]));
@@ -59,7 +64,22 @@ leaveRoutes.get("/requests", requirePerm("leave", "view"), v("query", listQuery)
     .where(and(...conds))
     .orderBy(desc(leaveRequests.createdAt))
     .limit(1000);
-  return c.json(rows.map((x) => ({ ...x.r, employeeName: x.employeeName, employeeCode: x.employeeCode, department: x.department, typeName: x.typeName, typeCode: x.typeCode })));
+  // where each pending request is in its approval chain, and whether it's this person's turn
+  const db = c.get("db");
+  const policy = await approvalPolicy(db, tid);
+  const t = c.get("tenant");
+  const isHr = can(t.permissions, "leave", "configure");
+  const out = [];
+  for (const x of rows) {
+    let waiting = null;
+    if (x.r.status === "pending") {
+      const chain = await chainFor(db, tid, "leave", x.r.employeeId, Number(x.r.days), policy);
+      waiting = waitingOn(chain, x.r.approvals);
+      if (waiting) waiting = { ...waiting, yourTurn: x.r.employeeId !== t.employeeId && (isHr || waiting.approverEmployeeId === t.employeeId), asHr: isHr && waiting.step !== "hr" && waiting.approverEmployeeId !== t.employeeId };
+    }
+    out.push({ ...x.r, employeeName: x.employeeName, employeeCode: x.employeeCode, department: x.department, typeName: x.typeName, typeCode: x.typeCode, waitingOn: waiting });
+  }
+  return c.json(out);
 });
 
 leaveRoutes.post("/requests", requirePerm("leave", "edit"), v("json", leaveApplySchema), async (c) => {
@@ -71,13 +91,39 @@ leaveRoutes.post("/requests", requirePerm("leave", "edit"), v("json", leaveApply
   return c.json(request, 201);
 });
 
+/** Email the next approver in the chain (managers; HR sees it in their queue). */
+async function notifyNextApprover(c: Context<AppEnv>, req: typeof leaveRequests.$inferSelect, next: ResolvedStep | null | undefined) {
+  if (!next?.approverEmployeeId) return;
+  try {
+    const db = c.get("db");
+    const [a] = await db.select({ email: employees.workEmail }).from(employees).where(eq(employees.id, next.approverEmployeeId));
+    const [e] = await db.select({ name: employees.fullName }).from(employees).where(eq(employees.id, req.employeeId));
+    if (!a) return;
+    const { html, text } = layout({ company: "Strats360 People", heading: `Leave to approve: ${e?.name ?? req.code}`, paragraphs: [`${e?.name} has asked for ${req.days} day${Number(req.days) === 1 ? "" : "s"} of leave from ${req.startDate} to ${req.endDate}. It's been approved so far and needs your approval next.`], cta: { label: "Review leave", url: `${c.env.APP_URL}/leave` } });
+    await c.get("mailer").send({ to: a.email, subject: `Leave to approve: ${e?.name ?? req.code}`, html, text });
+  } catch (err) {
+    console.error("next approver email failed", err);
+  }
+}
+
 async function decide(c: Context<AppEnv>, id: string, decision: "approved" | "rejected", note?: string | null) {
   const db = c.get("db");
   const t = c.get("tenant");
   const [req] = await db.select().from(leaveRequests).where(and(eq(leaveRequests.id, id), eq(leaveRequests.tenantId, t.tenantId)));
   if (!req) throw notFound("Leave request");
   if (req.employeeId === t.employeeId) throw forbidden("You can't approve your own leave");
-  if (!inScope(await teamScope(c, "leave"), req.employeeId)) throw forbidden("This employee isn't in your team");
+  if (!inScope(await approvalScope(c, "leave", "leave"), req.employeeId)) throw forbidden("This employee isn't in your team");
+  if (req.status !== "pending") throw badRequest("This request has already been decided");
+  if (decision === "rejected" && !note) throw badRequest("Add a reason for rejecting");
+  const step = await recordDecision(c, "leave", "leave", { employeeId: req.employeeId, approvals: req.approvals, days: Number(req.days) }, decision, note);
+  if (!step.final) {
+    // approved at this step; on to the next approver
+    const [row] = await db.update(leaveRequests).set({ approvals: step.approvals }).where(and(eq(leaveRequests.id, id), eq(leaveRequests.status, "pending"))).returning();
+    await audit(c, { action: "leave.approve_step", entity: "leave_request", entityId: id, summary: `Approved ${req.code} at step ${step.approvals.length} of ${step.chain.length}; now with ${step.next ? waitingLabel(step.next) : "the next approver"}` });
+    await notifyNextApprover(c, req, step.next);
+    return row!;
+  }
+  await db.update(leaveRequests).set({ approvals: step.approvals }).where(eq(leaveRequests.id, id));
   const updated = await decideLeave(db, t.tenantId, id, decision, c.get("session")!.userId, note);
   await audit(c, { action: `leave.${decision}`, entity: "leave_request", entityId: id, summary: `${decision === "approved" ? "Approved" : "Rejected"} ${req.code}`, data: note ? { note } : undefined });
   await notifyLeaveDecision(c, updated);

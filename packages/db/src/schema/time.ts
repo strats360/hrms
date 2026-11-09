@@ -12,6 +12,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import type { ApprovalRecord } from "@hrms/shared";
 import { tenantIdColumn as tenantId } from "./org";
 import { employees } from "./people";
 import { id, timestamps } from "./_helpers";
@@ -68,6 +69,8 @@ export const attendanceCorrections = pgTable(
     reviewerUserId: text("reviewer_user_id"),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     reviewNote: text("review_note"),
+    /** Approvals so far along the approval chain. */
+    approvals: jsonb("approvals").$type<ApprovalRecord[]>().notNull().default([]),
     ...timestamps,
   },
   (t) => [index("corrections_tenant_status_idx").on(t.tenantId, t.status)],
@@ -146,6 +149,8 @@ export const leaveRequests = pgTable(
     approverUserId: text("approver_user_id"),
     decidedAt: timestamp("decided_at", { withTimezone: true }),
     decisionNote: text("decision_note"),
+    /** Approvals so far along the approval chain. */
+    approvals: jsonb("approvals").$type<ApprovalRecord[]>().notNull().default([]),
     ...timestamps,
   },
   (t) => [

@@ -178,6 +178,7 @@ const router = createBrowserRouter([
             children: [
               { index: true, element: L(() => import("@/pages/admin/settings/Organization")) },
               { path: "structure", element: L(() => import("@/pages/admin/settings/Structure")) },
+              { path: "approvals", element: L(() => import("@/pages/admin/settings/Approvals")) },
               { path: "access", element: L(() => import("@/pages/admin/settings/Access")) },
               { path: "audit", element: L(() => import("@/pages/admin/settings/Audit")) },
               { path: "billing", element: L(() => import("@/pages/admin/settings/Billing")) },

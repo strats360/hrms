@@ -49,6 +49,7 @@ import { v } from "../lib/validate";
 import { ApiError, badRequest, notFound } from "../lib/errors";
 import { audit } from "../lib/audit";
 import { buildCalendar, shiftFor, upsertAttendance } from "../services/attendance";
+import { approvalPolicy, chainFor, waitingOn } from "../services/approvals";
 import { applyLeave, balanceSummary, cancelLeave } from "../services/leave";
 import { bankFields } from "../services/employees";
 import { storeUpload } from "./employees";
@@ -237,7 +238,13 @@ essRoutes.get("/leave", async (c) => {
     .orderBy(desc(leaveRequests.startDate))
     .limit(100);
   const types = await db.select().from(leaveTypes).where(and(eq(leaveTypes.tenantId, tid), eq(leaveTypes.active, true))).orderBy(asc(leaveTypes.code));
-  return c.json({ year, balances, types, requests: requests.map((x) => ({ ...x.r, typeName: x.type, typeCode: x.code })) });
+  const policy = await approvalPolicy(db, tid);
+  const out = [];
+  for (const x of requests) {
+    const waiting = x.r.status === "pending" ? waitingOn(await chainFor(db, tid, "leave", eid, Number(x.r.days), policy), x.r.approvals) : null;
+    out.push({ ...x.r, typeName: x.type, typeCode: x.code, waitingOn: waiting ? { label: waiting.label, at: waiting.at, of: waiting.of } : null });
+  }
+  return c.json({ year, balances, types, requests: out });
 });
 
 essRoutes.post("/leave", v("json", leaveApplySchema), async (c) => {

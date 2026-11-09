@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { attendanceCorrections, attendanceRecords, branches, departments, designations, employees } from "@hrms/db";
 import {
+  can,
   ATTENDANCE_CODES,
   ATTENDANCE_STATUS_LABELS,
   bulkDecisionSchema,
@@ -23,6 +24,7 @@ import { audit } from "../lib/audit";
 import { toCsv } from "../lib/csv";
 import { buildCalendar, istDateTime, shiftFor, upsertAttendance } from "../services/attendance";
 import { inScope, teamScope } from "../services/scope";
+import { approvalPolicy, approvalScope, chainFor, recordDecision, waitingOn } from "../services/approvals";
 
 export const attendanceRoutes = new Hono<AppEnv>();
 
@@ -198,7 +200,7 @@ attendanceRoutes.post("/manual", requirePerm("attendance", "edit"), v("json", ma
 // ---------- corrections ----------
 attendanceRoutes.get("/corrections", requirePerm("attendance", "view"), v("query", z.object({ status: z.string().optional() })), async (c) => {
   const tid = c.get("tenant").tenantId;
-  const scope = await teamScope(c, "attendance");
+  const scope = await approvalScope(c, "attendance", "attendance");
   const status = c.req.valid("query").status;
   const conds = [eq(attendanceCorrections.tenantId, tid)];
   if (status) conds.push(eq(attendanceCorrections.status, status));
@@ -211,7 +213,20 @@ attendanceRoutes.get("/corrections", requirePerm("attendance", "view"), v("query
     .where(and(...conds))
     .orderBy(desc(attendanceCorrections.createdAt))
     .limit(500);
-  return c.json(rows.map((x) => ({ ...x.r, employeeName: x.name, employeeCode: x.code })));
+  const db = c.get("db");
+  const policy = await approvalPolicy(db, tid);
+  const t = c.get("tenant");
+  const isHr = can(t.permissions, "attendance", "configure");
+  const out = [];
+  for (const x of rows) {
+    let waiting = null;
+    if (x.r.status === "pending") {
+      waiting = waitingOn(await chainFor(db, tid, "attendance", x.r.employeeId, undefined, policy), x.r.approvals);
+      if (waiting) waiting = { ...waiting, yourTurn: x.r.employeeId !== t.employeeId && (isHr || waiting.approverEmployeeId === t.employeeId), asHr: isHr && waiting.step !== "hr" && waiting.approverEmployeeId !== t.employeeId };
+    }
+    out.push({ ...x.r, employeeName: x.name, employeeCode: x.code, waitingOn: waiting });
+  }
+  return c.json(out);
 });
 
 async function decideCorrection(c: Context<AppEnv>, id: string, decision: "approved" | "rejected", note: string | null | undefined) {
@@ -221,8 +236,14 @@ async function decideCorrection(c: Context<AppEnv>, id: string, decision: "appro
   if (!corr) throw notFound("Correction request");
   if (corr.status !== "pending") throw badRequest("This request has already been decided");
   if (corr.employeeId === t.employeeId) throw forbidden("You can't approve your own request");
-  if (!inScope(await teamScope(c, "attendance"), corr.employeeId)) throw forbidden("This employee isn't in your team");
+  if (!inScope(await approvalScope(c, "attendance", "attendance"), corr.employeeId)) throw forbidden("This employee isn't in your team");
   if (decision === "rejected" && !note) throw badRequest("Add a reason for rejecting");
+  const step = await recordDecision(c, "attendance", "attendance", { employeeId: corr.employeeId, approvals: corr.approvals }, decision, note);
+  await db.update(attendanceCorrections).set({ approvals: step.approvals }).where(eq(attendanceCorrections.id, id));
+  if (!step.final) {
+    await audit(c, { action: "attendance_correction.approve_step", entity: "attendance_correction", entityId: id, summary: `Approved the correction for ${corr.date} at step ${step.approvals.length} of ${step.chain.length}` });
+    return;
+  }
 
   if (decision === "approved") {
     const [existing] = await db

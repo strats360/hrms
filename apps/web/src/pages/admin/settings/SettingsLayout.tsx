@@ -8,6 +8,7 @@ const ITEMS = [
   { to: "/attendance/policies", label: "Shifts & attendance policies" },
   { to: "/leave/policies", label: "Leave policies" },
   { to: "/leave/holidays", label: "Holiday calendar" },
+  { to: "/settings/approvals", label: "Approval chains" },
   { to: "/settings/access", label: "Admin users & access", perm: "users" as const },
   { to: "/settings/billing", label: "Billing & invoices", perm: "billing" as const },
   { to: "/settings/audit", label: "Audit log" },

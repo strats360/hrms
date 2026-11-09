@@ -1,0 +1,2 @@
+ALTER TABLE "attendance_corrections" ADD COLUMN "approvals" jsonb DEFAULT '[]'::jsonb NOT NULL;--> statement-breakpoint
+ALTER TABLE "leave_requests" ADD COLUMN "approvals" jsonb DEFAULT '[]'::jsonb NOT NULL;

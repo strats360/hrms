@@ -1,8 +1,11 @@
+import { approvalPolicy } from "../services/approvals";
 import { Hono } from "hono";
 import { and, asc, eq, sql } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
 import { branches, departments, designations, employees, shifts, tenants } from "@hrms/db";
 import {
+  APPROVAL_STEP_LABELS,
+  approvalPolicySchema,
   branchSchema,
   companySetupSchema,
   departmentSchema,
@@ -145,3 +148,18 @@ crud("branches", branches as unknown as Tbl, branchSchema, "branch", usedBy(empl
 crud("departments", departments as unknown as Tbl, departmentSchema, "department", usedBy(employees.departmentId));
 crud("designations", designations as unknown as Tbl, designationSchema, "designation", usedBy(employees.designationId));
 crud("shifts", shifts as unknown as Tbl, shiftSchema, "shift", usedBy(employees.shiftId));
+
+// ---------------------------------------------------------------------------
+// Approval chains for leave and attendance corrections
+// ---------------------------------------------------------------------------
+orgRoutes.get("/approvals", async (c) => c.json(await approvalPolicy(c.get("db"), c.get("tenant").tenantId)));
+
+orgRoutes.put("/approvals", requirePerm("settings", "edit"), v("json", approvalPolicySchema), async (c) => {
+  const b = c.req.valid("json");
+  const db = c.get("db");
+  const id = c.get("tenant").tenantId;
+  await db.update(tenants).set({ settings: sql`${tenants.settings} || ${JSON.stringify({ approvals: b })}::jsonb` }).where(eq(tenants.id, id));
+  const chain = (s: string[]) => s.map((x) => APPROVAL_STEP_LABELS[x as keyof typeof APPROVAL_STEP_LABELS]).join(" → ");
+  await audit(c, { action: "settings.approvals", entity: "tenant", entityId: id, summary: `Approval chains: leave ${chain(b.leave.steps)}${b.leave.longLeaveDays ? `, over ${b.leave.longLeaveDays} days ${chain(b.leave.longSteps)}` : ""}; attendance corrections ${chain(b.attendance.steps)}. Requests already waiting continue from where they are.`, data: b });
+  return c.json(b);
+});
