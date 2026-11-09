@@ -650,7 +650,10 @@ export interface OnlinePayment {
   id: string;
   orderId: string;
   amount: number;
-  status: "created" | "paid" | "failed" | "dropped" | "expired";
+  status: "created" | "paid" | "failed" | "dropped" | "expired" | "cancelled";
+  gateway?: string;
+  scheduledFor?: string | null;
+  retryAt?: string | null;
   method: string | null;
   gatewayPaymentId: string | null;
   bankReference: string | null;

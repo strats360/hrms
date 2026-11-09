@@ -9,7 +9,7 @@ import { audit } from "../lib/audit";
 import { layout } from "../lib/email";
 import { cashfreeConfig, CashfreeError, createOrder, verifyWebhook } from "../services/cashfree";
 import { createSubscription, manageSubscription, UPI_AUTOPAY_LIMIT, webhookIds } from "../services/cashfree-subscriptions";
-import { activeMandate, AUTOPAY_GATEWAY, clearRetries, latestMandate, methodLabel, planRetry, scheduleAutopay, suggestedLimit, syncCharge, syncMandate } from "../services/autopay";
+import { activeMandate, AUTOPAY_GATEWAY, cancelScheduledCharges, clearRetries, latestMandate, methodLabel, planRetry, scheduleAutopay, suggestedLimit, syncCharge, syncMandate } from "../services/autopay";
 import { z } from "zod";
 import { v } from "../lib/validate";
 import { syncOrder, type SettleResult } from "../services/online-payments";
@@ -42,6 +42,30 @@ async function receipt(c: Context<AppEnv>, r: SettleResult) {
     console.error("receipt email failed", err);
   }
 }
+
+/**
+ * Withdraw an invoice's scheduled autopay debits (it was paid another way, voided, or
+ * the debit was skipped) and record what happened. Never throws: a payment already
+ * recorded mustn't fail because Cashfree is slow.
+ */
+export async function withdrawAutopay(c: Context<AppEnv>, inv: { id: string; number: string; tenantId: string }, reason: string, opts: { orderId?: string } = {}) {
+  try {
+    const r = await cancelScheduledCharges(c.get("db"), cashfreeConfig(c.env), inv.id, reason, opts);
+    for (const a of r.cancelled) await audit(c, { tenantId: inv.tenantId, action: "billing.autopay_withdrawn", entity: "invoice", entityId: inv.id, summary: `Withdrew the scheduled autopay debit for ${inv.number} (${inr(Number(a.amount))}): ${reason}` });
+    for (const p of r.pending) await audit(c, { tenantId: inv.tenantId, action: "billing.payment_review", entity: "invoice", entityId: inv.id, summary: `The autopay debit ${p.attempt.orderId} for ${inv.number} couldn't be withdrawn (${p.reason}). If it goes through, refund it.` });
+    for (const s of r.settled) if (s.needsReview) await audit(c, { tenantId: inv.tenantId, action: "billing.payment_review", entity: "invoice", entityId: inv.id, summary: `Autopay payment needs review: ${s.needsReview} (${s.attempt.orderId})` });
+    return r;
+  } catch (e) {
+    console.error("withdrawing autopay failed", e);
+    return null;
+  }
+}
+
+const afterOnlinePayment = async (c: Context<AppEnv>, r: SettleResult) => {
+  if (!r.settled) return;
+  const [inv] = await c.get("db").select().from(invoices).where(eq(invoices.id, r.attempt.invoiceId));
+  if (inv) await withdrawAutopay(c, inv, "Paid online");
+};
 
 // ---------------------------------------------------------------------------
 // Tenant: pay an invoice online
@@ -102,7 +126,10 @@ tenantPayRoutes.get("/payments/:orderId", requirePerm("billing", "view"), async 
   const [a] = await db.select().from(invoicePayments).where(and(eq(invoicePayments.orderId, c.req.param("orderId")), eq(invoicePayments.tenantId, tid(c))));
   if (!a) throw notFound("Payment");
   const r = await syncOrder(db, cfg, a.orderId);
-  if (r) await receipt(c, r);
+  if (r) {
+    await receipt(c, r);
+    await afterOnlinePayment(c, r);
+  }
   const [inv] = await db.select({ status: invoices.status, number: invoices.number }).from(invoices).where(eq(invoices.id, a.invoiceId));
   return c.json({ status: r?.status ?? a.status, invoice: inv, failureReason: r?.attempt.failureReason ?? null });
 });
@@ -129,7 +156,7 @@ tenantPayRoutes.get("/autopay", requirePerm("billing", "view"), async (c) => {
     mandate: mandateView(m),
     suggestedMax: suggestedLimit(Number(latest?.total ?? 0)),
     upiLimit: UPI_AUTOPAY_LIMIT,
-    nextCharge: next ? { invoice: next.number, amount: Number(next.p.amount), scheduledFor: next.p.scheduledFor } : null,
+    nextCharge: next ? { orderId: next.p.orderId, invoice: next.number, amount: Number(next.p.amount), scheduledFor: next.p.scheduledFor } : null,
   });
 });
 
@@ -185,6 +212,22 @@ tenantPayRoutes.get("/autopay/:subscriptionId", requirePerm("billing", "view"), 
   return c.json({ mandate: mandateView(mandate) });
 });
 
+/** Skip one scheduled debit (the tenant will pay this invoice another way). Autopay stays on. */
+tenantPayRoutes.post("/autopay/charges/:orderId/cancel", requirePerm("billing", "edit"), async (c) => {
+  if (c.get("tenant").readOnly) throw new ApiError(403, "Read-only support view", "forbidden");
+  const db = c.get("db");
+  const [a] = await db.select().from(invoicePayments).where(and(eq(invoicePayments.orderId, c.req.param("orderId")), eq(invoicePayments.tenantId, tid(c)), eq(invoicePayments.gateway, AUTOPAY_GATEWAY)));
+  if (!a) throw notFound("Autopay debit");
+  if (a.status !== "created") throw badRequest(a.status === "paid" ? "This debit has already gone through" : "This debit isn't scheduled any more");
+  const [inv] = await db.select().from(invoices).where(eq(invoices.id, a.invoiceId));
+  const r = await withdrawAutopay(c, inv!, "Skipped by the customer", { orderId: a.orderId });
+  if (!r) throw new ApiError(502, "The payment gateway didn't respond. Please try again in a minute.", "gateway_error");
+  if (r.settled.length) throw new ApiError(409, r.settled[0]!.status === "paid" ? "This debit has already gone through." : "This debit has already been declined by the bank.", "conflict");
+  if (r.pending.length) throw new ApiError(409, "This debit has already gone to your bank and can't be stopped now.", "conflict");
+  await audit(c, { action: "billing.autopay_skip", entity: "invoice", entityId: a.invoiceId, summary: `Skipped the autopay debit for ${inv!.number}` });
+  return c.json({ ok: true });
+});
+
 tenantPayRoutes.post("/autopay/cancel", requirePerm("billing", "edit"), async (c) => {
   if (c.get("tenant").readOnly) throw new ApiError(403, "Read-only support view", "forbidden");
   const cfg = cashfreeConfig(c.env);
@@ -202,7 +245,7 @@ tenantPayRoutes.post("/autopay/cancel", requirePerm("billing", "edit"), async (c
   await db.update(billingMandates).set({ status: "cancelled", cancelledAt: new Date() }).where(eq(billingMandates.id, m.id));
   await db.update(tenants).set({ paymentMethod: null }).where(eq(tenants.id, tid(c)));
   // charges not yet debited are withdrawn with the mandate
-  await db.update(invoicePayments).set({ status: "dropped", failureReason: "Autopay cancelled" }).where(and(eq(invoicePayments.mandateId, m.id), eq(invoicePayments.status, "created")));
+  await db.update(invoicePayments).set({ status: "cancelled", failureReason: "Autopay cancelled" }).where(and(eq(invoicePayments.mandateId, m.id), eq(invoicePayments.status, "created")));
   await clearRetries(db, { mandateId: m.id });
   await audit(c, { action: "billing.autopay_cancel", entity: "billing_mandate", entityId: m.id, summary: `Cancelled autopay (${methodLabel(m)})` });
   return c.json({ ok: true });
@@ -235,6 +278,7 @@ cashfreeWebhook.post("/cashfree/webhook", async (c) => {
   const r = await syncOrder(c.get("db"), cfg, orderId);
   if (!r) return c.json({ ok: true, ignored: "unknown order" });
   await receipt(c, r);
+  await afterOnlinePayment(c, r);
   if (r.settled || r.needsReview) {
     await audit(c, { tenantId: r.attempt.tenantId, action: r.settled ? "billing.paid_online" : "billing.payment_review", entity: "invoice", entityId: r.attempt.invoiceId, summary: r.settled ? `Invoice paid online (${inr(Number(r.attempt.amount))}, Cashfree ${r.attempt.gatewayPaymentId}${r.restored ? "; account restored" : ""})` : `Online payment needs review: ${r.needsReview} (order ${orderId})` });
   }

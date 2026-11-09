@@ -13,6 +13,7 @@ import { layout } from "../lib/email";
 import { attemptsFor } from "../services/online-payments";
 import { activeMandate, AUTOPAY_GATEWAY, clearRetries, methodLabel, scheduleAutopay } from "../services/autopay";
 import { cashfreeConfig } from "../services/cashfree";
+import { withdrawAutopay } from "./cashfree";
 import { activeEmployeeCounts, daysBetween, draftInvoices, getEntity, invoiceStatus, issueInvoices, overdueInvoices, periodLabel, restoreIfClear, type Invoice } from "../services/billing";
 
 const uid = (c: Context<AppEnv>) => c.get("session")!.userId;
@@ -159,6 +160,18 @@ platformBillingRoutes.post("/invoices/:id/autopay", finance, async (c) => {
   return c.json({ scheduledFor: r.attempt.scheduledFor, orderId: r.attempt.orderId });
 });
 
+/** Withdraw the invoice's scheduled autopay debit before it reaches the bank. */
+platformBillingRoutes.post("/invoices/:id/autopay/cancel", finance, async (c) => {
+  const [inv] = await c.get("db").select().from(invoices).where(eq(invoices.id, c.req.param("id")));
+  if (!inv) throw notFound("Invoice");
+  const r = await withdrawAutopay(c, inv, "Withdrawn by platform finance");
+  if (!r) throw badRequest("The payment gateway didn't respond. Please try again in a minute.");
+  if (!r.cancelled.length && !r.pending.length && !r.settled.length) throw badRequest("No autopay debit is scheduled for this invoice");
+  if (r.pending.length) throw badRequest("The debit has already gone to the bank and can't be stopped. If it goes through, refund it.");
+  if (r.settled.length) throw badRequest(r.settled[0]!.status === "paid" ? "The debit has already gone through" : "The debit was already declined");
+  return c.json({ cancelled: r.cancelled.length });
+});
+
 platformBillingRoutes.get("/gateway", async (c) => {
   const cfg = cashfreeConfig(c.env);
   return c.json({ provider: "cashfree", configured: !!cfg, mode: cfg?.mode ?? null, apiVersion: cfg?.apiVersion ?? null, webhookUrl: `${c.env.APP_URL}/api/public/payments/cashfree/webhook` });
@@ -194,13 +207,15 @@ platformBillingRoutes.post("/invoices/:id/payment", finance, v("json", invoicePa
   const [row] = await db.update(invoices).set({ status: "paid", paidOn: b.paidOn, paymentMethod: b.method, paymentReference: b.reference ?? null }).where(and(eq(invoices.id, c.req.param("id")), eq(invoices.status, "issued"))).returning();
   if (!row) throw badRequest("Only an unpaid invoice can be marked paid");
   const restored = await restoreIfClear(db, row.tenantId);
+  const autopay = await withdrawAutopay(c, row, `Paid by ${b.method}`);
   await audit(c, { tenantId: row.tenantId, action: "platform.invoice_paid", entity: "invoice", entityId: row.id, summary: `Recorded payment for ${row.number} (${inr(Number(row.total))}, ${b.method}${b.reference ? ` ${b.reference}` : ""})${restored ? "; account restored" : ""}` });
-  return c.json({ ...shape(row), restored });
+  return c.json({ ...shape(row), restored, autopay: autopay ? { cancelled: autopay.cancelled.length, stillScheduled: autopay.pending.length } : null });
 });
 platformBillingRoutes.post("/invoices/:id/void", requirePlatform("super_admin"), v("json", z.object({ reason: z.string().trim().min(3).max(300) })), async (c) => {
   const [row] = await c.get("db").update(invoices).set({ status: "void", voidReason: c.req.valid("json").reason }).where(and(eq(invoices.id, c.req.param("id")), eq(invoices.status, "issued"))).returning();
   if (!row) throw badRequest("Only an unpaid invoice can be voided. Issue a credit note for paid invoices.");
   await restoreIfClear(c.get("db"), row.tenantId);
+  await withdrawAutopay(c, row, "Invoice voided");
   await audit(c, { tenantId: row.tenantId, action: "platform.invoice_void", entity: "invoice", entityId: row.id, summary: `Voided ${row.number}`, data: c.req.valid("json") });
   return c.json(shape(row));
 });

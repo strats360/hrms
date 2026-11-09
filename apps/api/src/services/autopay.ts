@@ -1,8 +1,8 @@
 import { and, desc, eq, inArray, ne } from "drizzle-orm";
 import { billingMandates, invoicePayments, tenants, type Database } from "@hrms/db";
 import type { CashfreeConfig, CfPayment } from "./cashfree";
-import { chargeSubscription, getSubscription, getSubscriptionPayment, mandateStatus, type CfSubPayment } from "./cashfree-subscriptions";
-import { applyPayment, type Attempt } from "./online-payments";
+import { cancelSubscriptionPayment, chargeSubscription, getSubscription, getSubscriptionPayment, mandateStatus, type CfSubPayment } from "./cashfree-subscriptions";
+import { applyPayment, type Attempt, type SettleResult } from "./online-payments";
 import type { Invoice } from "./billing";
 
 export type Mandate = typeof billingMandates.$inferSelect;
@@ -117,4 +117,65 @@ export async function planRetry(db: Database, attempt: Attempt) {
 export async function clearRetries(db: Database, where: { invoiceId?: string; mandateId?: string }) {
   const cond = where.invoiceId ? eq(invoicePayments.invoiceId, where.invoiceId) : eq(invoicePayments.mandateId, where.mandateId!);
   await db.update(invoicePayments).set({ retryAt: null }).where(and(cond, eq(invoicePayments.gateway, AUTOPAY_GATEWAY)));
+}
+
+export interface CancelOutcome {
+  /** Debits withdrawn before they reached the bank. */
+  cancelled: Attempt[];
+  /** Debits already with the bank (or Cashfree didn't answer): they may still go through. */
+  pending: { attempt: Attempt; reason: string }[];
+  /** Debits that turned out to be settled or failed already. */
+  settled: SettleResult[];
+}
+
+/**
+ * Withdraw the scheduled autopay debits for an invoice, e.g. because it was paid
+ * another way, voided, or the tenant asked to skip it. Also drops a pending retry.
+ * A debit Cashfree has already sent to the bank can't be stopped: it is re-read and
+ * reported, and if it later succeeds the duplicate is flagged for a refund.
+ */
+export async function cancelScheduledCharges(db: Database, cfg: CashfreeConfig | null, invoiceId: string, reason: string, opts: { orderId?: string } = {}): Promise<CancelOutcome> {
+  const out: CancelOutcome = { cancelled: [], pending: [], settled: [] };
+  await clearRetries(db, { invoiceId });
+  const rows = await db
+    .select({ a: invoicePayments, m: billingMandates })
+    .from(invoicePayments)
+    .leftJoin(billingMandates, eq(billingMandates.id, invoicePayments.mandateId))
+    .where(and(eq(invoicePayments.invoiceId, invoiceId), eq(invoicePayments.gateway, AUTOPAY_GATEWAY), eq(invoicePayments.status, "created"), ...(opts.orderId ? [eq(invoicePayments.orderId, opts.orderId)] : [])));
+  for (const { a, m } of rows) {
+    let ok = !m || !cfg; // nothing at Cashfree to withdraw
+    let why = "";
+    if (m && cfg) {
+      try {
+        const p = await cancelSubscriptionPayment(cfg, m.subscriptionId, a.orderId);
+        if (p.status === "SUCCESS" || p.status === "FAILED") {
+          out.settled.push(await applyPayment(db, a, toCfPayment(p, m.method)));
+          continue;
+        }
+        ok = true;
+      } catch (e) {
+        why = (e as Error).message;
+        // see where the debit actually stands before reporting it
+        try {
+          const p = await getSubscriptionPayment(cfg, m.subscriptionId, a.orderId);
+          if (p.status === "SUCCESS" || p.status === "FAILED" || p.status === "CANCELLED") {
+            if (p.status === "CANCELLED") ok = true;
+            else {
+              out.settled.push(await applyPayment(db, a, toCfPayment(p, m.method)));
+              continue;
+            }
+          }
+        } catch {
+          /* keep the cancel error */
+        }
+      }
+    }
+    if (ok) {
+      const [row] = await db.update(invoicePayments).set({ status: "cancelled", failureReason: reason, retryAt: null }).where(and(eq(invoicePayments.id, a.id), eq(invoicePayments.status, "created"))).returning();
+      if (row) out.cancelled.push(row);
+    } else {
+      out.pending.push({ attempt: a, reason: why || "Cashfree didn't confirm the cancellation" });
+    }
+  }
+  return out;
 }

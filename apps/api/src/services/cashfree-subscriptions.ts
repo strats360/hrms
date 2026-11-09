@@ -112,6 +112,16 @@ export async function getSubscriptionPayment(cfg: CashfreeConfig, subscriptionId
   return parsePayment(await call<Record<string, any>>(cfg, "GET", `/subscriptions/${encodeURIComponent(subscriptionId)}/payments/${encodeURIComponent(paymentId)}`, undefined, undefined, cfg.subsApiVersion));
 }
 
+/**
+ * Withdraw a scheduled debit before it goes to the bank. Cashfree refuses once the
+ * debit has been presented; the caller then re-reads the payment to see where it stands.
+ */
+export async function cancelSubscriptionPayment(cfg: CashfreeConfig, subscriptionId: string, paymentId: string) {
+  const sid = encodeURIComponent(subscriptionId);
+  const pid = encodeURIComponent(paymentId);
+  return parsePayment(await call<Record<string, any>>(cfg, "POST", `/subscriptions/${sid}/payments/${pid}/manage`, { subscription_id: subscriptionId, payment_id: paymentId, action: "CANCEL" }, undefined, cfg.subsApiVersion));
+}
+
 export async function manageSubscription(cfg: CashfreeConfig, subscriptionId: string, action: "CANCEL" | "PAUSE" | "ACTIVATE") {
   return parseSubscription(await call<Record<string, any>>(cfg, "POST", `/subscriptions/${encodeURIComponent(subscriptionId)}/manage`, { subscription_id: subscriptionId, action }, undefined, cfg.subsApiVersion));
 }

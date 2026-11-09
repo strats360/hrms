@@ -10,6 +10,8 @@ import { Tag, type Tone } from "@/components/ui/tag";
 
 const TONE: Record<InvoiceStatus, Tone> = { issued: "warn", paid: "ok", void: "neutral", overdue: "bad" };
 const LABEL: Record<InvoiceStatus, string> = { issued: "Due", paid: "Paid", void: "Void", overdue: "Overdue" };
+const fmtIST = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", timeZone: "Asia/Kolkata" });
+
 export function InvoiceStatusTag({ status }: { status: InvoiceStatus }) {
   return <Tag tone={TONE[status]}>{LABEL[status]}</Tag>;
 }
@@ -117,14 +119,14 @@ export function InvoiceView({ inv }: { inv: InvoiceDetail }) {
       {inv.status === "void" ? <div className="text-[13px]" style={{ color: "var(--bad)" }}>Void: {inv.voidReason}</div> : null}
       {inv.onlinePayments?.length ? (
         <div className="no-print border-t border-[var(--color-divider)] pt-3 text-[12.5px]" data-print="hide">
-          <div className="text-muted mb-1 text-[11px] uppercase tracking-[0.08em]">Online payment attempts (Cashfree)</div>
+          <div className="text-muted mb-1 text-[11px] uppercase tracking-[0.08em]">Online payments and autopay (Cashfree)</div>
           {inv.onlinePayments.map((p) => (
             <div key={p.id} className="flex flex-wrap justify-between gap-2 py-0.5">
               <span>
                 {new Date(p.createdAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Kolkata" })} · {p.orderId}
               </span>
               <span>
-                {p.status === "paid" ? `Paid by ${p.method ?? "online"}${p.bankReference ? ` · ${p.bankReference}` : ""}` : p.status === "created" ? "Checkout open" : `${p.status[0]!.toUpperCase()}${p.status.slice(1)}${p.failureReason ? `: ${p.failureReason}` : ""}`}
+                {p.status === "paid" ? `Paid by ${p.method ?? "online"}${p.bankReference ? ` · ${p.bankReference}` : ""}` : p.status === "created" ? (p.gateway === "cashfree_autopay" ? `Autopay debit scheduled${p.scheduledFor ? ` for ${fmtIST(p.scheduledFor)}` : ""}` : "Checkout open") : p.retryAt ? `Failed${p.failureReason ? `: ${p.failureReason}` : ""}. Retry on ${fmtIST(p.retryAt)}` : `${p.status[0]!.toUpperCase()}${p.status.slice(1)}${p.failureReason ? `: ${p.failureReason}` : ""}`}
               </span>
             </div>
           ))}

@@ -18,7 +18,7 @@ interface Autopay {
   mandate: { subscriptionId: string; method: "upi" | "enach"; maxAmount: number; status: string; payer: string | null; label: string; authorizedAt: string | null; failureReason: string | null } | null;
   suggestedMax: number;
   upiLimit: number;
-  nextCharge: { invoice: string; amount: number; scheduledFor: string } | null;
+  nextCharge: { orderId: string; invoice: string; amount: number; scheduledFor: string } | null;
 }
 
 /** Autopay: one mandate per company, charged for each invoice after the bank's pre-debit notice. */
@@ -84,6 +84,15 @@ export function AutopayCard() {
     },
   });
 
+  const skip = useMutation({
+    mutationFn: (orderId: string) => api.post(`/admin/billing/autopay/charges/${encodeURIComponent(orderId)}/cancel`),
+    onSuccess: () => {
+      toast.success("Debit cancelled. Please pay this invoice online or by bank transfer.");
+      qc.invalidateQueries({ queryKey: ["billing"] });
+    },
+    onError: (e) => toast.error(errorMessage(e)),
+  });
+
   if (!d?.available) return null;
   const m = d.mandate;
   const active = m?.status === "active";
@@ -125,6 +134,16 @@ export function AutopayCard() {
             <div>
               <div className="text-muted text-[12px]">Next debit</div>
               {d.nextCharge ? `${inr(d.nextCharge.amount)} for ${d.nextCharge.invoice}, on ${fmtDate(d.nextCharge.scheduledFor.slice(0, 10))}` : "With the next invoice"}
+              {d.nextCharge && canEdit ? (
+                <button
+                  type="button"
+                  className="text-accent ml-2 text-[12px] underline disabled:opacity-50"
+                  disabled={skip.isPending}
+                  onClick={() => confirm(`Skip the debit for ${d.nextCharge!.invoice}? You'll need to pay this invoice yourself. Autopay stays on for later invoices.`) && skip.mutate(d.nextCharge!.orderId)}
+                >
+                  Skip this debit
+                </button>
+              ) : null}
             </div>
           </div>
           {canEdit ? (

@@ -27,6 +27,10 @@ export default function Billing() {
   const readOnly = !!useSession().tenant?.support;
 
   const pay = async (invoiceId: string) => {
+    // an autopay debit already lined up for this invoice is withdrawn once the online payment goes through
+    const next = qc.getQueryData<{ nextCharge: { invoice: string; scheduledFor: string } | null }>(["billing", "autopay"])?.nextCharge;
+    const number = q.data?.invoices.find((i) => i.id === invoiceId)?.number;
+    if (next && number && next.invoice === number && !confirm(`Autopay will debit this invoice on ${fmtDate(next.scheduledFor.slice(0, 10))}. Pay now instead? We'll cancel the autopay debit, as long as it hasn't reached your bank yet.`)) return;
     setPaying(invoiceId);
     try {
       const r = await api.post<{ orderId: string; paymentSessionId: string; mode: "sandbox" | "production" }>(`/admin/billing/invoices/${invoiceId}/pay`);

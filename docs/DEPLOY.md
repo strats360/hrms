@@ -131,7 +131,14 @@ Tenants can switch on autopay under Settings › Billing & invoices. Each compan
 - Each retry is claimed before it's made, so overlapping cron runs can't charge twice.
 - A repeated failure webhook doesn't plan a second retry.
 - A manual charge, or cancelling autopay, replaces any pending automatic retry.
-- Once the retry is lined up with the bank, it can't be withdrawn from the app. If the tenant pays another way before it runs, the extra payment is flagged in the audit log for a refund.
+
+**Cancelling a scheduled debit.** A debit can be withdrawn until Cashfree sends it to the bank:
+- It's withdrawn automatically when the invoice is paid online, recorded as paid by platform finance, or voided.
+- The tenant can skip one debit under Settings › Billing & invoices › Skip this debit. Autopay stays on for later invoices.
+- Platform finance can withdraw it from Billing & invoices › Withdraw autopay debit.
+- Every withdrawal is in the audit log. A debit that's already with the bank can't be stopped. The app says so, flags it in the audit log, and if it goes through on a paid or void invoice, flags that payment for a refund.
+
+The app cancels through `POST /subscriptions/{subscription_id}/payments/{payment_id}/manage` with `action: CANCEL` on the Subscriptions API. Check this in sandbox before going live: schedule a debit, pay the invoice online, and confirm the debit shows as cancelled in the Cashfree dashboard. If Cashfree's current API differs, the change is one function, `cancelSubscriptionPayment` in `apps/api/src/services/cashfree-subscriptions.ts`.
 
 Cron runs show under Workers & Pages › your Worker › Logs (filter on "autopay retries").
 

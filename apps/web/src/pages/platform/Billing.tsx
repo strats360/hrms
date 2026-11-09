@@ -128,6 +128,7 @@ export default function Billing() {
                   { label: "Record payment", onSelect: () => setPaying(i) },
                   { label: "Send reminder", onSelect: () => remind.mutate(i.id) },
                   { label: "Charge via autopay", onSelect: () => api.post<{ scheduledFor: string }>(`/platform/billing/invoices/${i.id}/autopay`).then((r) => toast.success(`Autopay debit scheduled for ${fmtDate(r.scheduledFor.slice(0, 10))}`)).catch((e) => toast.error(errorMessage(e))) },
+                  { label: "Withdraw autopay debit", onSelect: () => confirm(`Withdraw the scheduled autopay debit for ${i.number}?`) && api.post(`/platform/billing/invoices/${i.id}/autopay/cancel`).then(() => toast.success("Autopay debit withdrawn")).catch((e) => toast.error(errorMessage(e))) },
                   ...(me?.platformRole === "super_admin" ? [{ label: "Void invoice", danger: true, onSelect: () => setVoiding(i) }] : []),
                 ]
               : []),
@@ -195,9 +196,10 @@ function PaymentDialog({ invoice, onClose, onDone }: { invoice: Invoice | null; 
   const [method, setMethod] = useState("upi");
   const [reference, setReference] = useState("");
   const pay = useMutation({
-    mutationFn: () => api.post<{ restored: boolean }>(`/platform/billing/invoices/${invoice!.id}/payment`, { paidOn, method, reference: reference.trim() || null }),
+    mutationFn: () => api.post<{ restored: boolean; autopay: { cancelled: number; stillScheduled: number } | null }>(`/platform/billing/invoices/${invoice!.id}/payment`, { paidOn, method, reference: reference.trim() || null }),
     onSuccess: (r) => {
-      toast.success(r.restored ? "Payment recorded and the account is active again" : "Payment recorded");
+      toast.success(`${r.restored ? "Payment recorded and the account is active again" : "Payment recorded"}${r.autopay?.cancelled ? ". The scheduled autopay debit was withdrawn" : ""}`);
+      if (r.autopay?.stillScheduled) toast.warning("An autopay debit for this invoice is already with the bank and couldn't be stopped. If it goes through, refund it (flagged in the audit log).");
       setReference("");
       onDone();
       onClose();

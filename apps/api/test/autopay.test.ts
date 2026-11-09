@@ -10,6 +10,8 @@ const SECRET = "cf_test_secret_key";
 const calls: { method: string; url: string; headers: Record<string, string>; body: any }[] = [];
 const subs = new Map<string, string>(); // subscription_id -> status
 const subPays = new Map<string, any>(); // payment_id -> payment
+const presented = new Set<string>(); // debits already sent to the bank
+const orderPays = new Map<string, any[]>(); // one-time checkout order_id -> payments
 const realFetch = globalThis.fetch;
 
 function stub() {
@@ -29,7 +31,18 @@ function stub() {
       subPays.set(body.payment_id, { payment_id: body.payment_id, cf_payment_id: "88001", payment_status: "INITIALIZED", payment_amount: body.payment_amount });
       return Response.json(subPays.get(body.payment_id));
     }
-    let m = path.match(/^\/subscriptions\/([^/]+)\/payments\/([^/]+)$/);
+    if (path === "/orders" && method === "POST") return Response.json({ cf_order_id: 900002, order_id: body.order_id, order_amount: body.order_amount, order_status: "ACTIVE", payment_session_id: `session_${body.order_id}` });
+    const o = path.match(/^\/orders\/([^/]+)\/payments$/);
+    if (o) return Response.json(orderPays.get(decodeURIComponent(o[1]!)) ?? []);
+    let m = path.match(/^\/subscriptions\/([^/]+)\/payments\/([^/]+)\/manage$/);
+    if (m) {
+      const pid = decodeURIComponent(m[2]!);
+      const p = subPays.get(pid);
+      if (!p || presented.has(pid) || p.payment_status !== "INITIALIZED") return Response.json({ message: "Payment can't be cancelled at this stage", code: "payment_cancel_failed" }, { status: 400 });
+      p.payment_status = "CANCELLED";
+      return Response.json(p);
+    }
+    m = path.match(/^\/subscriptions\/([^/]+)\/payments\/([^/]+)$/);
     if (m) return Response.json(subPays.get(decodeURIComponent(m[2]!)) ?? {});
     m = path.match(/^\/subscriptions\/([^/]+)\/manage$/);
     if (m) {
@@ -185,6 +198,70 @@ describe("Autopay (Cashfree Subscriptions)", () => {
     expect(await runAutopayRetries(env)).toEqual({ due: 1, scheduled: 0, skipped: 1 });
     expect(calls.slice(before).some((x) => x.url.endsWith("/subscriptions/pay"))).toBe(false);
     await sql`update invoices set status = 'issued' where id = ${invoiceId}`;
+  });
+
+  it("withdraws the scheduled debit when the invoice is paid online", async () => {
+    const manual = await platform.post(`/platform/billing/invoices/${invoiceId}/autopay`);
+    expect(manual.status).toBe(200);
+    expect((await kunal.get("/admin/billing/autopay")).body.nextCharge.orderId).toBe(manual.body.orderId);
+    const order = await kunal.post(`/admin/billing/invoices/${invoiceId}/pay`);
+    expect(order.status).toBe(201);
+    const amount = calls.filter((x) => x.url.endsWith("/orders")).at(-1)!.body.order_amount;
+    orderPays.set(order.body.orderId, [{ cf_payment_id: 555001, payment_status: "SUCCESS", payment_amount: amount, payment_group: "upi", payment_time: new Date().toISOString() }]);
+    const payload = { type: "PAYMENT_SUCCESS_WEBHOOK", event_time: new Date().toISOString(), data: { order: { order_id: order.body.orderId } } };
+    const ts = String(Date.now());
+    const w = await new Client().req("POST", "/public/payments/cashfree/webhook", payload, { "x-webhook-timestamp": ts, "x-webhook-signature": await webhookSignature(SECRET, ts, JSON.stringify(payload)) });
+    expect(w.body.status).toBe("paid");
+    const cancel = calls.filter((x) => x.url.endsWith(`/payments/${manual.body.orderId}/manage`)).at(-1)!;
+    expect(cancel.body).toMatchObject({ subscription_id: subscriptionId, payment_id: manual.body.orderId, action: "CANCEL" });
+    const [a] = await sql`select status, failure_reason from invoice_payments where order_id = ${manual.body.orderId}`;
+    expect(a).toMatchObject({ status: "cancelled", failure_reason: "Paid online" });
+    expect((await kunal.get("/admin/billing/autopay")).body.nextCharge).toBeNull();
+    const [log] = await sql`select summary from audit_logs where action = 'billing.autopay_withdrawn' order by created_at desc limit 1`;
+    expect(log!.summary).toMatch(/Paid online/);
+  });
+
+  it("lets the tenant skip one debit, keeping autopay on", async () => {
+    await platform.post("/platform/billing/run", { period: "2025-09" });
+    const next = (await kunal.get("/admin/billing/autopay")).body.nextCharge;
+    expect(next.invoice).toMatch(/2509/);
+    const r = await kunal.post(`/admin/billing/autopay/charges/${encodeURIComponent(next.orderId)}/cancel`);
+    expect(r.status).toBe(200);
+    const a = (await kunal.get("/admin/billing/autopay")).body;
+    expect(a.nextCharge).toBeNull();
+    expect(a.mandate.status).toBe("active");
+    const inv = (await kunal.get("/admin/billing")).body.invoices.find((i: any) => i.period === "2025-09");
+    expect(inv.status).toBe("issued");
+    expect((await kunal.post(`/admin/billing/autopay/charges/${encodeURIComponent(next.orderId)}/cancel`)).status).toBe(400); // already withdrawn
+    // finance can line it up again, and recording a bank payment withdraws it
+    const again = await platform.post(`/platform/billing/invoices/${inv.id}/autopay`);
+    expect(again.status).toBe(200);
+    const paid = await platform.post(`/platform/billing/invoices/${inv.id}/payment`, { paidOn: "2025-10-05", method: "neft", reference: "UTR555" });
+    expect(paid.body.autopay).toEqual({ cancelled: 1, stillScheduled: 0 });
+    const [b] = await sql`select status from invoice_payments where order_id = ${again.body.orderId}`;
+    expect(b!.status).toBe("cancelled");
+  });
+
+  it("reports a debit that's already with the bank instead of pretending it was stopped", async () => {
+    await platform.post("/platform/billing/run", { period: "2025-08" });
+    const next = (await kunal.get("/admin/billing/autopay")).body.nextCharge;
+    presented.add(next.orderId);
+    const skip = await kunal.post(`/admin/billing/autopay/charges/${encodeURIComponent(next.orderId)}/cancel`);
+    expect(skip.status).toBe(409);
+    expect(skip.body.error.message).toMatch(/already gone to your bank/);
+    const inv = (await kunal.get("/admin/billing")).body.invoices.find((i: any) => i.period === "2025-08");
+    expect((await platform.post(`/platform/billing/invoices/${inv.id}/autopay/cancel`)).status).toBe(400);
+    expect((await platform.post(`/platform/billing/invoices/${inv.id}/void`, { reason: "Raised in error" })).status).toBe(200);
+    const [a] = await sql`select status from invoice_payments where order_id = ${next.orderId}`;
+    expect(a!.status).toBe("created"); // still with the bank
+    const [log] = await sql`select summary from audit_logs where action = 'billing.payment_review' order by created_at desc limit 1`;
+    expect(log!.summary).toMatch(/couldn't be withdrawn.*refund/);
+    // when it does go through, it's flagged for a refund
+    subPays.set(next.orderId, { ...subPays.get(next.orderId), payment_status: "SUCCESS", cf_payment_id: "88009" });
+    const w = await hook("SUBSCRIPTION_PAYMENT_SUCCESS", { payment_details: { payment_id: next.orderId } });
+    expect(w.body.status).toBe("paid");
+    const [review] = await sql`select summary from audit_logs where action = 'billing.payment_review' order by created_at desc limit 1`;
+    expect(review!.summary).toMatch(/voided/);
   });
 
   it("follows mandate status changes and can be cancelled", async () => {

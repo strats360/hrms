@@ -58,7 +58,7 @@ export async function runAutopayRetries(env: Env, now = new Date()) {
           const { html, text } = layout({
             company: entity.legalName,
             heading: `Trying autopay again for ${inv.number}`,
-            paragraphs: [`We'll debit ${inr(Number(inv.total))} again on ${when}, after your bank's pre-debit notice. This is the only automatic retry.`, "The debit is already lined up with your bank, so please don't pay this invoice another way before then. If it fails again, pay it online."],
+            paragraphs: [`We'll debit ${inr(Number(inv.total))} again on ${when}, after your bank's pre-debit notice. This is the only automatic retry.`, "If you pay online before then, we'll cancel the debit, as long as it hasn't reached your bank yet. You can also skip it under Settings › Billing & invoices."],
             cta: { label: "View invoice", url: `${env.APP_URL}/settings/billing` },
           });
           await mailer.send({ to, subject: `Autopay retry for ${inv.number}`, html, text });
