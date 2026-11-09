@@ -45,6 +45,8 @@ export const employees = pgTable(
     managerId: text("manager_id"),
     branchId: text("branch_id"),
     shiftId: text("shift_id"),
+    /** The employee's enrolment number on biometric devices, if it isn't their employee ID. */
+    biometricId: text("biometric_id"),
     employmentType: text("employment_type").notNull().default("full_time"),
     workLocation: text("work_location"),
     status: text("status").notNull().default("probation"),
@@ -77,6 +79,7 @@ export const employees = pgTable(
     uniqueIndex("employees_tenant_email_uq").on(t.tenantId, t.workEmail),
     index("employees_tenant_status_idx").on(t.tenantId, t.status),
     index("employees_tenant_manager_idx").on(t.tenantId, t.managerId),
+    uniqueIndex("employees_tenant_biometric_uq").on(t.tenantId, t.biometricId),
   ],
 );
 

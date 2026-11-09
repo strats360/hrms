@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Outlet } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Download, Plus } from "lucide-react";
+import { Download, Plus, Upload } from "lucide-react";
+import { UploadDialog } from "@/components/attendance/UploadDialog";
 import { toast } from "sonner";
 import { ATTENDANCE_STATUSES, ATTENDANCE_STATUS_LABELS, todayIST, type AttendanceStatus } from "@hrms/shared";
 import { api, download, errorMessage } from "@/lib/api";
@@ -17,6 +18,7 @@ export default function AttendanceLayout() {
   const { can } = useSession();
   const lookups = useLookups();
   const [open, setOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const shift = lookups.data?.shifts.find((s) => s.isDefault) ?? lookups.data?.shifts[0];
   const sub = `Web, GPS, office IP, WFH and biometric sources${shift ? ` · default shift ${shift.startTime}–${shift.endTime}` : ""}`;
 
@@ -38,6 +40,12 @@ export default function AttendanceLayout() {
               </Button>
             ) : null}
             {can("attendance", "edit") ? (
+              <Button onClick={() => setUploading(true)}>
+                <Upload size={16} />
+                Upload
+              </Button>
+            ) : null}
+            {can("attendance", "edit") ? (
               <Button variant="primary" onClick={() => setOpen(true)}>
                 <Plus size={16} />
                 Manual entry
@@ -46,6 +54,7 @@ export default function AttendanceLayout() {
           </>
         }
       />
+      <UploadDialog open={uploading} onOpenChange={setUploading} />
       <RouteTabs
         tabs={[
           { to: "/attendance", label: "Today", end: true },

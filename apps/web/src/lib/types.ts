@@ -57,6 +57,7 @@ export interface EmployeeDetail {
   managerId: string | null;
   branchId: string | null;
   shiftId: string | null;
+  biometricId?: string | null;
   employmentType: string;
   workLocation: string | null;
   status: string;

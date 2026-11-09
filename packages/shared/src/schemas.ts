@@ -70,6 +70,7 @@ export const employeeEmploymentSchema = z.object({
   managerId: nullable(z.string()),
   branchId: nullable(z.string()),
   shiftId: nullable(z.string()),
+  biometricId: nullable(z.string().trim().max(30)),
   employmentType: z.enum(EMPLOYMENT_TYPES).default("full_time"),
   workLocation: nullable(trimmed(120)),
   status: z.enum(EMPLOYEE_STATUSES).default("probation"),

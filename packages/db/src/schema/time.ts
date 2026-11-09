@@ -149,3 +149,43 @@ export const leaveRequests = pgTable(
     uniqueIndex("leave_requests_code_uq").on(t.tenantId, t.code),
   ],
 );
+
+/**
+ * Biometric or face-recognition terminals that push punches to the API. Each has its
+ * own key (stored as a SHA-256 hash; shown once when created or rotated).
+ */
+export const attendanceDevices = pgTable(
+  "attendance_devices",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    name: text("name").notNull(),
+    serialNumber: text("serial_number"),
+    branchId: text("branch_id"),
+    keyHash: text("key_hash").notNull(),
+    keyHint: text("key_hint").notNull(), // last 4 characters, to tell keys apart
+    active: boolean("active").notNull().default(true),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    lastPunchAt: timestamp("last_punch_at", { withTimezone: true }),
+    punchCount: integer("punch_count").notNull().default(0),
+    createdBy: text("created_by"),
+    ...timestamps,
+  },
+  (t) => [index("attendance_devices_tenant_idx").on(t.tenantId)],
+);
+
+/** Raw punches from devices, kept so a day can be worked out again and audited. */
+export const attendancePunches = pgTable(
+  "attendance_punches",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    deviceId: text("device_id").references(() => attendanceDevices.id, { onDelete: "set null" }),
+    employeeId: employeeId(),
+    punchedAt: timestamp("punched_at", { withTimezone: true }).notNull(),
+    date: date("date", { mode: "string" }).notNull(), // IST date
+    direction: text("direction"), // in | out, when the device says
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("attendance_punches_uq").on(t.tenantId, t.employeeId, t.punchedAt), index("attendance_punches_day_idx").on(t.tenantId, t.employeeId, t.date)],
+);

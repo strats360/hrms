@@ -12,6 +12,7 @@ import { Checkbox, Field, Input } from "@/components/ui/field";
 import { ErrorState, Loading } from "@/components/ui/page";
 import { Tag } from "@/components/ui/tag";
 import { DAY_SHORT, minsLabel } from "@/components/attendance/shared";
+import { DevicesCard } from "@/components/attendance/DevicesCard";
 
 interface Shift {
   id: string;
@@ -113,10 +114,12 @@ export default function Policies() {
             <Row k="GPS location with mobile punch" v={<Tag tone="ok">Recorded</Tag>} />
             <Row k="Office IP address" v={<Tag tone="ok">Recorded</Tag>} />
             <Row k="Work from home (self-marked)" v={<Tag tone="ok">On</Tag>} />
-            <Row k="Biometric device import" v={<Tag tone="neutral">Via bulk upload</Tag>} />
+            <Row k="Biometric devices" v={<Tag tone="ok">Device API</Tag>} />
+            <Row k="Spreadsheet or device export" v={<Tag tone="ok">CSV upload</Tag>} />
             <Row k="Manual entry by HR" v={<Tag tone="ok">Audited</Tag>} />
           </div>
         </Card>
+        <DevicesCard />
         <Card className="!gap-2.5">
           <CardHeader title="How status is worked out" />
           <ul className="m-0 flex list-disc flex-col gap-1.5 pl-5 text-[13.5px]">

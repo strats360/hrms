@@ -26,6 +26,7 @@ function pgError(err: unknown): ApiError | null {
   const constraint = e?.constraint_name ?? e?.cause?.constraint_name ?? "";
   if (code === "23505") {
     if (constraint.includes("email")) return conflict("That email is already in use");
+    if (constraint.includes("biometric")) return conflict("Another employee already has that biometric ID");
     if (constraint.includes("code")) return conflict("That code is already in use");
     if (constraint.includes("name")) return conflict("That name already exists");
     return conflict("A record with these details already exists");

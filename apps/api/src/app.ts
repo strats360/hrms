@@ -15,6 +15,7 @@ import { leaveRoutes } from "./routes/leave";
 import { dashboardRoutes } from "./routes/dashboard";
 import { essRoutes } from "./routes/ess";
 import { essExitRoutes, exitRoutes } from "./routes/exits";
+import { attendanceImportRoutes, devicePunchRoutes } from "./routes/attendance-devices";
 import { platformRoutes } from "./routes/platform";
 import { auditRoutes } from "./routes/audit";
 import { fileRoutes } from "./routes/files";
@@ -100,6 +101,7 @@ export function buildApp() {
 
   api.use("*", loadSession);
   api.route("/public/payments", cashfreeWebhook);
+  api.route("/public/attendance", devicePunchRoutes);
   api.route("/public", publicRoutes);
 
   api.use("/me/*", requireAuth);
@@ -135,6 +137,7 @@ export function buildApp() {
   t.route("/admin/exits", exitRoutes);
   t.route("/admin/employees", employeeRoutes);
   t.route("/admin/onboarding", onboardingAdminRoutes);
+  t.route("/admin/attendance", attendanceImportRoutes);
   t.route("/admin/attendance", attendanceRoutes);
   t.route("/admin/leave", leaveRoutes);
   t.route("/admin/payroll", payrollRoutes);
