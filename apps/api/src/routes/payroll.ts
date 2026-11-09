@@ -20,6 +20,7 @@ import {
   payrollRunCreateSchema,
   reopenSchema,
   structureFromComponents,
+  templateFor,
   structureFromCtc,
   structureRevisionSchema,
   tenantPayrollSettingsSchema,
@@ -55,19 +56,100 @@ payrollRoutes.put("/template", requirePerm("payroll", "configure"), v("json", te
   const db = c.get("db");
   const [t] = await db.select({ settings: tenants.settings }).from(tenants).where(eq(tenants.id, tid(c)));
   const salaryTemplate = c.req.valid("json");
+  checkExtras(salaryTemplate.extras);
   await db.update(tenants).set({ settings: { ...(t?.settings ?? {}), salaryTemplate } }).where(eq(tenants.id, tid(c)));
   await audit(c, { action: "payroll.template", entity: "tenant", entityId: tid(c), summary: "Updated salary template", data: salaryTemplate });
   return c.json(salaryTemplate);
+});
+
+// ---- named templates (grades, field staff, interns...) ----
+const namedTemplateSchema = templateSchema.extend({ name: z.string().trim().min(2, "Name the template").max(60) });
+type Named = z.infer<typeof namedTemplateSchema> & { id: string };
+
+function checkExtras(extras?: { code: string }[]) {
+  const codes = (extras ?? []).map((x) => x.code);
+  const reserved = ["basic", "hra", "conveyance", "medical", "special"];
+  const bad = codes.find((c, i) => codes.indexOf(c) !== i || reserved.includes(c));
+  if (bad) throw badRequest(`Allowance code "${bad}" is used twice or is a built-in component`);
+}
+
+async function namedTemplates(c: Context<AppEnv>) {
+  const [t] = await c.get("db").select({ settings: tenants.settings }).from(tenants).where(eq(tenants.id, tid(c)));
+  return { settings: (t?.settings ?? {}) as Record<string, unknown>, list: (((t?.settings ?? {}) as { salaryTemplates?: Named[] }).salaryTemplates ?? []) as Named[] };
+}
+async function saveTemplates(c: Context<AppEnv>, settings: Record<string, unknown>, list: Named[]) {
+  await c.get("db").update(tenants).set({ settings: { ...settings, salaryTemplates: list } as typeof tenants.$inferInsert.settings }).where(eq(tenants.id, tid(c)));
+}
+
+payrollRoutes.get("/templates", requirePerm("payroll", "view"), async (c) => {
+  const book = await getTemplate(c.get("db"), tid(c));
+  const counts = await c
+    .get("db")
+    .select({ id: employees.salaryTemplateId, n: sql<number>`count(*)::int` })
+    .from(employees)
+    .where(and(eq(employees.tenantId, tid(c)), sql`${employees.status} not in ('exited','inactive')`))
+    .groupBy(employees.salaryTemplateId);
+  const known = new Set((book.templates ?? []).map((x) => x.id));
+  const count = (id: string | null) => counts.filter((r) => (id === null ? r.id === null || !known.has(r.id) : r.id === id)).reduce((a, r) => a + r.n, 0);
+  const { templates, ...base } = book;
+  return c.json([{ ...base, id: null, name: "Standard", isDefault: true, employees: count(null) }, ...(templates ?? []).map((x) => ({ ...x, isDefault: false, employees: count(x.id) }))]);
+});
+
+payrollRoutes.post("/templates", requirePerm("payroll", "configure"), v("json", namedTemplateSchema), async (c) => {
+  const b = c.req.valid("json");
+  checkExtras(b.extras);
+  const { settings, list } = await namedTemplates(c);
+  if (list.length >= 30) throw badRequest("Up to 30 templates");
+  if (list.some((x) => x.name.toLowerCase() === b.name.toLowerCase()) || b.name.toLowerCase() === "standard") throw conflict(`A template called "${b.name}" already exists`);
+  const row: Named = { ...b, id: crypto.randomUUID().slice(0, 8) };
+  await saveTemplates(c, settings, [...list, row]);
+  await audit(c, { action: "payroll.template_add", entity: "tenant", entityId: tid(c), summary: `Added salary template "${b.name}"`, data: row });
+  return c.json(row, 201);
+});
+
+payrollRoutes.put("/templates/:tplId", requirePerm("payroll", "configure"), v("json", namedTemplateSchema), async (c) => {
+  const b = c.req.valid("json");
+  checkExtras(b.extras);
+  const { settings, list } = await namedTemplates(c);
+  const id = c.req.param("tplId");
+  if (!list.some((x) => x.id === id)) throw notFound("Template");
+  if (list.some((x) => x.id !== id && x.name.toLowerCase() === b.name.toLowerCase())) throw conflict(`A template called "${b.name}" already exists`);
+  await saveTemplates(c, settings, list.map((x) => (x.id === id ? { ...b, id } : x)));
+  await audit(c, { action: "payroll.template", entity: "tenant", entityId: tid(c), summary: `Updated salary template "${b.name}"`, data: b });
+  return c.json({ ...b, id });
+});
+
+payrollRoutes.delete("/templates/:tplId", requirePerm("payroll", "configure"), async (c) => {
+  const { settings, list } = await namedTemplates(c);
+  const id = c.req.param("tplId");
+  const tpl = list.find((x) => x.id === id);
+  if (!tpl) throw notFound("Template");
+  const [used] = await c.get("db").select({ n: sql<number>`count(*)::int` }).from(employees).where(and(eq(employees.tenantId, tid(c)), eq(employees.salaryTemplateId, id), sql`${employees.status} not in ('exited','inactive')`));
+  if (used?.n) throw badRequest(`${used.n} employee${used.n === 1 ? " is" : "s are"} on "${tpl.name}". Move them to another template first.`);
+  await saveTemplates(c, settings, list.filter((x) => x.id !== id));
+  await audit(c, { action: "payroll.template_delete", entity: "tenant", entityId: tid(c), summary: `Deleted salary template "${tpl.name}"` });
+  return c.json({ ok: true });
+});
+
+/** Put employees on a template (null: the standard one). Takes effect from the next calculation. */
+payrollRoutes.post("/templates/assign", requirePerm("payroll", "configure"), v("json", z.object({ templateId: z.string().nullable(), employeeIds: z.array(z.string()).min(1).max(5000) })), async (c) => {
+  const b = c.req.valid("json");
+  const { list } = await namedTemplates(c);
+  const tpl = b.templateId ? list.find((x) => x.id === b.templateId) : null;
+  if (b.templateId && !tpl) throw notFound("Template");
+  const rows = await c.get("db").update(employees).set({ salaryTemplateId: b.templateId }).where(and(eq(employees.tenantId, tid(c)), inArray(employees.id, b.employeeIds))).returning({ id: employees.id });
+  await audit(c, { action: "payroll.template_assign", entity: "employee", summary: `Moved ${rows.length} employee${rows.length === 1 ? "" : "s"} to the "${tpl?.name ?? "Standard"}" salary template` });
+  return c.json({ updated: rows.length });
 });
 
 /** Preview a structure for a CTC (or custom components) with the saved or a draft template. */
 payrollRoutes.post(
   "/template/preview",
   requirePerm("payroll", "view"),
-  v("json", z.object({ annualCtc: z.number().min(0).max(1e9), template: templateSchema.optional(), pfApplicable: z.boolean().default(true), esiApplicable: z.boolean().default(true) })),
+  v("json", z.object({ annualCtc: z.number().min(0).max(1e9), template: templateSchema.optional(), templateId: z.string().nullable().optional(), pfApplicable: z.boolean().default(true), esiApplicable: z.boolean().default(true) })),
   async (c) => {
     const b = c.req.valid("json");
-    const template = b.template ?? (await getTemplate(c.get("db"), tid(c)));
+    const template = b.template ?? templateFor(await getTemplate(c.get("db"), tid(c)), b.templateId);
     return c.json(structureFromCtc(b.annualCtc, template, { pfApplicable: b.pfApplicable, esiApplicable: b.esiApplicable }));
   },
 );
@@ -87,7 +169,7 @@ payrollRoutes.get("/structures", requirePerm("payroll", "view"), v("query", z.ob
       .map(({ e, department, designation }) => {
         const row = structs.get(e.id);
         const s = resolveStructure(e, row, template);
-        return { employeeId: e.id, name: e.fullName, code: e.employeeCode, department, designation, annualCtc: s.annualCtc, monthlyGross: s.gross, basic: s.components.basic, employerPf: s.employer.pf, esiApplicable: s.esiApplicable, effectiveFrom: row?.effectiveFrom ?? e.dateOfJoining, source: row?.components ? "custom" : "template" };
+        return { employeeId: e.id, name: e.fullName, code: e.employeeCode, department, designation, templateId: e.salaryTemplateId, templateName: (template.templates ?? []).find((x) => x.id === e.salaryTemplateId)?.name ?? "Standard", annualCtc: s.annualCtc, monthlyGross: s.gross, basic: s.components.basic, employerPf: s.employer.pf, esiApplicable: s.esiApplicable, effectiveFrom: row?.effectiveFrom ?? e.dateOfJoining, source: row?.components ? "custom" : "template" };
       })
       .sort((a, b) => a.name.localeCompare(b.name)),
   );
@@ -101,7 +183,8 @@ payrollRoutes.get("/structures/:employeeId", requirePerm("payroll", "view"), asy
   const history = await db.select().from(salaryStructures).where(and(eq(salaryStructures.tenantId, tid(c)), eq(salaryStructures.employeeId, e.id))).orderBy(desc(salaryStructures.effectiveFrom));
   const current = (await structuresAsOf(db, tid(c), [e.id], todayIST())).get(e.id);
   return c.json({
-    employee: { id: e.id, name: e.fullName, code: e.employeeCode, dateOfJoining: e.dateOfJoining, pfApplicable: e.pfApplicable, esiApplicable: e.esiApplicable, taxRegime: e.taxRegime },
+    employee: { id: e.id, name: e.fullName, code: e.employeeCode, dateOfJoining: e.dateOfJoining, pfApplicable: e.pfApplicable, esiApplicable: e.esiApplicable, taxRegime: e.taxRegime, templateId: e.salaryTemplateId },
+    template: templateFor(template, e.salaryTemplateId),
     current: resolveStructure(e, current, template),
     history: history.map((h) => ({ ...h, structure: resolveStructure(e, h, template) })),
   });
@@ -122,7 +205,7 @@ payrollRoutes.post("/structures/:employeeId", requirePerm("payroll", "edit"), v(
   const lockedLabel = locked ? new Date(locked.month + "-01T00:00:00Z").toLocaleDateString("en-IN", { month: "long", year: "numeric", timeZone: "UTC" }) : "";
   if (locked) throw badRequest(`Payroll up to ${lockedLabel} is already locked. Use an effective date after it, and add arrears as a one-time earning.`);
   const template = await getTemplate(db, tid(c));
-  const annualCtc = b.components ? structureFromComponents(b.components, template, e).annualCtc : b.annualCtc;
+  const annualCtc = b.components ? structureFromComponents(b.components, templateFor(template, e.salaryTemplateId), e).annualCtc : b.annualCtc;
   const [row] = await db
     .insert(salaryStructures)
     .values({ tenantId: tid(c), employeeId: e.id, effectiveFrom: b.effectiveFrom, annualCtc, components: b.components ?? null, reason: b.reason ?? null, createdBy: uid(c) })

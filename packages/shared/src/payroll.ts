@@ -27,6 +27,42 @@ export interface SalaryTemplate {
   medical: number;
   /** Employer PF on actual basic instead of the ₹15,000 ceiling. */
   pfOnFullBasic: boolean;
+  /** The company's own allowances (telephone, LTA, shift, food...), taken out of gross before special allowance. */
+  extras?: ExtraComponentDef[];
+}
+
+/** A custom allowance in a template: a fixed monthly amount or a % of basic. */
+export interface ExtraComponentDef {
+  code: string;
+  label: string;
+  mode: "fixed" | "pct_basic";
+  value: number;
+  /** Counts as taxable salary (most allowances are; e.g. meal coupons within limits aren't). */
+  taxable: boolean;
+  /** Counts as ESI wages. */
+  esiWage: boolean;
+}
+
+/** One custom allowance on a structure. PF is always on basic only. */
+export interface ExtraComponent {
+  code: string;
+  label: string;
+  amount: number;
+  taxable?: boolean;
+  esiWage?: boolean;
+}
+
+/** A named template (e.g. "Sales field staff", "Grade M2"). The company's default has no id. */
+export type NamedTemplate = SalaryTemplate & { id: string; name: string };
+/** The default template, carrying the company's other templates so each employee gets theirs. */
+export type TemplateBook = SalaryTemplate & { templates?: NamedTemplate[] };
+
+/** The template an employee is on: their own if assigned and still there, else the default. */
+export function templateFor(book: TemplateBook, templateId?: string | null): SalaryTemplate {
+  const own = templateId ? book.templates?.find((t) => t.id === templateId) : undefined;
+  if (own) return own;
+  const { templates: _t, ...base } = book;
+  return base;
 }
 
 export const DEFAULT_SALARY_TEMPLATE: SalaryTemplate = {
@@ -92,9 +128,13 @@ export interface MonthlyComponents {
   conveyance: number;
   medical: number;
   special: number;
+  extras?: ExtraComponent[];
 }
 
-export const COMPONENT_LABELS: Record<keyof MonthlyComponents, string> = {
+/** Monthly gross of a set of components. */
+export const componentsGross = (c: MonthlyComponents) => c.basic + c.hra + c.conveyance + c.medical + c.special + (c.extras ?? []).reduce((s, x) => s + x.amount, 0);
+
+export const COMPONENT_LABELS: Record<Exclude<keyof MonthlyComponents, "extras">, string> = {
   basic: "Basic",
   hra: "House rent allowance",
   conveyance: "Conveyance allowance",
@@ -129,7 +169,13 @@ export function componentsFromGross(gross: number, t: SalaryTemplate): MonthlyCo
   left -= conveyance;
   const medical = Math.min(left, t.medical);
   left -= medical;
-  return { basic, hra, conveyance, medical, special: left };
+  const extras: ExtraComponent[] = [];
+  for (const x of t.extras ?? []) {
+    const amount = Math.min(left, Math.max(0, r(x.mode === "pct_basic" ? (basic * x.value) / 100 : x.value)));
+    left -= amount;
+    extras.push({ code: x.code, label: x.label, amount, taxable: x.taxable, esiWage: x.esiWage });
+  }
+  return { basic, hra, conveyance, medical, special: left, ...(extras.length ? { extras } : {}) };
 }
 
 /**
@@ -171,7 +217,7 @@ export function structureFromCtc(annualCtc: number, t: SalaryTemplate = DEFAULT_
 /** Rebuild a structure from explicit (custom) monthly components. */
 export function structureFromComponents(components: MonthlyComponents, t: SalaryTemplate = DEFAULT_SALARY_TEMPLATE, opts: { pfApplicable?: boolean; esiApplicable?: boolean; rules?: StatutoryRules } = {}): Structure {
   const R = opts.rules ?? DEFAULT_RULES;
-  const gross = components.basic + components.hra + components.conveyance + components.medical + components.special;
+  const gross = componentsGross(components);
   const pf = employerPf(components.basic, t, opts.pfApplicable ?? true, R);
   const esiApplicable = (opts.esiApplicable ?? true) && gross <= R.esi.grossThreshold;
   const esi = esiApplicable ? Math.ceil(gross * R.esi.employerRate) : 0;
@@ -427,6 +473,8 @@ export interface PayslipResult {
   ctc: number;
   tds: number;
   tax: TaxResult & { projectedAnnualGross: number; monthsLeft: number; annualised: boolean };
+  /** Earnings this month that aren't taxable (non-taxable allowances and one-time pay). */
+  nonTaxable: number;
   warnings: string[];
 }
 
@@ -438,16 +486,18 @@ export function computePayslip(input: PayslipInput): PayslipResult {
   const factor = input.daysInMonth > 0 ? Math.max(0, Math.min(1, input.paidDays / input.daysInMonth)) : 0;
   const c = input.structure.components;
 
-  const earnings: PayLine[] = (Object.keys(COMPONENT_LABELS) as (keyof MonthlyComponents)[])
-    .map((k) => ({ code: k, label: COMPONENT_LABELS[k], amount: r(c[k] * factor) }))
-    .filter((e) => e.amount > 0);
+  const std = (k: Exclude<keyof MonthlyComponents, "extras">) => ({ code: k, label: COMPONENT_LABELS[k], amount: r(c[k] * factor) });
+  const extras = (c.extras ?? []).map((x) => ({ code: `x_${x.code}`, label: x.label, amount: r(x.amount * factor), taxable: x.taxable !== false, esiWage: x.esiWage !== false }));
+  const earnings: PayLine[] = [std("basic"), std("hra"), std("conveyance"), std("medical"), ...extras.map(({ code, label, amount }) => ({ code, label, amount })), std("special")].filter((e) => e.amount > 0);
   const adj = input.adjustments ?? [];
   for (const [i, a] of adj.entries()) if (a.kind === "earning" && a.amount) earnings.push({ code: `adj_e${i}`, label: a.label, amount: r(a.amount) });
 
   const gross = earnings.reduce((s, e) => s + e.amount, 0);
   const basicEarned = earnings.find((e) => e.code === "basic")?.amount ?? 0;
-  const nonEsiAdj = adj.filter((a) => a.kind === "earning" && a.esiWage === false).reduce((s, a) => s + r(a.amount), 0);
-  const nonTaxableAdj = adj.filter((a) => a.kind === "earning" && a.taxable === false).reduce((s, a) => s + r(a.amount), 0);
+  const nonEsiAdj = adj.filter((a) => a.kind === "earning" && a.esiWage === false).reduce((s, a) => s + r(a.amount), 0) + extras.filter((x) => !x.esiWage).reduce((s, x) => s + x.amount, 0);
+  const nonTaxableAdj = adj.filter((a) => a.kind === "earning" && a.taxable === false).reduce((s, a) => s + r(a.amount), 0) + extras.filter((x) => !x.taxable).reduce((s, x) => s + x.amount, 0);
+  // a full month's non-taxable allowances, for projecting the rest of the year
+  const fullNonTaxable = (c.extras ?? []).filter((x) => x.taxable === false).reduce((s, x) => s + x.amount, 0);
 
   // PF
   const pfWage = input.pfApplicable ? (t.pfOnFullBasic ? basicEarned : Math.min(basicEarned, R.pf.wageCeiling)) : 0;
@@ -477,9 +527,9 @@ export function computePayslip(input: PayslipInput): PayslipResult {
   // TDS: project the year, then spread what's left over the remaining months
   const monthsLeft = remainingFyMonths(input.month);
   const ytd = input.ytd ?? { taxableGross: 0, tds: 0, employeePf: 0, professionalTax: 0 };
-  const fullMonthGross = input.structure.gross;
+  const fullMonthGross = input.structure.gross - fullNonTaxable;
   const fullMonthPf = input.pfApplicable ? r(Math.min(input.structure.components.basic, t.pfOnFullBasic ? Infinity : R.pf.wageCeiling) * R.pf.employeeRate) : 0;
-  const fullMonthPt = input.ptApplicable ? professionalTax(input.state, fullMonthGross, 1, input.gender, R).amount : 0;
+  const fullMonthPt = input.ptApplicable ? professionalTax(input.state, input.structure.gross, 1, input.gender, R).amount : 0;
   const annualised = input.ytd === undefined;
   const pastMonths = 12 - monthsLeft;
   const projectedAnnualGross = annualised
@@ -548,6 +598,7 @@ export function computePayslip(input: PayslipInput): PayslipResult {
     ctc: gross + employerCost,
     tds,
     tax: { ...tax, projectedAnnualGross, monthsLeft, annualised },
+    nonTaxable: nonTaxableAdj,
     warnings,
   };
 }

@@ -27,6 +27,9 @@ import {
   type MonthlyComponents,
   type Regime,
   type SalaryTemplate,
+  type NamedTemplate,
+  type TemplateBook,
+  templateFor,
   type Structure,
 } from "@hrms/shared";
 import { badRequest, notFound } from "../lib/errors";
@@ -50,9 +53,14 @@ export function defaultPayDate(month: string) {
   return d.toISOString().slice(0, 10);
 }
 
-export async function getTemplate(db: Database, tenantId: string): Promise<SalaryTemplate> {
+/**
+ * The company's default salary template, carrying its other templates so that
+ * resolveStructure can pick each employee's own.
+ */
+export async function getTemplate(db: Database, tenantId: string): Promise<TemplateBook> {
   const [t] = await db.select({ settings: tenants.settings }).from(tenants).where(eq(tenants.id, tenantId));
-  return { ...DEFAULT_SALARY_TEMPLATE, ...(t?.settings?.salaryTemplate ?? {}) };
+  const s = (t?.settings ?? {}) as { salaryTemplate?: Partial<SalaryTemplate>; salaryTemplates?: NamedTemplate[] };
+  return { ...DEFAULT_SALARY_TEMPLATE, ...(s.salaryTemplate ?? {}), templates: (s.salaryTemplates ?? []).map((x) => ({ ...DEFAULT_SALARY_TEMPLATE, ...x })) };
 }
 
 /** Latest structure row per employee effective on or before `asOf`. */
@@ -69,10 +77,11 @@ export async function structuresAsOf(db: Database, tenantId: string, employeeIds
 }
 
 export function resolveStructure(
-  emp: { annualCtc: number; pfApplicable: boolean; esiApplicable: boolean },
+  emp: { annualCtc: number; pfApplicable: boolean; esiApplicable: boolean; salaryTemplateId?: string | null },
   row: { annualCtc: number; components: MonthlyComponents | null } | undefined,
-  template: SalaryTemplate,
+  book: TemplateBook,
 ): Structure {
+  const template = templateFor(book, emp.salaryTemplateId);
   const opts = { pfApplicable: emp.pfApplicable, esiApplicable: emp.esiApplicable };
   if (row?.components) return structureFromComponents(row.components, template, opts);
   return structureFromCtc(row ? Number(row.annualCtc) : Number(emp.annualCtc), template, opts);
@@ -182,7 +191,7 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
 
   const { start, end, days } = monthBounds(run.month);
   const [tenant] = await db.select().from(tenants).where(eq(tenants.id, tenantId));
-  const template = { ...DEFAULT_SALARY_TEMPLATE, ...(tenant?.settings?.salaryTemplate ?? {}) };
+  const template = await getTemplate(db, tenantId);
   const statutory = tenant?.statutory ?? {};
   const emps = await payableEmployees(db, tenantId, start, end);
   const ids = emps.map((x) => x.e.id);
@@ -222,7 +231,7 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
       rules,
       month: run.month,
       structure,
-      template,
+      template: templateFor(template, e.salaryTemplateId),
       daysInMonth: days,
       paidDays,
       adjustments: adjustments
@@ -243,7 +252,8 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
     if (!e.pan) warnings.push("PAN missing: TDS should be at least 20% (s.206AA)");
     if (e.lastWorkingDay && e.lastWorkingDay <= end) warnings.push("Leaving this month: settle full and final separately");
     if (e.dateOfJoining >= start) warnings.push("Joined this month: pay prorated from joining date");
-    const nonTaxable = adjustments.filter((a) => a.employeeId === e.id && a.kind === "earning" && !a.taxable).reduce((s, a) => s + Number(a.amount), 0);
+    // non-taxable one-time pay and non-taxable allowances
+    const nonTaxable = slip.nonTaxable;
     const snapshot: ItemSnapshot = {
       name: e.fullName,
       code: e.employeeCode,

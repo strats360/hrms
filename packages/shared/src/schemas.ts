@@ -146,6 +146,16 @@ export const tenantProfileSchema = z.object({
   contactPhone: nullable(phoneSchema),
 });
 
+const componentCode = z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9_]{1,23}$/, "Use 2-24 letters, digits or _");
+export const extraComponentDefSchema = z.object({
+  code: componentCode,
+  label: trimmed(60).min(1, "Name the allowance"),
+  mode: z.enum(["fixed", "pct_basic"]),
+  value: z.coerce.number().min(0).max(1e7),
+  taxable: z.boolean().default(true),
+  esiWage: z.boolean().default(true),
+});
+
 export const tenantPayrollSettingsSchema = z.object({
   payrollCycle: z.enum(["calendar_month", "26_to_25"]).default("calendar_month"),
   payDay: z.enum(["last_working_day", "1st_next", "7th_next"]).default("last_working_day"),
@@ -159,6 +169,7 @@ export const tenantPayrollSettingsSchema = z.object({
       conveyance: z.number().min(0).max(100000),
       medical: z.number().min(0).max(100000),
       pfOnFullBasic: z.boolean(),
+      extras: z.array(extraComponentDefSchema).max(20).optional(),
     })
     .optional(),
   employeeCodePrefix: z.string().trim().toUpperCase().regex(/^[A-Z]{2,6}$/, "2 to 6 letters").default("EMP"),
@@ -347,7 +358,9 @@ export const essProfileUpdateSchema = employeePersonalSchema
 // ---------- payroll ----------
 export const monthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Use YYYY-MM");
 const amount = z.coerce.number().min(0).max(1e8);
-export const salaryComponentsSchema = z.object({ basic: amount, hra: amount, conveyance: amount, medical: amount, special: amount });
+export const extraComponentSchema = z.object({ code: componentCode, label: trimmed(60).min(1), amount, taxable: z.boolean().default(true), esiWage: z.boolean().default(true) });
+export const salaryComponentsSchema = z.object({ basic: amount, hra: amount, conveyance: amount, medical: amount, special: amount, extras: z.array(extraComponentSchema).max(20).optional() });
+
 export const structureRevisionSchema = z.object({
   effectiveFrom: isoDate,
   annualCtc: z.coerce.number().min(0).max(1e9),

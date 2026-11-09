@@ -279,18 +279,40 @@ export interface PayslipView {
   onHold: boolean;
   warnings: string[];
 }
+export interface ExtraComponentDef {
+  code: string;
+  label: string;
+  mode: "fixed" | "pct_basic";
+  value: number;
+  taxable: boolean;
+  esiWage: boolean;
+}
+export interface ExtraComponent {
+  code: string;
+  label: string;
+  amount: number;
+  taxable?: boolean;
+  esiWage?: boolean;
+}
 export interface SalaryTemplate {
   basicPctOfGross: number;
   hraPctOfBasic: number;
   conveyance: number;
   medical: number;
   pfOnFullBasic: boolean;
+  extras?: ExtraComponentDef[];
+}
+export interface TemplateRow extends SalaryTemplate {
+  id: string | null;
+  name: string;
+  isDefault: boolean;
+  employees: number;
 }
 export interface Structure {
   annualCtc: number;
   monthlyCtc: number;
   gross: number;
-  components: { basic: number; hra: number; conveyance: number; medical: number; special: number };
+  components: { basic: number; hra: number; conveyance: number; medical: number; special: number; extras?: ExtraComponent[] };
   employer: { pf: number; esi: number };
   esiApplicable: boolean;
 }

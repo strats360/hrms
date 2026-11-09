@@ -26,7 +26,7 @@ The product design lives in [`design/`](design/). `HRMS v2.dc.html` is the sourc
 
 | Area | What works |
 | --- | --- |
-| Salary structure | A company-wide template (Basic % of gross, HRA % of Basic, conveyance, medical, PF on full basic or capped). Salary revisions are effective-dated, with custom components per employee. Revisions can't backdate into a locked month |
+| Salary structure | A standard template (Basic % of gross, HRA % of Basic, conveyance, medical, PF on full basic or capped) plus any number of named templates, for grades or field staff. Each template can add the company's own allowances (fixed ₹ a month or % of basic, each taxable or not and in ESI wages or not); they come out of gross before special allowance and are prorated with paid days. PF stays on basic. Employees are moved between templates in bulk. Salary revisions are effective-dated, with custom components and allowances per employee. Revisions can't backdate into a locked month |
 | Payroll run | A 7-step wizard: payroll month, input checks (joiners, exits, revisions, missing bank or PAN), attendance and LOP, calculate, review, approve and lock, then payslips and the bank file |
 | Overtime | Overtime recorded in attendance is listed per employee in the payroll review. Payroll edits the hours to what was approved and saves; it's paid at 2× the ordinary hourly rate (monthly gross / 26 days / 8 hours, configurable under Settings). Overtime is taxable and ESI wages, not PF wages. More than 50 hours in a month is flagged |
 | Calculation | Pay prorated for paid days. LOP comes from approved attendance (absent = 1 day, half day = 0.5) and approved unpaid leave, and can be overridden per employee. Joiners and leavers are prorated |

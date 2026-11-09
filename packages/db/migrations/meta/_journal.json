@@ -113,6 +113,13 @@
       "when": 1794236257296,
       "tag": "0015_payslip_email",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1794241800017,
+      "tag": "0016_salary_templates",
+      "breakpoints": true
     }
   ]
 }

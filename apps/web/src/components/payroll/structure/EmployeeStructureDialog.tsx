@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { fmtDate, inr, structureRevisionSchema, todayIST } from "@hrms/shared";
 import { api, ApiError } from "@/lib/api";
 import { useSession } from "@/lib/session";
-import type { Structure } from "@/lib/types";
+import type { ExtraComponent, Structure } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Checkbox, Field, Input } from "@/components/ui/field";
@@ -17,7 +17,8 @@ interface Detail {
   history: { id: string; effectiveFrom: string; annualCtc: number; components: Structure["components"] | null; reason: string | null; createdAt: string; structure: Structure }[];
 }
 
-const COMP: [keyof Structure["components"], string][] = [
+type Std = Exclude<keyof Structure["components"], "extras">;
+const COMP: [Std, string][] = [
   ["basic", "Basic"],
   ["hra", "House rent allowance"],
   ["conveyance", "Conveyance"],
@@ -28,12 +29,25 @@ const COMP: [keyof Structure["components"], string][] = [
 export function Breakdown({ s }: { s: Structure }) {
   return (
     <div className="flex flex-col text-[13.5px]">
-      {COMP.map(([k, l]) => (
+      {COMP.filter(([k]) => k !== "special").map(([k, l]) => (
         <div key={k} className="flex justify-between py-1">
           <span>{l}</span>
           <span className="num">{inr(s.components[k])}</span>
         </div>
       ))}
+      {(s.components.extras ?? []).map((x) => (
+        <div key={x.code} className="flex justify-between py-1">
+          <span>
+            {x.label}
+            {x.taxable === false ? <span className="text-muted text-[12px]"> · not taxable</span> : null}
+          </span>
+          <span className="num">{inr(x.amount)}</span>
+        </div>
+      ))}
+      <div className="flex justify-between py-1">
+        <span>Special allowance</span>
+        <span className="num">{inr(s.components.special)}</span>
+      </div>
       <div className="flex justify-between border-t border-[var(--color-divider)] py-1.5 font-semibold">
         <span>Monthly gross</span>
         <span className="num">{inr(s.gross)}</span>
@@ -59,6 +73,7 @@ export function EmployeeStructureDialog({ employeeId, onClose }: { employeeId: s
   const [ctc, setCtc] = useState("");
   const [custom, setCustom] = useState(false);
   const [comps, setComps] = useState<Record<string, string>>({});
+  const [extras, setExtras] = useState<ExtraComponent[]>([]);
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -75,6 +90,7 @@ export function EmployeeStructureDialog({ employeeId, onClose }: { employeeId: s
     setCtc(String(c.annualCtc));
     setCustom(false);
     setComps(Object.fromEntries(COMP.map(([k]) => [k, String(c.components[k])])));
+    setExtras((c.components.extras ?? []).map((x) => ({ ...x, taxable: x.taxable !== false, esiWage: x.esiWage !== false })));
     setReason("");
     setError(null);
     setRevising(true);
@@ -85,7 +101,12 @@ export function EmployeeStructureDialog({ employeeId, onClose }: { employeeId: s
       const body = {
         effectiveFrom,
         annualCtc: Number(ctc.replace(/[,₹\s]/g, "")),
-        components: custom ? Object.fromEntries(COMP.map(([k]) => [k, Number(comps[k] || 0)])) : null,
+        components: custom
+          ? {
+              ...Object.fromEntries(COMP.map(([k]) => [k, Number(comps[k] || 0)])),
+              extras: extras.filter((x) => x.label.trim() && x.amount > 0).map((x) => ({ ...x, code: x.code || x.label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 24) || "allowance" })),
+            }
+          : null,
         reason: reason.trim() || null,
       };
       const parsed = structureRevisionSchema.safeParse(body);
@@ -102,7 +123,7 @@ export function EmployeeStructureDialog({ employeeId, onClose }: { employeeId: s
   });
 
   const d = q.data;
-  const customGross = COMP.reduce((s, [k]) => s + Number(comps[k] || 0), 0);
+  const customGross = COMP.reduce((s, [k]) => s + Number(comps[k] || 0), 0) + extras.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   return (
     <Dialog
       open={!!employeeId}
@@ -151,6 +172,24 @@ export function EmployeeStructureDialog({ employeeId, onClose }: { employeeId: s
                   <Input inputMode="numeric" value={comps[k] ?? ""} onChange={(e) => setComps((c) => ({ ...c, [k]: e.target.value.replace(/[^\d]/g, "") }))} />
                 </Field>
               ))}
+              <div className="col-span-full flex flex-col gap-2">
+                <div className="flex items-center justify-between text-[13px]">
+                  <span className="font-medium">Other allowances</span>
+                  <Button size="sm" onClick={() => setExtras((x) => [...x, { code: "", label: "", amount: 0, taxable: true, esiWage: true }])}>
+                    Add allowance
+                  </Button>
+                </div>
+                {extras.map((x, i) => (
+                  <div key={i} className="grid grid-cols-[minmax(0,1fr)_110px_auto_auto] items-center gap-2">
+                    <Input placeholder="e.g. Night shift allowance" value={x.label} onChange={(e) => setExtras((all) => all.map((y, j) => (j === i ? { ...y, label: e.target.value } : y)))} />
+                    <Input inputMode="numeric" placeholder="Monthly" value={x.amount || ""} onChange={(e) => setExtras((all) => all.map((y, j) => (j === i ? { ...y, amount: Number(e.target.value.replace(/[^\d]/g, "")) } : y)))} />
+                    <Checkbox label="Taxable" checked={x.taxable !== false} onChange={(v) => setExtras((all) => all.map((y, j) => (j === i ? { ...y, taxable: v } : y)))} />
+                    <Button size="sm" variant="ghost" onClick={() => setExtras((all) => all.filter((_, j) => j !== i))}>
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
               <div className="text-muted self-end text-[13px]">Monthly gross {inr(customGross)}</div>
             </div>
           ) : null}
