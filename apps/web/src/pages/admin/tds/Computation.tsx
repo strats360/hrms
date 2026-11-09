@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Download, FileText, Repeat } from "lucide-react";
 import { inr } from "@hrms/shared";
-import { api, qs } from "@/lib/api";
+import { api, download, errorMessage, qs } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { EmployeeTax, Form16Data } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -215,7 +215,7 @@ export function Form16Dialog({ employeeId, fy, onClose }: { employeeId: string |
       footer={
         <>
           <Button onClick={onClose}>Close</Button>
-          <Button variant="primary" onClick={printPayslip} disabled={!q.data}>
+          <Button variant="primary" disabled={!q.data} onClick={() => download(`/admin/tds/form16/${employeeId}/pdf${qs({ fy })}`, `form16-${fy}.pdf`).catch((e) => toast.error(errorMessage(e)))}>
             <Download size={16} /> Download PDF
           </Button>
         </>

@@ -122,6 +122,8 @@ export const payrollItems = pgTable(
     professionalTax: money("professional_tax").notNull().default(0),
     tax: jsonb("tax").$type<Record<string, unknown>>(),
     onHold: boolean("on_hold").notNull().default(false),
+    /** When the payslip was emailed to the employee. */
+    payslipEmailedAt: timestamp("payslip_emailed_at", { withTimezone: true }),
     holdReason: text("hold_reason"),
     warnings: text("warnings").array().notNull().default([]),
     ...timestamps,

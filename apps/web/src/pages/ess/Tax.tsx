@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ChevronDown, Download, FileText, Lock, Trash2, Upload } from "lucide-react";
 import { CAPS, declaredBySection, fmtDate, inr, taxDeclarationDataSchema, TAX_SECTION_LABELS, todayIST, type TaxSection } from "@hrms/shared";
-import { api, ApiError, qs } from "@/lib/api";
+import { api, ApiError, download, errorMessage, qs } from "@/lib/api";
 import type { EmployeeTax, Form16Data, TaxDeclarationData, TaxProof, TaxStatement } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -588,7 +588,7 @@ function Form16Card({ currentFy }: { currentFy: string }) {
         footer={
           <>
             <Button onClick={() => setOpen(false)}>Close</Button>
-            <Button variant="primary" onClick={printPayslip}>
+            <Button variant="primary" onClick={() => download(`/ess/tax/form16/pdf${qs({ fy })}`, `form16-${fy}.pdf`).catch((e) => toast.error(errorMessage(e)))}>
               <Download size={16} /> Download PDF
             </Button>
           </>

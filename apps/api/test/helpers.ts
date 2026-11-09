@@ -47,6 +47,14 @@ export class Client {
     }
     return { status: res.status, body: json, headers: res.headers };
   }
+  /** GET a file: the raw response, for binary bodies (PDF, ZIP). */
+  async file(path: string) {
+    const headers: Record<string, string> = { Origin: env.APP_URL };
+    if (this.cookie) headers.Cookie = this.cookie;
+    if (this.tenantId) headers["X-Tenant-Id"] = this.tenantId;
+    const res = await app.fetch(new Request(env.APP_URL + "/api" + path, { headers }), env);
+    return { status: res.status, headers: res.headers, raw: res };
+  }
   get = (p: string) => this.req("GET", p);
   post = (p: string, b?: unknown) => this.req("POST", p, b ?? {});
   patch = (p: string, b: unknown) => this.req("PATCH", p, b);

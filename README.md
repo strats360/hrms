@@ -34,7 +34,7 @@ The product design lives in [`design/`](design/). `HRMS v2.dc.html` is the sourc
 | TDS | Projects annual income from year-to-date actuals plus the current structure, under the new or old regime. Applies the 87A rebate with marginal relief, surcharge with marginal relief, and 4% cess. What's left is spread over the remaining months |
 | Review | Register with exceptions, change versus last month, hold or release salary, one-time earnings and deductions (incentives, arrears, recoveries), CSV salary register |
 | Controls | Maker-checker approval (whoever calculates can't approve, unless they're a super admin). Approval is blocked while attendance corrections are pending. Reopening needs a reason and isn't allowed after the bank file is exported. Everything is audited |
-| Payslips | Published to self-service with an email to each employee, printable or "Save as PDF" in the design's layout. Data is snapshotted, so payslips never change after lock |
+| Payslips | Published to self-service with an email to each employee. Real PDF payslips (generated on the server, A4, in the design's layout) for each employee, a ZIP of the whole month, and emailing each employee their PDF as an attachment (in batches; salaries on hold are left out, and nobody is sent twice). Data is snapshotted, so payslips never change after lock |
 | Bank file | CSV with full account numbers (decrypted only for this export). Held salaries and missing bank details are skipped, and duplicate account+amount is blocked |
 
 **Statutory compliance is built:**
@@ -54,7 +54,7 @@ The product design lives in [`design/`](design/). `HRMS v2.dc.html` is the sourc
 | Computation statement | Full Form 16 Part B style statement for both regimes: HRA exemption u/s 10(13A), standard deduction, PT, 24(b) home loan interest (₹2 L cap), other income, previous employer, and Chapter VI-A deductions (80C with employee PF capped at ₹1.5 L, 80CCD(1B) ₹50,000, 80D by age, 80E, 80G, 80TTA ₹10,000). Payroll TDS uses it every month |
 | Self-service | Choose a regime with a live comparison, declare investments, upload proofs, submit to HR, view the computation, download Form 16 |
 | HR | TDS register, per-employee computation, regime switch on request, proof review, verify and lock (you can't verify your own), reminders by email |
-| 24Q and Form 16 | Quarterly return tracking with deducted vs deposited, a deductee annexure CSV for the return utility, and Form 16 (Part A summary + Part B) as a printable PDF, provisional until March is locked |
+| 24Q and Form 16 | Quarterly return tracking with deducted vs deposited, a deductee annexure CSV for the return utility, and Form 16 (Part A summary + Part B) as a server-generated PDF per employee or a ZIP for everyone, provisional until March is locked. Employees download their own from self-service |
 
 **Reimbursements are built:**
 

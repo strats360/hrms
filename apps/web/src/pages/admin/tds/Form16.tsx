@@ -48,6 +48,7 @@ export default function Form16Page() {
   const [filing, setFiling] = useState<Quarter | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [zipping, setZipping] = useState(false);
   const rows = useMemo(() => {
     const s = search.trim().toLowerCase();
     return (list.data?.employees ?? []).filter((e) => !s || e.name.toLowerCase().includes(s) || e.code.toLowerCase().includes(s) || (e.pan ?? "").toLowerCase().includes(s));
@@ -129,7 +130,24 @@ export default function Form16Page() {
           )}
           <TableCard>
             <div className="flex flex-wrap items-center gap-2 py-2">
-              <CardHeader title={`${list.data!.employees.length} employees`} />
+              <CardHeader
+                title={`${list.data!.employees.length} employees`}
+                actions={
+                  can("tds", "export") ? (
+                    <Button
+                      loading={zipping}
+                      onClick={() => {
+                        setZipping(true);
+                        download(`/admin/tds/form16.zip?fy=${fy}`, `form16-${fy}.zip`)
+                          .catch((e) => toast.error(e.message))
+                          .finally(() => setZipping(false));
+                      }}
+                    >
+                      <Download size={15} /> All Form 16 PDFs
+                    </Button>
+                  ) : null
+                }
+              />
               <Input className="ml-auto !w-[220px]" placeholder="Search name, ID or PAN" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search" />
             </div>
             <DataTable

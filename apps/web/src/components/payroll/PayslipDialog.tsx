@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { Download } from "lucide-react";
-import { api } from "@/lib/api";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Download, Printer } from "lucide-react";
+import { api, download, errorMessage } from "@/lib/api";
 import type { PayslipView } from "@/lib/types";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -12,6 +14,14 @@ export function PayslipDialog({ runId, employeeId, onClose, source = "admin" }: 
   const open = !!runId && (source === "ess" || !!employeeId);
   const path = source === "ess" ? `/ess/payslips/${runId}` : `/admin/payroll/runs/${runId}/items/${employeeId}`;
   const q = useQuery({ queryKey: ["payslip", source, runId, employeeId], queryFn: () => api.get<PayslipView>(path), enabled: open });
+  const [busy, setBusy] = useState(false);
+  const pdf = source === "ess" ? `/ess/payslips/${runId}/pdf` : `/admin/payroll/runs/${runId}/payslips/${employeeId}/pdf`;
+  const save = () => {
+    setBusy(true);
+    download(pdf, `payslip-${q.data?.run.month ?? ""}-${q.data?.employee.code ?? ""}.pdf`)
+      .catch((e) => toast.error(errorMessage(e)))
+      .finally(() => setBusy(false));
+  };
   return (
     <Dialog
       open={open}
@@ -21,7 +31,10 @@ export function PayslipDialog({ runId, employeeId, onClose, source = "admin" }: 
       footer={
         <>
           <Button onClick={onClose}>Close</Button>
-          <Button variant="primary" onClick={printPayslip} disabled={!q.data}>
+          <Button onClick={printPayslip} disabled={!q.data}>
+            <Printer size={16} /> Print
+          </Button>
+          <Button variant="primary" onClick={save} loading={busy} disabled={!q.data}>
             <Download size={16} /> Download PDF
           </Button>
         </>

@@ -29,6 +29,8 @@ import { layout } from "../lib/email";
 import { ALLOWED_TYPES, deleteFile, getFile, MAX_UPLOAD_BYTES, putFile, safeName } from "../lib/storage";
 import { getTemplate, resolveStructure, structuresAsOf } from "../services/payroll";
 import { currentFy, employeeTax, form16, fyMonths, QUARTERS, quarterOf } from "../services/tax";
+import { form16FileName, form16Pdf, type Form16Data } from "../services/form16-pdf";
+import { zipSync } from "fflate";
 
 export const tdsRoutes = new Hono<AppEnv>();
 const tid = (c: Context<AppEnv>) => c.get("tenant").tenantId;
@@ -381,6 +383,33 @@ tdsRoutes.get("/form16", requirePerm("tds", "view"), v("query", fyQuery), async 
   return c.json({ fy, closed, lockedMonths: runs.length, q4Filed: filed.some((f) => f.quarter === "Q4"), quartersFiled: filed.map((f) => f.quarter), employees: emps });
 });
 
+/** Form 16 for everyone paid in the year, as PDFs in one ZIP. */
+tdsRoutes.get("/form16.zip", requirePerm("tds", "export"), v("query", fyQuery), async (c) => {
+  const db = c.get("db");
+  const fy = c.req.valid("query").fy ?? currentFy();
+  const ids = (
+    await db
+      .selectDistinct({ id: payrollItems.employeeId })
+      .from(payrollItems)
+      .innerJoin(payrollRuns, eq(payrollRuns.id, payrollItems.runId))
+      .where(and(eq(payrollRuns.tenantId, tid(c)), inArray(payrollRuns.status, ["approved", "paid"]), inArray(payrollRuns.month, fyMonths(fy))))
+  ).map((r) => r.id);
+  if (!ids.length) throw badRequest(`No approved payroll in FY ${fy}`);
+  const files: Record<string, Uint8Array> = {};
+  for (const id of ids) {
+    const data = await form16(db, tid(c), id, fy);
+    if (data?.period.from) files[form16FileName(data)] = await form16Pdf(data as unknown as Form16Data);
+  }
+  await audit(c, { action: "tds.form16_download", entity: "tds", summary: `Downloaded Form 16 for ${Object.keys(files).length} employees, FY ${fy}` });
+  return c.body(zipSync(files, { level: 0 }) as unknown as ArrayBuffer, 200, { "Content-Type": "application/zip", "Content-Disposition": `attachment; filename="form16-${fy}.zip"`, "Cache-Control": "private, no-store" });
+});
+
+tdsRoutes.get("/form16/:employeeId/pdf", requirePerm("tds", "view"), v("query", fyQuery), async (c) => {
+  const data = await form16(c.get("db"), tid(c), c.req.param("employeeId"), c.req.valid("query").fy ?? currentFy());
+  if (!data?.period.from) throw notFound("Form 16");
+  return c.body((await form16Pdf(data as unknown as Form16Data)) as unknown as ArrayBuffer, 200, { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${form16FileName(data)}"`, "Cache-Control": "private, no-store" });
+});
+
 tdsRoutes.get("/form16/:employeeId", requirePerm("tds", "view"), v("query", fyQuery), async (c) => {
   const data = await form16(c.get("db"), tid(c), c.req.param("employeeId"), c.req.valid("query").fy ?? currentFy());
   if (!data) throw notFound("Employee");
@@ -480,6 +509,16 @@ essTaxRoutes.delete("/proofs/:id", async (c) => {
   await c.get("db").delete(taxProofs).where(eq(taxProofs.id, p.id));
   await deleteFile(c.env, p.fileKey);
   return c.json({ ok: true });
+});
+
+essTaxRoutes.get("/form16/pdf", v("query", fyQuery), async (c) => {
+  if (c.get("tenant").readOnly) throw forbidden("Downloads aren't available in a support session");
+  const { tid: t, eid } = me(c);
+  const start = Number(currentFy().slice(0, 4)) - 1;
+  const fy = c.req.valid("query").fy ?? `${start}-${String((start + 1) % 100).padStart(2, "0")}`;
+  const data = await form16(c.get("db"), t, eid, fy);
+  if (!data?.period.from) throw notFound("Form 16");
+  return c.body((await form16Pdf(data as unknown as Form16Data)) as unknown as ArrayBuffer, 200, { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${form16FileName(data)}"`, "Cache-Control": "private, no-store" });
 });
 
 essTaxRoutes.get("/form16", v("query", fyQuery), async (c) => {

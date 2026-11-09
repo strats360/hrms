@@ -1,0 +1,1 @@
+ALTER TABLE "payroll_items" ADD COLUMN "payslip_emailed_at" timestamp with time zone;

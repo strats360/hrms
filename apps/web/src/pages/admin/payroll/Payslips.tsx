@@ -3,9 +3,9 @@ import { Link, useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Send } from "lucide-react";
+import { Download, Mail, Send } from "lucide-react";
 import { fmtDate, inr } from "@hrms/shared";
-import { api, qs } from "@/lib/api";
+import { api, download, errorMessage, qs } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { PayrollItem, PayrollRun } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,33 @@ export default function Payslips() {
     },
   });
 
+  // email PDFs in batches until none are left, showing progress
+  const [mailing, setMailing] = useState<{ sent: number; failed: number } | null>(null);
+  const emailPdfs = async (resend: boolean) => {
+    if (!run) return;
+    setMailing({ sent: 0, failed: 0 });
+    let sent = 0;
+    let failed = 0;
+    try {
+      let first = true;
+      for (;;) {
+        const r = await api.post<{ sent: number; failed: string[]; remaining: number }>(`/admin/payroll/runs/${run.id}/payslips/email`, { resend: resend && first });
+        first = false;
+        sent += r.sent;
+        failed += r.failed.length;
+        setMailing({ sent, failed });
+        if (!r.remaining || r.sent + r.failed.length === 0) break;
+      }
+      toast.success(`Emailed ${sent} payslip PDF${sent === 1 ? "" : "s"}${failed ? `. ${failed} couldn't be sent` : ""}`);
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setMailing(null);
+      qc.invalidateQueries({ queryKey: ["payroll", "items"] });
+    }
+  };
+  const [zipping, setZipping] = useState(false);
+
   const columns = useMemo<ColumnDef<PayrollItem>[]>(
     () => [
       {
@@ -74,7 +101,15 @@ export default function Payslips() {
         header: "Delivery",
         accessorFn: (r) => (r.onHold ? 0 : run?.publishedAt ? 2 : 1),
         cell: ({ row: { original: r } }) =>
-          r.onHold ? <Tag tone="bad" title={r.holdReason ?? undefined}>On hold</Tag> : run?.publishedAt ? <Tag tone="ok">Published · emailed</Tag> : <Tag tone="neutral">Not published</Tag>,
+          r.onHold ? (
+            <Tag tone="bad" title={r.holdReason ?? undefined}>On hold</Tag>
+          ) : r.payslipEmailedAt ? (
+            <Tag tone="ok" title={new Date(r.payslipEmailedAt).toLocaleString("en-IN")}>PDF emailed</Tag>
+          ) : run?.publishedAt ? (
+            <Tag tone="ok">Published</Tag>
+          ) : (
+            <Tag tone="neutral">Not published</Tag>
+          ),
       },
     ],
     [run],
@@ -118,6 +153,24 @@ export default function Payslips() {
                   </option>
                 ))}
               </Select>
+              {can("payroll", "export") ? (
+                <Button
+                  loading={zipping}
+                  onClick={() => {
+                    setZipping(true);
+                    download(`/admin/payroll/runs/${run.id}/payslips.zip`, `payslips-${run.month}.zip`)
+                      .catch((e) => toast.error(errorMessage(e)))
+                      .finally(() => setZipping(false));
+                  }}
+                >
+                  <Download size={15} /> All PDFs
+                </Button>
+              ) : null}
+              {run.publishedAt && can("payroll", "approve") ? (
+                <Button loading={!!mailing} onClick={() => confirm(`Email each employee their ${monthLabel(run.month)} payslip as a PDF? Anyone already sent one is skipped.`) && emailPdfs(false)}>
+                  <Mail size={15} /> {mailing ? `Sent ${mailing.sent}…` : "Email PDFs"}
+                </Button>
+              ) : null}
               {canPublish ? (
                 <Button variant="primary" loading={publish.isPending} onClick={() => publish.mutate()}>
                   <Send size={15} /> Publish & email

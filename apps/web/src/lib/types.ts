@@ -254,6 +254,7 @@ export interface PayrollItem {
   /** Approved expense claims paid with this salary (not part of gross or TDS). */
   reimbursement: number;
   onHold: boolean;
+  payslipEmailedAt?: string | null;
   holdReason: string | null;
   warnings: string[];
   previousNet: number | null;

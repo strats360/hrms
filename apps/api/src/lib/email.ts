@@ -4,6 +4,8 @@ export interface EmailMessage {
   html: string;
   text: string;
   replyTo?: string;
+  /** Files to attach, base64-encoded. */
+  attachments?: { filename: string; content: string }[];
 }
 
 export interface Mailer {
@@ -15,7 +17,7 @@ export class ConsoleMailer implements Mailer {
   public sent: EmailMessage[] = [];
   async send(msg: EmailMessage) {
     this.sent.push(msg);
-    console.log(`[email] to=${msg.to} subject="${msg.subject}"\n${msg.text}`);
+    console.log(`[email] to=${msg.to} subject="${msg.subject}"${msg.attachments?.length ? ` attachments=${msg.attachments.map((a) => a.filename).join(",")}` : ""}\n${msg.text}`);
   }
 }
 
@@ -46,6 +48,7 @@ export class ResendMailer implements Mailer {
         html: msg.html,
         text: msg.text,
         reply_to: msg.replyTo,
+        ...(msg.attachments?.length ? { attachments: msg.attachments } : {}),
       }),
     });
     if (!res.ok) {
