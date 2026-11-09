@@ -134,6 +134,13 @@
       "when": 1794243842942,
       "tag": "0018_comp_off",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1794244652035,
+      "tag": "0019_wage_category",
+      "breakpoints": true
     }
   ]
 }

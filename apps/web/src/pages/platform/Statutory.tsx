@@ -1,3 +1,4 @@
+import { WAGE_CATEGORIES, WAGE_CATEGORY_LABELS } from "@hrms/shared";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -405,13 +406,29 @@ function TaxEditor({ v, set }: Ed) {
 function MinWageEditor({ v, set }: Ed) {
   return (
     <div className="grid gap-3 sm:grid-cols-3">
-      <AmtField label="Monthly (₹)" v={v} k="monthly" set={set} />
+      <AmtField label="Default monthly (₹)" v={v} k="monthly" set={set} />
       <Field label="Zone">
         <Input value={v.zone ?? ""} onChange={(e) => set({ ...v, zone: e.target.value })} />
       </Field>
-      <Field label="Skill level">
+      <Field label="Default skill level" hint="Applies to employees without a skill category">
         <Input value={v.skill ?? ""} onChange={(e) => set({ ...v, skill: e.target.value })} />
       </Field>
+      <div className="col-span-full text-[13px] font-medium">Monthly rate by skill category (basic + DA, optional)</div>
+      {WAGE_CATEGORIES.map((k) => (
+        <Field key={k} label={WAGE_CATEGORY_LABELS[k]}>
+          <Input
+            inputMode="numeric"
+            value={v.rates?.[k] ?? ""}
+            onChange={(e) => {
+              const n = e.target.value.replace(/[^\d]/g, "");
+              const rates = { ...(v.rates ?? {}) };
+              if (n) rates[k] = Number(n);
+              else delete rates[k];
+              set({ ...v, rates });
+            }}
+          />
+        </Field>
+      ))}
     </div>
   );
 }

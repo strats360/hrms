@@ -295,7 +295,7 @@ export interface StatutoryRules {
   noPt: string[];
   lwf: Record<string, LwfRule>;
   tax: Record<string, Record<Regime, TaxTable>>;
-  minWage: Record<string, { monthly: number; zone?: string; skill?: string }>;
+  minWage: Record<string, { monthly: number; zone?: string; skill?: string; rates?: Partial<Record<"unskilled" | "semi_skilled" | "skilled" | "highly_skilled", number>> }>;
 }
 export const DEFAULT_RULES: StatutoryRules = {
   pf: { ...STATUTORY.pf },

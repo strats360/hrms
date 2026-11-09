@@ -15,9 +15,10 @@ import {
   payrollRuns,
   reimbursementCategories,
   reimbursementClaims,
+  tenants,
   type Database,
 } from "@hrms/db";
-import { daysInMonth, fyOfMonth, ptSlabSummary, todayIST, type Action, type Module } from "@hrms/shared";
+import { daysInMonth, fyOfMonth, minimumWageShortfall, ptSlabSummary, todayIST, WAGE_CATEGORY_LABELS, type Action, type Module } from "@hrms/shared";
 import { contributionRow, LOCKED, type Item } from "../routes/compliance";
 import { getTemplate, resolveStructure, structuresAsOf } from "./payroll";
 import { fyMonths, QUARTERS } from "./tax";
@@ -317,6 +318,43 @@ export const REPORTS: ReportDef[] = [
           const p = pay.get(`${run.id}|${i.employeeId}`);
           return [month, i.snapshot.code, i.snapshot.name, Number(i.net), i.onHold ? "Held" : run.publishedAt ? "Published" : "Not published", run.publishedAt ? run.publishedAt.toISOString().slice(0, 10) : "", run.publishedAt && !i.onHold ? "Work email" : "", p?.code ?? (run.status === "paid" ? run.paymentReference : ""), p?.status ?? (run.status === "paid" && !i.onHold ? "paid" : i.onHold ? "held" : "pending"), p?.utr ?? ""];
         }),
+      };
+    },
+  },
+  {
+    key: "min-wage-check",
+    name: "Minimum wage check",
+    group: "Compliance",
+    description: "Current salaries against the state minimum wage",
+    module: "compliance",
+    usesPeriod: false,
+    async run({ db, tenantId, f }) {
+      const conds = await employeeScope(db, tenantId, { ...f, status: "active" });
+      const today = todayIST();
+      const emps = await db.select({ e: employees, state: branches.state }).from(employees).leftJoin(branches, eq(branches.id, employees.branchId)).where(and(...conds));
+      const [t] = await db.select({ state: tenants.state, settings: tenants.settings }).from(tenants).where(eq(tenants.id, tenantId));
+      const basis = (t?.settings as { minWageBasis?: "basic" | "gross" } | null)?.minWageBasis ?? "basic";
+      const R = await rulesFor(db, today.slice(0, 7));
+      const template = await getTemplate(db, tenantId);
+      const structs = await structuresAsOf(db, tenantId, emps.map((x) => x.e.id), today);
+      const configured = Object.keys(R.minWage);
+      const rows: (string | number)[][] = [];
+      for (const { e, state } of emps) {
+        const st = state ?? t?.state ?? null;
+        if (!st || !R.minWage[st]) continue;
+        const s = resolveStructure(e, structs.get(e.id), template);
+        const rule = R.minWage[st]!;
+        const short = minimumWageShortfall(rule, { basic: s.components.basic, gross: s.gross }, { category: e.wageCategory, basis });
+        const required = short?.required ?? ((e.wageCategory && rule.rates?.[e.wageCategory as keyof typeof rule.rates]) || rule.monthly);
+        rows.push([e.employeeCode, e.fullName, st, e.wageCategory ? WAGE_CATEGORY_LABELS[e.wageCategory as keyof typeof WAGE_CATEGORY_LABELS] : (rule.skill ?? "Default rate"), s.components.basic, s.gross, required, short ? short.short : 0, short ? "Below minimum" : "OK"]);
+      }
+      rows.sort((a, b) => Number(b[7]) - Number(a[7]));
+      return {
+        header: ["Employee ID", "Name", "State", "Skill category", "Monthly basic", "Monthly gross", "Minimum wage", "Short by", "Result"],
+        rows,
+        note: configured.length
+          ? `Compared on monthly ${basis} (minimum wages are notified for basic + DA). Rates come from the statutory master, for ${configured.join(", ")}.`
+          : "No minimum wage is live in the statutory master yet. Publish your state's rates under Platform › Statutory master.",
       };
     },
   },

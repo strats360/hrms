@@ -28,7 +28,17 @@ const regimeTable = z.object({
   surcharge: z.array(z.object({ above: amount, rate })).max(10).default([]),
 });
 export const taxValue = z.object({ new: regimeTable, old: regimeTable });
-export const minWageValue = z.object({ monthly: amount, zone: z.string().max(40).nullable().optional(), skill: z.string().max(40).nullable().optional() });
+export const WAGE_CATEGORIES = ["unskilled", "semi_skilled", "skilled", "highly_skilled"] as const;
+export type WageCategory = (typeof WAGE_CATEGORIES)[number];
+export const WAGE_CATEGORY_LABELS: Record<WageCategory, string> = { unskilled: "Unskilled", semi_skilled: "Semi-skilled", skilled: "Skilled", highly_skilled: "Highly skilled" };
+export const minWageValue = z.object({
+  /** The rate for anyone without a skill category (usually the one that covers most staff). */
+  monthly: amount,
+  zone: z.string().max(40).nullable().optional(),
+  skill: z.string().max(40).nullable().optional(),
+  /** Monthly rate by skill category, as the state notification lists them. */
+  rates: z.object({ unskilled: amount.optional(), semi_skilled: amount.optional(), skilled: amount.optional(), highly_skilled: amount.optional() }).optional(),
+});
 
 export const RULE_VALUE_SCHEMA: Record<RuleCategory, z.ZodTypeAny> = { pf: pfValue, esi: esiValue, pt: ptValue, lwf: lwfValue, tax: taxValue, minwage: minWageValue };
 
@@ -81,7 +91,7 @@ export function applyRule(R: StatutoryRules, category: RuleCategory, scope: stri
     R.tax[scope] = { new: t(v.new), old: t(v.old) } as Record<Regime, TaxTable>;
   } else if (category === "minwage") {
     const v = minWageValue.parse(value);
-    R.minWage[scope] = { monthly: v.monthly, zone: v.zone ?? undefined, skill: v.skill ?? undefined };
+    R.minWage[scope] = { monthly: v.monthly, zone: v.zone ?? undefined, skill: v.skill ?? undefined, rates: v.rates };
   }
 }
 
@@ -160,8 +170,28 @@ export function describeRule(category: RuleCategory, value: Record<string, unkno
       return `New: ${v.new.slabs.map((s) => Math.round(s.rate * 100)).join(" / ")}% · rebate to ${inrS(v.new.rebateLimit)} · std ded ${inrS(v.new.standardDeduction)}`;
     }
     const v = minWageValue.parse(value);
-    return `${inrS(v.monthly)} / month${v.zone ? ` · ${v.zone}` : ""}${v.skill ? ` · ${v.skill}` : ""}`;
+    const rates = v.rates ? WAGE_CATEGORIES.filter((k) => v.rates![k]).map((k) => `${WAGE_CATEGORY_LABELS[k]} ${inrS(v.rates![k]!)}`) : [];
+    return `${inrS(v.monthly)} / month${v.zone ? ` · ${v.zone}` : ""}${v.skill ? ` · ${v.skill}` : ""}${rates.length ? ` (${rates.join(", ")})` : ""}`;
   } catch {
     return "Invalid value";
   }
+}
+
+/**
+ * Is a monthly wage below the state's minimum? Minimum wages are notified for basic + DA,
+ * which is basic here; some companies compare gross instead. Uses the rate for the
+ * employee's skill category when the rule lists one.
+ */
+export function minimumWageShortfall(
+  rule: { monthly: number; zone?: string; skill?: string; rates?: Partial<Record<WageCategory, number>> } | undefined,
+  pay: { basic: number; gross: number },
+  opts: { category?: string | null; basis?: "basic" | "gross" } = {},
+) {
+  if (!rule) return null;
+  const cat = opts.category as WageCategory | undefined;
+  const required = (cat && rule.rates?.[cat]) || rule.monthly;
+  const label = cat && rule.rates?.[cat] ? WAGE_CATEGORY_LABELS[cat] : (rule.skill ?? null);
+  const paid = opts.basis === "gross" ? pay.gross : pay.basic;
+  if (!required || paid >= required) return null;
+  return { required, paid, short: required - paid, basis: opts.basis ?? "basic", label, zone: rule.zone ?? null };
 }

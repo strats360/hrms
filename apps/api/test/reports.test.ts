@@ -12,10 +12,10 @@ beforeAll(async () => {
 });
 
 describe("Reports", () => {
-  it("lists the 16 reports with filters and access", async () => {
+  it("lists the 17 reports with filters and access", async () => {
     const r = await kunal.get("/admin/reports");
     expect(r.status).toBe(200);
-    expect(r.body.reports).toHaveLength(16);
+    expect(r.body.reports).toHaveLength(17);
     expect(r.body.reports.every((x: any) => x.allowed)).toBe(true);
     expect(r.body.branches.length).toBeGreaterThan(0);
     const hr = (await nisha.get("/admin/reports")).body.reports;

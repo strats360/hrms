@@ -10,6 +10,7 @@ import {
 } from "./constants";
 import { EXIT_TYPES } from "./fnf";
 import { validIpRule } from "./punch-rules";
+import { WAGE_CATEGORIES } from "./statutory";
 
 // ---------- primitives ----------
 export const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
@@ -72,6 +73,7 @@ export const employeeEmploymentSchema = z.object({
   branchId: nullable(z.string()),
   shiftId: nullable(z.string()),
   biometricId: nullable(z.string().trim().max(30)),
+  wageCategory: nullable(z.enum(WAGE_CATEGORIES)),
   employmentType: z.enum(EMPLOYMENT_TYPES).default("full_time"),
   workLocation: nullable(trimmed(120)),
   status: z.enum(EMPLOYEE_STATUSES).default("probation"),
@@ -177,6 +179,7 @@ export const tenantPayrollSettingsSchema = z.object({
   /** Notice period in calendar days, and the shorter one while on probation. */
   noticeDays: z.number().int().min(0).max(180).default(30),
   probationNoticeDays: z.number().int().min(0).max(180).default(15),
+  minWageBasis: z.enum(["basic", "gross"]).optional(),
   compOff: z.object({ expiryDays: z.number().int().min(7).max(365), claimWithinDays: z.number().int().min(1).max(90) }).optional(),
   punchPolicy: z.object({ location: z.enum(["off", "flag", "block"]), ip: z.enum(["off", "flag", "block"]), wfhExempt: z.boolean() }).optional(),
   overtime: z

@@ -9,6 +9,7 @@ import {
   payrollRuns,
   salaryStructures,
   tenants,
+  branches,
   user,
 } from "@hrms/db";
 import {
@@ -21,6 +22,7 @@ import {
   reopenSchema,
   structureFromComponents,
   templateFor,
+  minimumWageShortfall,
   structureFromCtc,
   structureRevisionSchema,
   tenantPayrollSettingsSchema,
@@ -37,6 +39,7 @@ import { audit } from "../lib/audit";
 import { toCsv } from "../lib/csv";
 import { layout } from "../lib/email";
 import { settleClaims } from "../services/reimbursements";
+import { rulesFor } from "../services/statutory";
 import { releaseEncashment } from "../services/pay-extras";
 import { activeBatchForRun } from "../services/payments";
 import { calculateRun, defaultPayDate, getTemplate, monthBounds, payableEmployees, refreshTotals, resolveStructure, structuresAsOf } from "../services/payroll";
@@ -212,8 +215,15 @@ payrollRoutes.post("/structures/:employeeId", requirePerm("payroll", "edit"), v(
     .onConflictDoUpdate({ target: [salaryStructures.tenantId, salaryStructures.employeeId, salaryStructures.effectiveFrom], set: { annualCtc, components: b.components ?? null, reason: b.reason ?? null } })
     .returning();
   if (b.effectiveFrom <= todayIST()) await db.update(employees).set({ annualCtc }).where(eq(employees.id, e.id));
-  await audit(c, { action: "payroll.structure", entity: "salary_structure", entityId: row!.id, summary: `Set ${e.fullName}'s CTC to ${inr(annualCtc)} from ${fmtDate(b.effectiveFrom)}`, data: { reason: b.reason } });
-  return c.json(row, 201);
+  // warn (not block) when the new salary is under the state's minimum wage
+  const [br] = e.branchId ? await db.select({ state: branches.state }).from(branches).where(eq(branches.id, e.branchId)) : [];
+  const [tn] = await db.select({ state: tenants.state, settings: tenants.settings }).from(tenants).where(eq(tenants.id, tid(c)));
+  const state = br?.state ?? tn?.state ?? null;
+  const st = resolveStructure(e, { annualCtc, components: b.components ?? null }, template);
+  const mw = state ? minimumWageShortfall((await rulesFor(db, b.effectiveFrom.slice(0, 7))).minWage[state], { basic: st.components.basic, gross: st.gross }, { category: e.wageCategory, basis: (tn?.settings as { minWageBasis?: "basic" | "gross" } | null)?.minWageBasis }) : null;
+  const warning = mw ? `This is below the ${state} minimum wage${mw.label ? ` for ${mw.label.toLowerCase()} work` : ""}: monthly ${mw.basis} ${inr(mw.paid)} against ${inr(mw.required)}.` : null;
+  await audit(c, { action: "payroll.structure", entity: "salary_structure", entityId: row!.id, summary: `Set ${e.fullName}'s CTC to ${inr(annualCtc)} from ${fmtDate(b.effectiveFrom)}${warning ? " (below minimum wage)" : ""}`, data: { reason: b.reason } });
+  return c.json({ ...row, warning }, 201);
 });
 
 // ---------------------------------------------------------------------------

@@ -50,3 +50,15 @@ describe("statutory master", () => {
     expect(describeRule("esi", builtInValue("esi")!)).toBe("0.75% / 3.25% up to ₹21,000 gross");
   });
 });
+
+describe("minimum wage check", () => {
+  const rule = { monthly: 12870, zone: "Zone II", skill: "Skilled", rates: { unskilled: 11050, semi_skilled: 11900, skilled: 12870, highly_skilled: 13880 } };
+  it("flags pay below the state's minimum, by skill category", async () => {
+    const { minimumWageShortfall } = await import("../src/statutory");
+    expect(minimumWageShortfall(rule, { basic: 12000, gross: 24000 })).toMatchObject({ required: 12870, short: 870, label: "Skilled" });
+    expect(minimumWageShortfall(rule, { basic: 12000, gross: 24000 }, { category: "unskilled" })).toBeNull();
+    expect(minimumWageShortfall(rule, { basic: 13000, gross: 24000 }, { category: "highly_skilled" })).toMatchObject({ required: 13880, label: "Highly skilled" });
+    expect(minimumWageShortfall(rule, { basic: 9000, gross: 24000 }, { basis: "gross" })).toBeNull();
+    expect(minimumWageShortfall(undefined, { basic: 1, gross: 1 })).toBeNull();
+  });
+});

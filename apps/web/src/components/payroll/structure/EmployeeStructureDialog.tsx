@@ -111,11 +111,12 @@ export function EmployeeStructureDialog({ employeeId, onClose }: { employeeId: s
       };
       const parsed = structureRevisionSchema.safeParse(body);
       if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Check the form");
-      return api.post(`/admin/payroll/structures/${employeeId}`, parsed.data);
+      return api.post<{ warning?: string | null }>(`/admin/payroll/structures/${employeeId}`, parsed.data);
     },
     meta: { silent: true },
-    onSuccess: () => {
+    onSuccess: (r) => {
       toast.success("Salary revised");
+      if (r?.warning) toast.warning(r.warning, { duration: 10000 });
       setRevising(false);
       qc.invalidateQueries({ queryKey: ["payroll", "structures"] });
     },

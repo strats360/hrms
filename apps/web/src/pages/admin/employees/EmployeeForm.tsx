@@ -1,3 +1,4 @@
+import { WAGE_CATEGORIES, WAGE_CATEGORY_LABELS } from "@hrms/shared";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -35,6 +36,7 @@ type Form = {
   branchId: string;
   shiftId: string;
   biometricId: string;
+  wageCategory: string;
   employmentType: string;
   workLocation: string;
   status: string;
@@ -62,7 +64,7 @@ type Form = {
 const EMPTY: Form = {
   firstName: "", lastName: "", workEmail: "", personalEmail: "", phone: "", dateOfBirth: "", gender: "", maritalStatus: "", bloodGroup: "",
   currentAddress: "", permanentAddress: "", emergencyContactName: "", emergencyContactRelation: "", emergencyContactPhone: "",
-  employeeCode: "", dateOfJoining: todayIST(), departmentId: "", designationId: "", managerId: "", branchId: "", shiftId: "", biometricId: "",
+  employeeCode: "", dateOfJoining: todayIST(), departmentId: "", designationId: "", managerId: "", branchId: "", shiftId: "", biometricId: "", wageCategory: "",
   employmentType: "full_time", workLocation: "", status: "probation", probationMonths: "6", confirmationDate: "", resignationDate: "", lastWorkingDay: "",
   annualCtc: "", accountHolderName: "", bankName: "", accountNumber: "", ifsc: "", paymentMethod: "bank_transfer",
   pan: "", aadhaarLast4: "", uan: "", esicIpNumber: "", pfApplicable: true, esiApplicable: false, ptApplicable: true, taxRegime: "new", sendInvite: true,
@@ -76,7 +78,7 @@ function fromDetail(e: EmployeeDetail): Form {
     gender: s(e.gender), maritalStatus: s(e.maritalStatus), bloodGroup: s(e.bloodGroup), currentAddress: s(e.currentAddress), permanentAddress: s(e.permanentAddress),
     emergencyContactName: s(e.emergencyContactName), emergencyContactRelation: s(e.emergencyContactRelation), emergencyContactPhone: s(e.emergencyContactPhone),
     employeeCode: e.employeeCode, dateOfJoining: e.dateOfJoining, departmentId: s(e.departmentId), designationId: s(e.designationId), managerId: s(e.managerId),
-    branchId: s(e.branchId), shiftId: s(e.shiftId), biometricId: s(e.biometricId), employmentType: e.employmentType, workLocation: s(e.workLocation), status: e.status,
+    branchId: s(e.branchId), shiftId: s(e.shiftId), biometricId: s(e.biometricId), wageCategory: s(e.wageCategory), employmentType: e.employmentType, workLocation: s(e.workLocation), status: e.status,
     probationMonths: String(e.probationMonths), confirmationDate: s(e.confirmationDate), resignationDate: s(e.resignationDate), lastWorkingDay: s(e.lastWorkingDay),
     annualCtc: s(e.annualCtc), accountHolderName: s(e.accountHolderName), bankName: s(e.bankName), accountNumber: "", ifsc: s(e.ifsc), paymentMethod: e.paymentMethod,
     pan: s(e.pan), aadhaarLast4: s(e.aadhaarLast4), uan: s(e.uan), esicIpNumber: s(e.esicIpNumber), pfApplicable: e.pfApplicable, esiApplicable: e.esiApplicable,
@@ -328,6 +330,12 @@ export default function EmployeeForm() {
               <Select {...text("shiftId")}>
                 <option value="">Company default</option>
                 {L?.shifts.map((s) => <option key={s.id} value={s.id}>{s.name} · {s.startTime}–{s.endTime}</option>)}
+              </Select>
+            </Field>
+            <Field label="Minimum wage category" hint="Skill category in the state's minimum wage notification" htmlFor="f-wageCategory">
+              <Select {...text("wageCategory")}>
+                <option value="">State default</option>
+                {WAGE_CATEGORIES.map((c) => <option key={c} value={c}>{WAGE_CATEGORY_LABELS[c]}</option>)}
               </Select>
             </Field>
             <Field label="Biometric ID" error={err("biometricId")} htmlFor="f-biometricId" hint="Enrolment number on the attendance device, if it isn't the employee ID">

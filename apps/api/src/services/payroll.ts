@@ -30,6 +30,7 @@ import {
   type NamedTemplate,
   type TemplateBook,
   templateFor,
+  minimumWageShortfall,
   type Structure,
 } from "@hrms/shared";
 import { badRequest, notFound } from "../lib/errors";
@@ -57,6 +58,8 @@ export function defaultPayDate(month: string) {
  * The company's default salary template, carrying its other templates so that
  * resolveStructure can pick each employee's own.
  */
+const inrPlain = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
+
 export async function getTemplate(db: Database, tenantId: string): Promise<TemplateBook> {
   const [t] = await db.select({ settings: tenants.settings }).from(tenants).where(eq(tenants.id, tenantId));
   const s = (t?.settings ?? {}) as { salaryTemplate?: Partial<SalaryTemplate>; salaryTemplates?: NamedTemplate[] };
@@ -252,6 +255,10 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
     if (!e.pan) warnings.push("PAN missing: TDS should be at least 20% (s.206AA)");
     if (e.lastWorkingDay && e.lastWorkingDay <= end) warnings.push("Leaving this month: settle full and final separately");
     if (e.dateOfJoining >= start) warnings.push("Joined this month: pay prorated from joining date");
+    // minimum wage, on the full month's pay (LOP doesn't make a salary non-compliant)
+    const mwState = branchState ?? tenant?.state ?? null;
+    const mw = mwState ? minimumWageShortfall(rules.minWage[mwState], { basic: structure.components.basic, gross: structure.gross }, { category: e.wageCategory, basis: (tenant?.settings as { minWageBasis?: "basic" | "gross" } | null)?.minWageBasis }) : null;
+    if (mw) warnings.push(`Below the ${mwState} minimum wage${mw.label ? ` (${mw.label})` : ""}: ${mw.basis} ${inrPlain(mw.paid)} against ${inrPlain(mw.required)}`);
     // non-taxable one-time pay and non-taxable allowances
     const nonTaxable = slip.nonTaxable;
     const snapshot: ItemSnapshot = {

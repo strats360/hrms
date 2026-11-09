@@ -57,6 +57,8 @@ export const employees = pgTable(
     annualCtc: numeric("annual_ctc", { precision: 14, scale: 2, mode: "number" }).notNull().default(0),
     /** Salary template (company settings); null is the default template. */
     salaryTemplateId: text("salary_template_id"),
+    /** Skill category under the state minimum wage notification. */
+    wageCategory: text("wage_category"),
     // bank (account number encrypted at rest, last4 kept for display/search)
     accountHolderName: text("account_holder_name"),
     bankName: text("bank_name"),
