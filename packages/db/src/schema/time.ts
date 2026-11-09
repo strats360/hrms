@@ -10,6 +10,7 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { tenantIdColumn as tenantId } from "./org";
 import { employees } from "./people";
 import { id, timestamps } from "./_helpers";
@@ -188,4 +189,34 @@ export const attendancePunches = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("attendance_punches_uq").on(t.tenantId, t.employeeId, t.punchedAt), index("attendance_punches_day_idx").on(t.tenantId, t.employeeId, t.date)],
+);
+
+/**
+ * Leave turned into pay: on request while in service, or days above the carry-forward
+ * limit at year end. Paid as a one-time earning in a payroll run.
+ */
+export const leaveEncashments = pgTable(
+  "leave_encashments",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    employeeId: employeeId(),
+    leaveTypeId: text("leave_type_id")
+      .notNull()
+      .references(() => leaveTypes.id, { onDelete: "cascade" }),
+    year: integer("year").notNull(),
+    days: numeric("days", { precision: 6, scale: 1, mode: "number" }).notNull(),
+    perDay: numeric("per_day", { precision: 14, scale: 2, mode: "number" }).notNull(),
+    amount: numeric("amount", { precision: 14, scale: 2, mode: "number" }).notNull(),
+    reason: text("reason").notNull().default("request"), // request | year_end
+    note: text("note"),
+    status: text("status").notNull().default("pending"), // pending | in_payroll | cancelled
+    runId: text("run_id"),
+    createdBy: text("created_by"),
+    ...timestamps,
+  },
+  (t) => [
+    index("leave_encashments_tenant_status_idx").on(t.tenantId, t.status),
+    uniqueIndex("leave_encashments_year_end_uq").on(t.employeeId, t.leaveTypeId, t.year).where(sql`reason = 'year_end'`),
+  ],
 );

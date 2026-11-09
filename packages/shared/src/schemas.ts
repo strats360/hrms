@@ -165,6 +165,16 @@ export const tenantPayrollSettingsSchema = z.object({
   /** Notice period in calendar days, and the shorter one while on probation. */
   noticeDays: z.number().int().min(0).max(180).default(30),
   probationNoticeDays: z.number().int().min(0).max(180).default(15),
+  overtime: z
+    .object({
+      enabled: z.boolean(),
+      basis: z.enum(["gross", "basic"]),
+      multiplier: z.number().min(1).max(3),
+      daysPerMonth: z.number().int().min(20).max(31),
+      hoursPerDay: z.number().min(4).max(12),
+      monthlyLimitHours: z.number().min(0).max(300),
+    })
+    .optional(),
 });
 export type TenantSettings = z.infer<typeof tenantPayrollSettingsSchema>;
 

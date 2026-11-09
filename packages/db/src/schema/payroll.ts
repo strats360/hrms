@@ -146,6 +146,9 @@ export const payrollAdjustments = pgTable(
     amount: money("amount").notNull(),
     taxable: boolean("taxable").notNull().default(true),
     esiWage: boolean("esi_wage").notNull().default(true),
+    /** manual | overtime | encashment. Overtime and encashment lines are managed by those screens. */
+    source: text("source").notNull().default("manual"),
+    sourceRef: text("source_ref"),
     createdBy: text("created_by"),
     ...timestamps,
   },

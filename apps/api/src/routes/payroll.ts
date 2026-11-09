@@ -36,6 +36,7 @@ import { audit } from "../lib/audit";
 import { toCsv } from "../lib/csv";
 import { layout } from "../lib/email";
 import { settleClaims } from "../services/reimbursements";
+import { releaseEncashment } from "../services/pay-extras";
 import { activeBatchForRun } from "../services/payments";
 import { calculateRun, defaultPayDate, getTemplate, monthBounds, payableEmployees, refreshTotals, resolveStructure, structuresAsOf } from "../services/payroll";
 
@@ -293,6 +294,7 @@ payrollRoutes.delete("/runs/:id/adjustments/:adjId", requirePerm("payroll", "edi
   const db = c.get("db");
   const [row] = await db.delete(payrollAdjustments).where(and(eq(payrollAdjustments.id, c.req.param("adjId")), eq(payrollAdjustments.runId, run.id))).returning();
   if (!row) throw notFound("Adjustment");
+  await releaseEncashment(db, row);
   if (run.status === "calculated") await calculateRun(db, tid(c), run.id, uid(c));
   await audit(c, { action: "payroll.adjustment_delete", entity: "payroll_adjustment", entityId: row.id, summary: `Removed "${row.label}" (${run.month})` });
   return c.json({ ok: true });
