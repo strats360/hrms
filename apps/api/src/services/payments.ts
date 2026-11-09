@@ -11,6 +11,7 @@ import {
 } from "@hrms/db";
 import { BONUS, daysInMonth, decryptField, statutoryBonus, todayIST } from "@hrms/shared";
 import { fyMonths } from "./tax";
+import { exitPaymentEffects } from "./exits";
 import { getTemplate, resolveStructure, structuresAsOf } from "./payroll";
 
 export type Batch = typeof paymentBatches.$inferSelect;
@@ -193,6 +194,7 @@ export async function refreshBatch(db: Database, batchId: string) {
 export async function applyPaymentEffects(db: Database, batch: Batch, changed: Payment[]) {
   const paid = changed.filter((p) => p.status === "paid");
   const cancelled = changed.filter((p) => p.status === "cancelled");
+  if (batch.type === "other") await exitPaymentEffects(db, paid, cancelled.map((p) => p.id));
   if (batch.type === "salary" && batch.payrollRunId && paid.length) {
     await db
       .update(reimbursementClaims)

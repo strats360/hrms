@@ -8,6 +8,7 @@ import {
   PAYMENT_METHODS,
   TAX_REGIMES,
 } from "./constants";
+import { EXIT_TYPES } from "./fnf";
 
 // ---------- primitives ----------
 export const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
@@ -160,6 +161,9 @@ export const tenantPayrollSettingsSchema = z.object({
     })
     .optional(),
   employeeCodePrefix: z.string().trim().toUpperCase().regex(/^[A-Z]{2,6}$/, "2 to 6 letters").default("EMP"),
+  /** Notice period in calendar days, and the shorter one while on probation. */
+  noticeDays: z.number().int().min(0).max(180).default(30),
+  probationNoticeDays: z.number().int().min(0).max(180).default(15),
 });
 export type TenantSettings = z.infer<typeof tenantPayrollSettingsSchema>;
 
@@ -485,4 +489,34 @@ export const featureFlagSchema = z.object({
   tenantIds: z.array(z.string()).max(5000).default([]),
   excludedTenantIds: z.array(z.string()).max(5000).default([]),
   percent: z.coerce.number().int().min(0).max(100).default(100),
+});
+
+// ---------- exits / full and final ----------
+export const exitCreateSchema = z.object({
+  employeeId: z.string().min(1),
+  type: z.enum(EXIT_TYPES),
+  resignationDate: isoDate,
+  lastWorkingDay: isoDate,
+  noticeDays: z.coerce.number().int().min(0).max(180).optional(),
+  noticeWaived: z.boolean().default(false),
+  payInLieu: z.boolean().default(false),
+  reason: nullable(trimmed(1000)),
+});
+export const exitUpdateSchema = exitCreateSchema.omit({ employeeId: true }).partial();
+export const manualLineSchema = z.object({
+  label: trimmed(80).min(1),
+  kind: z.enum(["earning", "deduction"]),
+  amount: z.coerce.number().positive().max(1e8),
+  taxable: z.boolean().optional(),
+});
+export const settlementSchema = z.object({
+  manual: z.array(manualLineSchema).max(30).default([]),
+  tds: z.coerce.number().min(0).max(1e8).default(0),
+  /** Override the encashable days per leave type (e.g. a policy cap). */
+  encashDays: z.record(z.string(), z.coerce.number().min(0).max(365)).optional(),
+  notes: nullable(trimmed(1000)),
+});
+export const resignationSchema = z.object({
+  reason: trimmed(1000).min(3, "Tell us briefly why you're leaving"),
+  proposedLastDay: isoDate.optional(),
 });
