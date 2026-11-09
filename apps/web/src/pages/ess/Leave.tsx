@@ -1,3 +1,4 @@
+import { CompOffCard } from "@/components/leave/CompOffCard";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -93,6 +94,7 @@ export default function EssLeavePage() {
           );
         })}
       </Card>
+      <CompOffCard />
       <Card className="!gap-1.5">
         <CardHeader title={`Holidays ${year}`} />
         {(hq.data ?? []).map((h) => (

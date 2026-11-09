@@ -177,6 +177,7 @@ export const tenantPayrollSettingsSchema = z.object({
   /** Notice period in calendar days, and the shorter one while on probation. */
   noticeDays: z.number().int().min(0).max(180).default(30),
   probationNoticeDays: z.number().int().min(0).max(180).default(15),
+  compOff: z.object({ expiryDays: z.number().int().min(7).max(365), claimWithinDays: z.number().int().min(1).max(90) }).optional(),
   punchPolicy: z.object({ location: z.enum(["off", "flag", "block"]), ip: z.enum(["off", "flag", "block"]), wfhExempt: z.boolean() }).optional(),
   overtime: z
     .object({
@@ -552,3 +553,10 @@ export const resignationSchema = z.object({
   reason: trimmed(1000).min(3, "Tell us briefly why you're leaving"),
   proposedLastDay: isoDate.optional(),
 });
+
+export const compOffRequestSchema = z.object({
+  date: isoDate,
+  days: z.union([z.literal(0.5), z.literal(1)]).optional(),
+  reason: trimmed(300).min(3, "Say briefly what the work was"),
+});
+export const compOffGrantSchema = compOffRequestSchema.extend({ employeeId: z.string().min(1), days: z.union([z.literal(0.5), z.literal(1)]) });

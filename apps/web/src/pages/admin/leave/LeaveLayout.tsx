@@ -38,6 +38,7 @@ export default function LeaveLayout() {
         tabs={[
           { to: "/leave", label: "Requests", end: true },
           { to: "/leave/balances", label: "Balances" },
+          { to: "/leave/comp-off", label: "Comp off" },
           { to: "/leave/policies", label: "Leave policies" },
           { to: "/leave/holidays", label: "Holiday calendar" },
         ]}

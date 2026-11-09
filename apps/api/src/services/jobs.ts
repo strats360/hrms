@@ -7,6 +7,7 @@ import { layout } from "../lib/email";
 import { cashfreeConfig } from "./cashfree";
 import { AUTOPAY_GATEWAY, scheduleAutopay } from "./autopay";
 import { getEntity } from "./billing";
+import { expireCompOff } from "./comp-off";
 
 const istDate = (d: Date) => d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
 
@@ -75,6 +76,18 @@ export async function runAutopayRetries(env: Env, now = new Date()) {
 
 /** Cron Trigger entry point (see wrangler config "triggers.crons"). */
 export async function runScheduled(env: Env) {
+  const url = env.HYPERDRIVE?.connectionString ?? env.DATABASE_URL;
+  if (url) {
+    const db = createDb(url, { max: 2 });
+    try {
+      const co = await expireCompOff(db);
+      if (co.expired) console.log(`comp off: ${co.expired} credits expired, ${co.lapsedDays} unused days lapsed`);
+    } catch (e) {
+      console.error("comp off expiry failed", e);
+    } finally {
+      await db.$client.end({ timeout: 5 });
+    }
+  }
   const r = await runAutopayRetries(env);
   if (r.due) console.log(`autopay retries: ${r.scheduled} scheduled, ${r.skipped} skipped of ${r.due} due`);
 }

@@ -18,6 +18,7 @@ import { essExitRoutes, exitRoutes } from "./routes/exits";
 import { attendanceImportRoutes, devicePunchRoutes } from "./routes/attendance-devices";
 import { leaveExtrasRoutes, payrollExtrasRoutes } from "./routes/pay-extras";
 import { essPayslipFileRoutes, payslipFileRoutes } from "./routes/payslip-files";
+import { compOffRoutes, essCompOffRoutes } from "./routes/comp-off";
 import { platformRoutes } from "./routes/platform";
 import { auditRoutes } from "./routes/audit";
 import { fileRoutes } from "./routes/files";
@@ -132,6 +133,7 @@ export function buildApp() {
   t.route("/ess", essRoutes);
   t.route("/ess", essExitRoutes);
   t.route("/ess", essPayslipFileRoutes);
+  t.route("/ess", essCompOffRoutes);
   t.route("/files", fileRoutes);
   t.use("/admin/*", requireAdmin);
   t.route("/admin/dashboard", dashboardRoutes);
@@ -143,6 +145,7 @@ export function buildApp() {
   t.route("/admin/attendance", attendanceImportRoutes);
   t.route("/admin/attendance", attendanceRoutes);
   t.route("/admin/leave", leaveExtrasRoutes);
+  t.route("/admin/leave", compOffRoutes);
   t.route("/admin/leave", leaveRoutes);
   t.route("/admin/payroll", payrollExtrasRoutes);
   t.route("/admin/payroll", payslipFileRoutes);

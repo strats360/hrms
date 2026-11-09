@@ -224,3 +224,34 @@ export const leaveEncashments = pgTable(
     uniqueIndex("leave_encashments_year_end_uq").on(t.employeeId, t.leaveTypeId, t.year).where(sql`reason = 'year_end'`),
   ],
 );
+
+/**
+ * Comp off earned by working on a weekly off or holiday. Once approved it's credited to
+ * the "CO" leave balance, and whatever's unused lapses on `expiresOn`.
+ */
+export const compOffRequests = pgTable(
+  "comp_off_requests",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    employeeId: employeeId(),
+    workDate: date("work_date", { mode: "string" }).notNull(),
+    /** weekly_off | holiday */
+    dayType: text("day_type").notNull(),
+    workMinutes: integer("work_minutes").notNull().default(0),
+    days: numeric("days", { precision: 3, scale: 1, mode: "number" }).notNull(),
+    reason: text("reason"),
+    status: text("status").notNull().default("pending"), // pending | approved | rejected | cancelled | expired
+    decidedBy: text("decided_by"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decisionNote: text("decision_note"),
+    expiresOn: date("expires_on", { mode: "string" }),
+    lapsedDays: numeric("lapsed_days", { precision: 3, scale: 1, mode: "number" }).notNull().default(0),
+    createdBy: text("created_by"),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("comp_off_emp_date_uq").on(t.employeeId, t.workDate).where(sql`status in ('pending', 'approved', 'expired')`),
+    index("comp_off_tenant_status_idx").on(t.tenantId, t.status),
+  ],
+);

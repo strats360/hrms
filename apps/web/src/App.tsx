@@ -112,6 +112,7 @@ const router = createBrowserRouter([
             children: [
               { index: true, element: L(() => import("@/pages/admin/leave/Requests")) },
               { path: "balances", element: L(() => import("@/pages/admin/leave/Balances")) },
+              { path: "comp-off", element: L(() => import("@/pages/admin/leave/CompOff")) },
               { path: "policies", element: L(() => import("@/pages/admin/leave/Policies")) },
               { path: "holidays", element: L(() => import("@/pages/admin/leave/Holidays")) },
             ],
