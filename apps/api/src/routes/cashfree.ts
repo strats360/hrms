@@ -9,7 +9,7 @@ import { audit } from "../lib/audit";
 import { layout } from "../lib/email";
 import { cashfreeConfig, CashfreeError, createOrder, verifyWebhook } from "../services/cashfree";
 import { createSubscription, manageSubscription, UPI_AUTOPAY_LIMIT, webhookIds } from "../services/cashfree-subscriptions";
-import { activeMandate, AUTOPAY_GATEWAY, latestMandate, methodLabel, scheduleAutopay, suggestedLimit, syncCharge, syncMandate } from "../services/autopay";
+import { activeMandate, AUTOPAY_GATEWAY, clearRetries, latestMandate, methodLabel, planRetry, scheduleAutopay, suggestedLimit, syncCharge, syncMandate } from "../services/autopay";
 import { z } from "zod";
 import { v } from "../lib/validate";
 import { syncOrder, type SettleResult } from "../services/online-payments";
@@ -203,6 +203,7 @@ tenantPayRoutes.post("/autopay/cancel", requirePerm("billing", "edit"), async (c
   await db.update(tenants).set({ paymentMethod: null }).where(eq(tenants.id, tid(c)));
   // charges not yet debited are withdrawn with the mandate
   await db.update(invoicePayments).set({ status: "dropped", failureReason: "Autopay cancelled" }).where(and(eq(invoicePayments.mandateId, m.id), eq(invoicePayments.status, "created")));
+  await clearRetries(db, { mandateId: m.id });
   await audit(c, { action: "billing.autopay_cancel", entity: "billing_mandate", entityId: m.id, summary: `Cancelled autopay (${methodLabel(m)})` });
   return c.json({ ok: true });
 });
@@ -250,7 +251,9 @@ async function subscriptionEvent(c: Context<AppEnv>, cfg: NonNullable<ReturnType
       const r = await syncCharge(db, cfg, attempt);
       if (r) {
         await receipt(c, r);
-        if (r.settled || r.needsReview || r.status === "failed") {
+        // only react to a change: Cashfree can deliver the same failure more than once
+        const newlyFailed = r.status === "failed" && attempt.status !== "failed";
+        if (r.settled || r.needsReview || newlyFailed) {
           await audit(c, {
             tenantId: attempt.tenantId,
             action: r.settled ? "billing.paid_autopay" : r.status === "failed" ? "billing.autopay_failed" : "billing.payment_review",
@@ -259,7 +262,10 @@ async function subscriptionEvent(c: Context<AppEnv>, cfg: NonNullable<ReturnType
             summary: r.settled ? `Invoice paid by autopay (${inr(Number(attempt.amount))})${r.restored ? "; account restored" : ""}` : r.status === "failed" ? `Autopay charge failed: ${r.attempt.failureReason ?? "declined"}` : `Autopay payment needs review: ${r.needsReview}`,
           });
         }
-        if (r.status === "failed") await autopayFailed(c, attempt.tenantId, Number(attempt.amount), r.attempt.failureReason);
+        if (newlyFailed) {
+          const retryAt = await planRetry(db, r.attempt);
+          await autopayFailed(c, attempt.tenantId, Number(attempt.amount), r.attempt.failureReason, retryAt);
+        }
         return c.json({ ok: true, status: r.status });
       }
     }
@@ -275,7 +281,7 @@ async function subscriptionEvent(c: Context<AppEnv>, cfg: NonNullable<ReturnType
   return c.json({ ok: true, ignored: "unknown subscription" });
 }
 
-async function autopayFailed(c: Context<AppEnv>, tenantId: string, amount: number, reason: string | null) {
+async function autopayFailed(c: Context<AppEnv>, tenantId: string, amount: number, reason: string | null, retryAt: Date | null) {
   try {
     const [t] = await c.get("db").select().from(tenants).where(eq(tenants.id, tenantId));
     const to = t?.billingEmail ?? t?.contactEmail;
@@ -284,7 +290,12 @@ async function autopayFailed(c: Context<AppEnv>, tenantId: string, amount: numbe
     const { html, text } = layout({
       company: entity.legalName,
       heading: "Autopay couldn't collect your invoice",
-      paragraphs: [`The autopay debit of ${inr(amount)} didn't go through${reason ? ` (${reason})` : ""}.`, "Please pay the invoice online, or check your mandate with your bank. We won't retry automatically."],
+      paragraphs: [
+        `The autopay debit of ${inr(amount)} didn't go through${reason ? ` (${reason})` : ""}.`,
+        retryAt
+          ? `We'll try once more around ${retryAt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", timeZone: "Asia/Kolkata" })}, after your bank's pre-debit notice. Please make sure the account has funds, or pay online now and we'll skip the retry.`
+          : "Please pay the invoice online, or check your mandate with your bank.",
+      ],
       cta: { label: "Pay now", url: `${c.env.APP_URL}/settings/billing` },
     });
     await c.get("mailer").send({ to, subject: "Autopay debit failed", html, text });

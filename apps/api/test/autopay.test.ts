@@ -1,9 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import postgres from "postgres";
-import { Client, env, lastEmailTo, login } from "./helpers";
+import { Client, env, lastEmailTo, login, mailer } from "./helpers";
 import { webhookSignature } from "../src/services/cashfree";
+import { runAutopayRetries } from "../src/services/jobs";
 
 let kunal: Client, platform: Client;
+const sql = postgres(env.DATABASE_URL!, { max: 1, onnotice: () => {} });
 const SECRET = "cf_test_secret_key";
 const calls: { method: string; url: string; headers: Record<string, string>; body: any }[] = [];
 const subs = new Map<string, string>(); // subscription_id -> status
@@ -48,12 +50,11 @@ async function hook(type: string, data: Record<string, unknown>) {
 }
 
 beforeAll(async () => {
-  const sql = postgres(env.DATABASE_URL!, { max: 1, onnotice: () => {} });
   await sql`update tenants set contact_phone = '+91 98250 12345' where code = 'TN-0142'`;
-  await sql.end();
   [kunal, platform] = await Promise.all([login("kunal.shah@strats360.com"), login("platform@strats360people.in")]);
 });
-afterAll(() => {
+afterAll(async () => {
+  await sql.end();
   vi.unstubAllGlobals();
   delete env.CASHFREE_APP_ID;
   delete env.CASHFREE_SECRET_KEY;
@@ -62,6 +63,8 @@ afterAll(() => {
 describe("Autopay (Cashfree Subscriptions)", () => {
   let subscriptionId = "";
   let chargeId = "";
+  let failedCharge = "";
+  let invoiceId = "";
 
   it("is offered once Cashfree is connected, with a suggested limit", async () => {
     expect((await kunal.get("/admin/billing/autopay")).body.available).toBe(false);
@@ -116,18 +119,72 @@ describe("Autopay (Cashfree Subscriptions)", () => {
     expect((await hook("SUBSCRIPTION_PAYMENT_SUCCESS", { payment_details: { payment_id: chargeId } })).status).toBe(200); // idempotent
   });
 
-  it("charges new invoices from the billing run, and reports failures", async () => {
+  it("charges new invoices from the billing run, and plans one retry when a debit fails", async () => {
     const run = await platform.post("/platform/billing/run", { period: "2025-10" });
     expect(run.body.autopay).toBe(1);
     const charge = calls.filter((x) => x.url.endsWith("/subscriptions/pay")).at(-1)!;
-    subPays.set(charge.body.payment_id, { payment_id: charge.body.payment_id, cf_payment_id: "88002", payment_status: "FAILED", payment_amount: charge.body.payment_amount, failure_details: { failure_reason: "Insufficient balance" } });
-    const w = await hook("SUBSCRIPTION_PAYMENT_FAILED", { payment_details: { payment_id: charge.body.payment_id } });
+    failedCharge = charge.body.payment_id;
+    subPays.set(failedCharge, { payment_id: failedCharge, cf_payment_id: "88002", payment_status: "FAILED", payment_amount: charge.body.payment_amount, failure_details: { failure_reason: "Insufficient balance" } });
+    const w = await hook("SUBSCRIPTION_PAYMENT_FAILED", { payment_details: { payment_id: failedCharge } });
     expect(w.body.status).toBe("failed");
-    expect(lastEmailTo("accounts@strats360.com")?.subject).toBe("Autopay debit failed");
+    const mail = lastEmailTo("accounts@strats360.com")!;
+    expect(mail.subject).toBe("Autopay debit failed");
+    expect(mail.text).toMatch(/try once more/);
+    const [a] = await sql`select retry_at from invoice_payments where order_id = ${failedCharge}`;
+    const ahead = new Date(a!.retry_at).getTime() - Date.now();
+    expect(ahead).toBeGreaterThan(2.9 * 86400_000);
+    expect(ahead).toBeLessThan(3.1 * 86400_000);
+    // the same failure delivered again doesn't push the retry back or email twice
+    const sent = mailer.sent.length;
+    await hook("SUBSCRIPTION_PAYMENT_FAILED", { payment_details: { payment_id: failedCharge } });
+    expect(mailer.sent.length).toBe(sent);
+    const [b] = await sql`select retry_at from invoice_payments where order_id = ${failedCharge}`;
+    expect(new Date(b!.retry_at).getTime()).toBe(new Date(a!.retry_at).getTime());
     const inv = (await kunal.get("/admin/billing")).body.invoices.find((i: any) => i.period === "2025-10");
     expect(inv.status).toBe("issued"); // still payable by hand
-    const retry = await platform.post(`/platform/billing/invoices/${inv.id}/autopay`);
-    expect(retry.status).toBe(200);
+    invoiceId = inv.id;
+  });
+
+  it("retries the debit once, when it falls due", async () => {
+    expect(await runAutopayRetries(env)).toEqual({ due: 0, scheduled: 0, skipped: 0 }); // not yet
+    await sql`update invoice_payments set retry_at = now() - interval '1 minute' where order_id = ${failedCharge}`;
+    const before = calls.length;
+    expect(await runAutopayRetries(env)).toEqual({ due: 1, scheduled: 1, skipped: 0 });
+    const retry = calls.slice(before).find((x) => x.url.endsWith("/subscriptions/pay"))!;
+    expect(retry).toBeTruthy();
+    expect(Date.parse(retry.body.payment_schedule_date) - Date.now()).toBeGreaterThan(24 * 3600_000);
+    const [orig] = await sql`select id, retry_at from invoice_payments where order_id = ${failedCharge}`;
+    expect(orig!.retry_at).toBeNull();
+    const [r] = await sql`select retry_of from invoice_payments where order_id = ${retry.body.payment_id}`;
+    expect(r!.retry_of).toBe(orig!.id);
+    expect(lastEmailTo("accounts@strats360.com")?.subject).toMatch(/^Autopay retry for /);
+    expect((await runAutopayRetries(env)).due).toBe(0); // claimed, so it can't run twice
+
+    // the retry fails too: no further automatic retry
+    subPays.set(retry.body.payment_id, { payment_id: retry.body.payment_id, cf_payment_id: "88003", payment_status: "FAILED", payment_amount: retry.body.payment_amount });
+    await hook("SUBSCRIPTION_PAYMENT_FAILED", { payment_details: { payment_id: retry.body.payment_id } });
+    const [after] = await sql`select status, retry_at from invoice_payments where order_id = ${retry.body.payment_id}`;
+    expect(after).toMatchObject({ status: "failed", retry_at: null });
+    expect(lastEmailTo("accounts@strats360.com")?.text).toMatch(/pay the invoice online/);
+    const [again] = await sql`select retry_at from invoice_payments where order_id = ${failedCharge}`;
+    expect(again!.retry_at).toBeNull();
+  });
+
+  it("lets finance charge again by hand, which counts as the retry", async () => {
+    const manual = await platform.post(`/platform/billing/invoices/${invoiceId}/autopay`);
+    expect(manual.status).toBe(200);
+    const [m] = await sql`select retry_of from invoice_payments where order_id = ${manual.body.orderId}`;
+    expect(m!.retry_of).toBeTruthy();
+  });
+
+  it("skips a due retry once the invoice is paid another way", async () => {
+    const [p] = await sql`select id from invoice_payments where invoice_id = ${invoiceId} and status = 'created' and gateway = 'cashfree_autopay'`;
+    await sql`update invoice_payments set status = 'failed', retry_at = now() - interval '1 minute' where id = ${p!.id}`;
+    await sql`update invoices set status = 'paid' where id = ${invoiceId}`;
+    const before = calls.length;
+    expect(await runAutopayRetries(env)).toEqual({ due: 1, scheduled: 0, skipped: 1 });
+    expect(calls.slice(before).some((x) => x.url.endsWith("/subscriptions/pay"))).toBe(false);
+    await sql`update invoices set status = 'issued' where id = ${invoiceId}`;
   });
 
   it("follows mandate status changes and can be cancelled", async () => {

@@ -191,7 +191,9 @@ describe("leave", () => {
     const home = await priya.get("/ess/leave");
     const sl = home.body.types.find((t: any) => t.code === "SL");
     const y = todayIST().slice(0, 4);
-    const r = await priya.post("/ess/leave", { leaveTypeId: sl.id, startDate: `${y}-12-01`, endDate: `${y}-12-31`, halfDay: false });
+    // seeded leave moves with today's date, so pick a month that's clear of it
+    const free = ([["01-02", "01-31"], ["07-01", "07-31"], ["12-01", "12-31"]] as const).map(([a, b]) => [`${y}-${a}`, `${y}-${b}`]).find(([a, b]) => !home.body.requests.some((q: any) => q.status !== "rejected" && q.status !== "cancelled" && q.startDate <= b! && q.endDate >= a!))!;
+    const r = await priya.post("/ess/leave", { leaveTypeId: sl.id, startDate: free[0], endDate: free[1], halfDay: false });
     expect(r.status).toBe(400);
     expect(r.body.error.message).toMatch(/Not enough/);
   });

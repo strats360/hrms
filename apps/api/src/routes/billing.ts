@@ -11,7 +11,7 @@ import { audit } from "../lib/audit";
 import { toCsv } from "../lib/csv";
 import { layout } from "../lib/email";
 import { attemptsFor } from "../services/online-payments";
-import { activeMandate, methodLabel, scheduleAutopay } from "../services/autopay";
+import { activeMandate, AUTOPAY_GATEWAY, clearRetries, methodLabel, scheduleAutopay } from "../services/autopay";
 import { cashfreeConfig } from "../services/cashfree";
 import { activeEmployeeCounts, daysBetween, draftInvoices, getEntity, invoiceStatus, issueInvoices, overdueInvoices, periodLabel, restoreIfClear, type Invoice } from "../services/billing";
 
@@ -150,8 +150,11 @@ platformBillingRoutes.post("/invoices/:id/autopay", finance, async (c) => {
   if (!cfg) throw badRequest("Cashfree isn't configured");
   const [inv] = await c.get("db").select().from(invoices).where(eq(invoices.id, c.req.param("id")));
   if (!inv) throw notFound("Invoice");
-  const r = await scheduleAutopay(c.get("db"), cfg, inv, uid(c));
+  // a manual charge after a failed debit takes the place of its automatic retry
+  const failed = (await attemptsFor(c.get("db"), inv.id)).find((a) => a.gateway === AUTOPAY_GATEWAY && a.status === "failed");
+  const r = await scheduleAutopay(c.get("db"), cfg, inv, uid(c), { retryOf: failed?.id });
   if (!r.scheduled) throw badRequest(r.reason);
+  await clearRetries(c.get("db"), { invoiceId: inv.id });
   await audit(c, { tenantId: inv.tenantId, action: "platform.autopay_charge", entity: "invoice", entityId: inv.id, summary: `Scheduled an autopay charge for ${inv.number}` });
   return c.json({ scheduledFor: r.attempt.scheduledFor, orderId: r.attempt.orderId });
 });

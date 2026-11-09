@@ -122,6 +122,9 @@ export const invoicePayments = pgTable(
     /** Autopay: the mandate charged, and when the debit is scheduled. */
     mandateId: text("mandate_id"),
     scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
+    /** Autopay retry: the failed charge this one retries, and when a failed charge is due its one retry. */
+    retryOf: text("retry_of"),
+    retryAt: timestamp("retry_at", { withTimezone: true }),
     createdBy: text("created_by"),
     ...timestamps,
   },

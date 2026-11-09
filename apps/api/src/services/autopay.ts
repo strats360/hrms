@@ -9,6 +9,8 @@ export type Mandate = typeof billingMandates.$inferSelect;
 export const AUTOPAY_GATEWAY = "cashfree_autopay";
 /** UPI needs the bank's pre-debit notice at least 24 hours before the debit. */
 const PRE_DEBIT_HOURS = 26;
+/** A failed debit gets one automatic retry, this many days later. */
+export const AUTOPAY_RETRY_DAYS = 3;
 
 export async function activeMandate(db: Database, tenantId: string) {
   const [m] = await db.select().from(billingMandates).where(and(eq(billingMandates.tenantId, tenantId), eq(billingMandates.status, "active"))).orderBy(desc(billingMandates.authorizedAt)).limit(1);
@@ -51,7 +53,7 @@ export async function syncMandate(db: Database, cfg: CashfreeConfig, m: Mandate)
 export type ScheduleResult = { scheduled: true; attempt: Attempt } | { scheduled: false; reason: string };
 
 /** Charge an invoice against the tenant's active mandate (no-op if one is already pending or paid). */
-export async function scheduleAutopay(db: Database, cfg: CashfreeConfig, inv: Invoice, userId: string | null): Promise<ScheduleResult> {
+export async function scheduleAutopay(db: Database, cfg: CashfreeConfig, inv: Invoice, userId: string | null, opts: { retryOf?: string } = {}): Promise<ScheduleResult> {
   if (inv.status !== "issued") return { scheduled: false, reason: "Invoice isn't open" };
   const m = await activeMandate(db, inv.tenantId);
   if (!m) return { scheduled: false, reason: "No active autopay mandate" };
@@ -66,7 +68,7 @@ export async function scheduleAutopay(db: Database, cfg: CashfreeConfig, inv: In
   const scheduleAt = new Date(Date.now() + PRE_DEBIT_HOURS * 3600_000);
   const [attempt] = await db
     .insert(invoicePayments)
-    .values({ invoiceId: inv.id, tenantId: inv.tenantId, gateway: AUTOPAY_GATEWAY, orderId: paymentId, amount: Number(inv.total), mandateId: m.id, scheduledFor: scheduleAt, method: m.method, createdBy: userId })
+    .values({ invoiceId: inv.id, tenantId: inv.tenantId, gateway: AUTOPAY_GATEWAY, orderId: paymentId, amount: Number(inv.total), mandateId: m.id, scheduledFor: scheduleAt, method: m.method, createdBy: userId, retryOf: opts.retryOf ?? null })
     .returning();
   try {
     const p = await chargeSubscription(cfg, { subscriptionId: m.subscriptionId, paymentId, amount: Number(inv.total), scheduleAt, remarks: `${inv.number} subscription` });
@@ -96,4 +98,23 @@ export async function syncCharge(db: Database, cfg: CashfreeConfig, attempt: Att
 /** A sensible limit: half as much again as the latest invoice, rounded up to ₹1,000. */
 export function suggestedLimit(latestTotal: number) {
   return Math.max(5000, Math.ceil((latestTotal * 1.5) / 1000) * 1000);
+}
+
+/**
+ * After a failed debit: plan its one automatic retry. A retry that fails isn't
+ * retried again. Returns when the retry is due, or null.
+ */
+export async function planRetry(db: Database, attempt: Attempt) {
+  if (attempt.gateway !== AUTOPAY_GATEWAY || attempt.retryOf || attempt.status !== "failed") return null;
+  const [done] = await db.select({ id: invoicePayments.id }).from(invoicePayments).where(eq(invoicePayments.retryOf, attempt.id)).limit(1);
+  if (done) return null; // already retried once
+  const at = new Date(Date.now() + AUTOPAY_RETRY_DAYS * 86400_000);
+  const [row] = await db.update(invoicePayments).set({ retryAt: at }).where(and(eq(invoicePayments.id, attempt.id), eq(invoicePayments.status, "failed"))).returning();
+  return row ? at : null;
+}
+
+/** Drop pending automatic retries (paid by hand, manual retry, or autopay cancelled). */
+export async function clearRetries(db: Database, where: { invoiceId?: string; mandateId?: string }) {
+  const cond = where.invoiceId ? eq(invoicePayments.invoiceId, where.invoiceId) : eq(invoicePayments.mandateId, where.mandateId!);
+  await db.update(invoicePayments).set({ retryAt: null }).where(and(cond, eq(invoicePayments.gateway, AUTOPAY_GATEWAY)));
 }

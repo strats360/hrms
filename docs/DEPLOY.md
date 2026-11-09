@@ -124,7 +124,16 @@ How it's kept safe:
 
 ### Autopay (Cashfree Subscriptions)
 
-Tenants can switch on autopay under Settings › Billing & invoices. Each company has one on-demand mandate with a limit per invoice. Every billing run then schedules a debit for each new invoice under that limit, at least 26 hours ahead, so the bank's pre-debit notice goes out first. The invoice settles from the webhook, checked against Cashfree's API, and a failed debit emails the tenant. Platform finance can retry a charge from Billing & invoices › Charge via autopay.
+Tenants can switch on autopay under Settings › Billing & invoices. Each company has one on-demand mandate with a limit per invoice. Every billing run then schedules a debit for each new invoice under that limit, at least 26 hours ahead, so the bank's pre-debit notice goes out first. The invoice settles from the webhook, checked against Cashfree's API, and a failed debit emails the tenant. Platform finance can also charge again by hand from Billing & invoices › Charge via autopay.
+
+**Automatic retry.** A failed debit is retried once, 3 days later. The Worker has a Cron Trigger (`30 4 * * *`, 10:00 IST) that picks up retries that are due, and the deploy sets it up for you. The retry is a normal autopay debit, so it also goes out 26 hours after the bank's pre-debit notice. The failure email tells the tenant when the retry will happen, and a second email confirms it. A retry that fails isn't retried again, and the tenant is asked to pay online. Guards against double charging:
+- A retry is skipped if the invoice was paid or voided in the meantime, or the mandate is no longer active. The skip is logged in the audit log.
+- Each retry is claimed before it's made, so overlapping cron runs can't charge twice.
+- A repeated failure webhook doesn't plan a second retry.
+- A manual charge, or cancelling autopay, replaces any pending automatic retry.
+- Once the retry is lined up with the bank, it can't be withdrawn from the app. If the tenant pays another way before it runs, the extra payment is flagged in the audit log for a refund.
+
+Cron runs show under Workers & Pages › your Worker › Logs (filter on "autopay retries").
 
 1. Ask Cashfree to enable **Subscriptions** (UPI autopay and eNACH) on your account. It's a separate product from Payment Gateway, with its own approval.
 2. In the Subscriptions section of the dashboard, add the same webhook URL and subscribe it to the subscription status and payment events.

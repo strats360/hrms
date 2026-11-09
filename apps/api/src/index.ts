@@ -1,5 +1,6 @@
 import type { Env } from "./env";
 import { buildApp } from "./app";
+import { runScheduled } from "./services/jobs";
 
 const app = buildApp();
 
@@ -10,5 +11,9 @@ export default {
     // Everything else is the single-page app (Workers static assets, SPA fallback).
     if (env.ASSETS) return env.ASSETS.fetch(req);
     return new Response("Not found", { status: 404 });
+  },
+  /** Daily jobs (Cron Trigger): automatic autopay retries. */
+  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(runScheduled(env));
   },
 } satisfies ExportedHandler<Env>;

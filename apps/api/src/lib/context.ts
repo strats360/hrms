@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { createMiddleware } from "hono/factory";
 import { createDb, memberships, platformStaff, roles, tenants } from "@hrms/db";
 import { can, MODULES, type Action, type Module, type PermissionMatrix } from "@hrms/shared";
-import type { AppEnv } from "../env";
+import type { AppEnv, Env } from "../env";
 import { createAuth } from "./auth";
 import { ConsoleMailer, ResendMailer, UnconfiguredMailer, type Mailer } from "./email";
 import { forbidden, unauthorized } from "./errors";
@@ -16,17 +16,18 @@ export function getDevMailer() {
   return devMailer;
 }
 
+/** Resend when configured; never logs email bodies in production or staging. */
+export function mailerFor(env: Env): Mailer {
+  if (env.RESEND_API_KEY && env.EMAIL_FROM) return new ResendMailer(env.RESEND_API_KEY, env.EMAIL_FROM);
+  return env.ENVIRONMENT === "production" || env.ENVIRONMENT === "staging" ? new UnconfiguredMailer() : getDevMailer();
+}
+
 /** Per-request services: DB client, mailer and Better Auth. */
 export const services = createMiddleware<AppEnv>(async (c, next) => {
   const url = c.env.HYPERDRIVE?.connectionString ?? c.env.DATABASE_URL;
   if (!url) throw new Error("No database configured (HYPERDRIVE binding or DATABASE_URL)");
   const db = createDb(url, { max: 5 });
-  const mailer: Mailer =
-    c.env.RESEND_API_KEY && c.env.EMAIL_FROM
-      ? new ResendMailer(c.env.RESEND_API_KEY, c.env.EMAIL_FROM)
-      : c.env.ENVIRONMENT === "production" || c.env.ENVIRONMENT === "staging"
-        ? new UnconfiguredMailer()
-        : getDevMailer();
+  const mailer = mailerFor(c.env);
   c.set("db", db);
   c.set("mailer", mailer);
   c.set("auth", createAuth(c.env, db, mailer));

@@ -680,9 +680,10 @@ async function seedBilling(tid: string) {
     const issued = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)).toISOString().slice(0, 10);
     if (issued > today) continue;
     const paidOn = new Date(Date.parse(issued) + 2 * 86400000).toISOString().slice(0, 10);
-    // last month's invoice is still open (issued on the 1st, due in a week)
+    // last month's invoice is still open and not yet due (issued at most 3 days ago, due in a week)
     const open = issued.slice(0, 7) === today.slice(0, 7);
-    await issueInvoices(db, period, null, { tenantIds: [tid], issuedOn: issued, status: open ? "issued" : "paid", paidOn });
+    const recent = new Date(Date.parse(today) - 3 * 86400000).toISOString().slice(0, 10);
+    await issueInvoices(db, period, null, { tenantIds: [tid], issuedOn: open && recent > issued ? recent : issued, status: open ? "issued" : "paid", paidOn });
   }
 }
 
