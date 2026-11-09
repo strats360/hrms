@@ -5,7 +5,8 @@ import { Client, env, login } from "./helpers";
 
 const sql = postgres(env.DATABASE_URL!, { max: 1, onnotice: () => {} });
 const today = todayIST();
-const month = today.slice(0, 7);
+let month = "";
+let otDay = "";
 const year = Number(today.slice(0, 4));
 let krupa: Client, nisha: Client, hardik: Client;
 let x: { id: string; code: string }, y: { id: string; code: string };
@@ -14,6 +15,12 @@ let el = "", cl = "";
 
 beforeAll(async () => {
   [krupa, nisha, hardik] = await Promise.all([login("krupa.joshi@strats360.com"), login("nisha.trivedi@strats360.com"), login("hardik.mehta@strats360.com")]);
+  // a month no other test uses: the one before the earliest payroll run
+  const [first] = await sql`select min(r.month) as m from payroll_runs r join tenants t on t.id = r.tenant_id where t.code = 'TN-0142'`;
+  const base = first?.m ? new Date(`${first.m}-01T00:00:00Z`) : new Date(`${today.slice(0, 7)}-01T00:00:00Z`);
+  base.setUTCMonth(base.getUTCMonth() - 1);
+  month = base.toISOString().slice(0, 7);
+  otDay = `${month}-16`;
   [x, y] = (await sql`
     select e.id, e.employee_code as code from employees e join tenants t on t.id = e.tenant_id
     where t.code = 'TN-0142' and e.status in ('active','probation') and e.user_id is null and e.last_working_day is null and e.date_of_joining < ${`${month}-01`}
@@ -24,12 +31,12 @@ beforeAll(async () => {
   // overtime worked this month, as attendance would record it
   for (const [e, mins] of [[x, 150], [y, 90]] as const) {
     await sql`insert into attendance_records (id, tenant_id, employee_id, date, status, source, overtime_minutes, work_minutes)
-      select gen_random_uuid()::text, tenant_id, id, ${today}, 'present', 'web', ${mins}, 600 from employees where id = ${e.id}
+      select gen_random_uuid()::text, tenant_id, id, ${otDay}, 'present', 'web', ${mins}, 600 from employees where id = ${e.id}
       on conflict (tenant_id, employee_id, date) do update set overtime_minutes = ${mins}`;
   }
 });
 afterAll(async () => {
-  // the payroll tests create this month's run themselves
+  // leave no run behind: the payroll tests create runs of their own
   if (runId) {
     await sql`update leave_encashments set status = 'cancelled' where run_id = ${runId}`;
     await sql`delete from payroll_runs where id = ${runId}`;
@@ -47,7 +54,7 @@ describe("Overtime through payroll", () => {
     expect(ot.settings).toMatchObject({ multiplier: 2, basis: "gross" });
     const rx = ot.rows.find((r: any) => r.employeeId === x.id);
     const [{ m }] = await sql`select sum(overtime_minutes)::int as m from attendance_records where employee_id = ${x.id} and to_char(date, 'YYYY-MM') = ${month}`;
-    expect(rx.hours).toBeCloseTo(m / 60, 2); // includes today's 150 minutes
+    expect(rx.hours).toBeCloseTo(m / 60, 2); // includes the 150 minutes added
     expect(rx.hours).toBeGreaterThanOrEqual(2.5);
     expect(rx.amount).toBe(Math.round(rx.ratePerHour * rx.hours));
     expect(rx.paid).toBeNull();
@@ -116,27 +123,34 @@ describe("Leave encashment", () => {
 
 describe("Closing a leave year", () => {
   const prev = year - 1;
-  it("won't close the current year early", async () => {
+  it("has nothing to close for a year the company didn't track here", async () => {
+    await sql`delete from leave_balances b using tenants t where t.id = b.tenant_id and t.code = 'TN-0142' and b.year = ${prev - 5}`;
+    const r = await nisha.post("/admin/leave/year-close", { year: prev - 5, dryRun: true });
+    expect(r.status).toBe(400);
+    expect(r.body.error.message).toMatch(/no leave balances/);
     if (today < `${year}-12-01`) expect((await nisha.post("/admin/leave/year-close", { year, dryRun: true })).status).toBe(400);
-    expect((await nisha.get("/admin/leave/year-close")).body.due).toBe(prev);
   });
 
-  it("previews, then carries leave forward up to each type's limit", async () => {
+  it("previews without changing anything, then carries leave forward up to each type's limit", async () => {
+    // last year's earned leave for one employee: 40 days unused
+    await sql`insert into leave_balances (id, tenant_id, employee_id, leave_type_id, year, opening, accrued, used, adjusted)
+      select gen_random_uuid()::text, tenant_id, ${y.id}, ${el}, ${prev}, 22, 18, 0, 0 from employees where id = ${y.id}
+      on conflict do nothing`;
+    await sql`update leave_balances set opening = 22, accrued = 18, used = 0, adjusted = 0 where employee_id = ${y.id} and leave_type_id = ${el} and year = ${prev}`;
+    expect((await nisha.get("/admin/leave/year-close")).body.due).toBe(prev);
+    const rowsBefore = (await sql`select count(*)::int as n from leave_balances where year = ${prev}`)[0]!.n;
     const dry = (await nisha.post("/admin/leave/year-close", { year: prev, encashLapsed: true, dryRun: true })).body;
-    expect(dry.employees).toBeGreaterThan(100);
+    expect(dry.employees).toBeGreaterThanOrEqual(1);
+    expect((await sql`select count(*)::int as n from leave_balances where year = ${prev}`)[0]!.n).toBe(rowsBefore); // a preview writes nothing
     for (const r of dry.rows) {
       if (r.type === "Earned leave") expect(r.carried).toBeLessThanOrEqual(30);
       if (r.type === "Casual leave") expect(r.carried).toBe(0);
       expect(r.carried + r.lapsed + r.encashed).toBeCloseTo(r.left, 1);
     }
-    // put a known balance on one employee for last year: 40 days of EL
-    await sql`insert into leave_balances (id, tenant_id, employee_id, leave_type_id, year, opening, accrued, used, adjusted)
-      select gen_random_uuid()::text, tenant_id, ${y.id}, ${el}, ${prev}, 22, 18, 0, 0 from employees where id = ${y.id}
-      on conflict do nothing`;
-    await sql`update leave_balances set opening = 22, accrued = 18, used = 0, adjusted = 0 where employee_id = ${y.id} and leave_type_id = ${el} and year = ${prev}`;
     const r = (await nisha.post("/admin/leave/year-close", { year: prev, encashLapsed: true, dryRun: false })).body;
     const row = r.rows.find((x: any) => x.employeeCode === y.code && x.type === "Earned leave");
     expect(row).toMatchObject({ left: 40, carried: 30, encashed: 10, lapsed: 0 });
+    expect(dry.rows.find((x: any) => x.employeeCode === y.code && x.type === "Earned leave")).toEqual(row); // the preview matched
     const [open] = await sql`select opening::float from leave_balances where employee_id = ${y.id} and leave_type_id = ${el} and year = ${year}`;
     expect(open!.opening).toBe(30);
     const enc = await sql`select days::float, reason, status from leave_encashments where employee_id = ${y.id} and leave_type_id = ${el} and year = ${prev}`;

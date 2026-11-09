@@ -14,6 +14,8 @@ import { PersonCell } from "@/components/ui/avatar";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useLookups } from "@/components/attendance/shared";
+import { EncashDialog, EncashmentsCard, YearCloseDialog } from "@/components/leave/Encashment";
+import { Notice } from "@/components/ui/page";
 
 interface BalRow {
   employeeId: string;
@@ -39,6 +41,9 @@ export default function Balances() {
   const [search, setSearch] = useState("");
   const [q, setQ] = useState("");
   const [adjust, setAdjust] = useState<BalRow | null>(null);
+  const [encash, setEncash] = useState<BalRow | null>(null);
+  const [closing, setClosing] = useState<number | null>(null);
+  const yearClose = useQuery({ queryKey: ["leave", "year-close"], queryFn: () => api.get<{ lastClosed: number | null; due: number | null }>("/admin/leave/year-close") });
   useEffect(() => {
     const t = setTimeout(() => setQ(search.trim()), 300);
     return () => clearTimeout(t);
@@ -83,13 +88,32 @@ export default function Balances() {
     [types],
   );
 
+  const due = yearClose.data?.due;
   return (
     <div className="flex flex-col gap-4">
       {query.error ? <ErrorState error={query.error} retry={() => query.refetch()} /> : null}
+      {due && can("leave", "configure") ? (
+        <Notice tone="sel">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span>Leave year {due} isn't closed yet, so unused leave hasn't been carried into {due + 1}.</span>
+            <Button size="sm" onClick={() => setClosing(due)}>
+              Close {due}
+            </Button>
+          </div>
+        </Notice>
+      ) : null}
       <TableCard>
         <div className="pb-1 pt-2">
           <div className="card-title text-[17px]">Leave balances · {year}</div>
-          <div className="text-muted text-[13px]">Available days after leave already taken. Hover a figure for the full breakdown.</div>
+          <div className="text-muted text-[13px]">
+            Available days after leave already taken. Hover a figure for the full breakdown.
+            {yearClose.data?.lastClosed ? ` Leave year ${yearClose.data.lastClosed} is closed.` : ""}
+            {can("leave", "configure") && !due && new Date().getMonth() === 11 ? (
+              <button type="button" className="text-accent ml-1 underline" onClick={() => setClosing(thisYear)}>
+                Close {thisYear}
+              </button>
+            ) : null}
+          </div>
         </div>
         <DataTable
           data={query.data?.rows ?? []}
@@ -118,9 +142,19 @@ export default function Balances() {
               </Select>
             </>
           }
-          rowActions={can("leave", "configure") ? (r) => [{ label: "Adjust balance", onSelect: () => setAdjust(r) }] : undefined}
+          rowActions={
+            can("leave", "configure")
+              ? (r) => [
+                  { label: "Adjust balance", onSelect: () => setAdjust(r) },
+                  ...(year === thisYear ? [{ label: "Encash leave", onSelect: () => setEncash(r) }] : []),
+                ]
+              : undefined
+          }
         />
       </TableCard>
+      <EncashmentsCard />
+      {encash ? <EncashDialog row={encash} onClose={() => setEncash(null)} /> : null}
+      {closing ? <YearCloseDialog year={closing} onClose={() => setClosing(null)} /> : null}
       {adjust ? <AdjustDialog row={adjust} year={year} types={types} onClose={() => setAdjust(null)} /> : null}
     </div>
   );

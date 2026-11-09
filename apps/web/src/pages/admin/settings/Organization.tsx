@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { INDIAN_STATES, tenantPayrollSettingsSchema, tenantProfileSchema } from "@hrms/shared";
+import { DEFAULT_OVERTIME, INDIAN_STATES, tenantPayrollSettingsSchema, tenantProfileSchema, type OvertimeSettings } from "@hrms/shared";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,7 @@ interface Tenant {
   contactPhone: string | null;
   plan: string;
   status: string;
-  settings: { payrollCycle?: string; payDay?: string; paidDaysBasis?: string; weeklyOffs?: number[]; employeeCodePrefix?: string; noticeDays?: number; probationNoticeDays?: number };
+  settings: { payrollCycle?: string; payDay?: string; paidDaysBasis?: string; weeklyOffs?: number[]; employeeCodePrefix?: string; noticeDays?: number; probationNoticeDays?: number; overtime?: OvertimeSettings };
   statutory: Record<string, { enabled: boolean; registration?: string | null }>;
 }
 
@@ -58,6 +58,7 @@ export default function Organization() {
   const q = useQuery({ queryKey: ["tenant"], queryFn: () => api.get<Tenant>("/admin/org/tenant") });
   const [form, setForm] = useState<Partial<Tenant>>({});
   const [settings, setSettings] = useState<Tenant["settings"]>({});
+  const ot = { ...DEFAULT_OVERTIME, ...(settings.overtime ?? {}) };
   const [stat, setStat] = useState<Tenant["statutory"]>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   useEffect(() => {
@@ -164,6 +165,21 @@ export default function Organization() {
           </Field>
           <Field label="Notice period (days)" hint="Default for resignations and full and final">
             <Input type="number" min={0} max={180} value={settings.noticeDays ?? 30} onChange={(e) => setSettings((s) => ({ ...s, noticeDays: Number(e.target.value) }))} disabled={!configurable} />
+          </Field>
+          <Field label="Overtime rate" hint="Multiple of the ordinary hourly rate (Factories Act: 2×)">
+            <Select value={String(ot.multiplier)} onChange={(e) => setSettings((s) => ({ ...s, overtime: { ...ot, multiplier: Number(e.target.value) } }))} disabled={!configurable}>
+              {[1, 1.5, 2, 2.5, 3].map((m) => (
+                <option key={m} value={m}>
+                  {m}×
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Overtime hourly rate from" hint={`${ot.daysPerMonth} days × ${ot.hoursPerDay} hours a month`}>
+            <Select value={ot.basis} onChange={(e) => setSettings((s) => ({ ...s, overtime: { ...ot, basis: e.target.value as OvertimeSettings["basis"] } }))} disabled={!configurable}>
+              <option value="gross">Monthly gross (ordinary rate of wages)</option>
+              <option value="basic">Basic only</option>
+            </Select>
           </Field>
           <Field label="Notice period on probation (days)">
             <Input type="number" min={0} max={180} value={settings.probationNoticeDays ?? 15} onChange={(e) => setSettings((s) => ({ ...s, probationNoticeDays: Number(e.target.value) }))} disabled={!configurable} />

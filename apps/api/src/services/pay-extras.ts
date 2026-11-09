@@ -1,6 +1,6 @@
 import { and, between, eq, inArray, sql } from "drizzle-orm";
 import { attendanceRecords, employees, leaveBalances, leaveEncashments, leaveTypes, payrollAdjustments, payrollItems, payrollRuns, tenants, type Database } from "@hrms/db";
-import { DEFAULT_OVERTIME, encashmentPerDay, overtimePay, todayIST, type OvertimeSettings } from "@hrms/shared";
+import { accruedLeave, DEFAULT_OVERTIME, encashmentPerDay, overtimePay, todayIST, type OvertimeSettings } from "@hrms/shared";
 import { balanceSummary, ensureBalances } from "./leave";
 import { getTemplate, resolveStructure, structuresAsOf } from "./payroll";
 
@@ -131,12 +131,33 @@ export async function releaseEncashment(db: Database, adjustment: typeof payroll
  * it can be paid out instead. Safe to run again (for late approvals): it recomputes from
  * the closed year and leaves encashments already in payroll alone.
  */
+async function existingBalances(db: Database, employeeId: string, year: number) {
+  const rows = await db.select().from(leaveBalances).where(and(eq(leaveBalances.employeeId, employeeId), eq(leaveBalances.year, year)));
+  return { balances: new Map(rows.map((r) => [r.leaveTypeId, r])) };
+}
+
+/** Whether the system has leave data for a year (so closing it means something). */
+export async function hasLeaveYear(db: Database, tenantId: string, year: number) {
+  const [r] = await db.select({ n: sql<number>`count(*)::int` }).from(leaveBalances).where(and(eq(leaveBalances.tenantId, tenantId), eq(leaveBalances.year, year)));
+  return (r?.n ?? 0) > 0;
+}
+
 export async function closeLeaveYear(db: Database, tenantId: string, year: number, opts: { encashLapsed: boolean; dryRun: boolean }, userId: string) {
   const end = `${year}-12-31`;
   const emps = await db
-    .select({ id: employees.id, code: employees.employeeCode, name: employees.fullName, lwd: employees.lastWorkingDay, status: employees.status })
+    .select({ id: employees.id, code: employees.employeeCode, name: employees.fullName, lwd: employees.lastWorkingDay, status: employees.status, doj: employees.dateOfJoining })
     .from(employees)
-    .where(and(eq(employees.tenantId, tenantId), sql`${employees.dateOfJoining} <= ${end}`, sql`(${employees.lastWorkingDay} is null or ${employees.lastWorkingDay} > ${end})`, sql`${employees.status} not in ('exited','inactive')`));
+    .where(
+      and(
+        eq(employees.tenantId, tenantId),
+        sql`${employees.dateOfJoining} <= ${end}`,
+        sql`(${employees.lastWorkingDay} is null or ${employees.lastWorkingDay} > ${end})`,
+        sql`${employees.status} not in ('exited','inactive')`,
+        // only people whose leave was tracked here that year: a company that started mid-way
+        // shouldn't carry a full year of "unused" leave that was really taken before
+        sql`exists (select 1 from ${leaveBalances} b where b.employee_id = ${employees.id} and b.year = ${year})`,
+      ),
+    );
   const types = await db.select().from(leaveTypes).where(and(eq(leaveTypes.tenantId, tenantId), eq(leaveTypes.active, true)));
   const pay = opts.encashLapsed ? await monthlyPay(db, tenantId, emps.map((e) => e.id), end) : new Map();
   const rows: { employeeCode: string; name: string; type: string; left: number; carried: number; lapsed: number; encashed: number }[] = [];
@@ -145,11 +166,13 @@ export async function closeLeaveYear(db: Database, tenantId: string, year: numbe
   let encashDays = 0;
   let encashAmount = 0;
   for (const e of emps) {
-    const { balances } = await ensureBalances(db, tenantId, e.id, year, end);
+    // accrue the full year (monthly accrual stops at the date it was last read)
+    const { balances } = opts.dryRun ? await existingBalances(db, e.id, year) : await ensureBalances(db, tenantId, e.id, year, end);
     for (const t of types) {
       const b = balances.get(t.id);
       if (!b || !t.isPaid) continue;
-      const left = Math.max(0, Number(b.opening) + Number(b.accrued) + Number(b.adjusted) - Number(b.used));
+      const accrued = opts.dryRun ? accruedLeave({ annualQuota: Number(t.annualQuota), accrual: t.accrual as "yearly" | "monthly" | "none" }, year, end, e.doj) : Number(b.accrued);
+      const left = Math.max(0, Number(b.opening) + accrued + Number(b.adjusted) - Number(b.used));
       const carry = Math.min(left, Number(t.carryForwardMax));
       const lapse = Math.round((left - carry) * 10) / 10;
       const encash = opts.encashLapsed && t.encashable ? lapse : 0;

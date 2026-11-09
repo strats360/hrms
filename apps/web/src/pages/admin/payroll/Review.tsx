@@ -3,9 +3,9 @@ import { Link, useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { Download, Lock } from "lucide-react";
+import { Clock, Download, Lock, Wallet } from "lucide-react";
 import { inr } from "@hrms/shared";
-import { api, download, qs } from "@/lib/api";
+import { api, download, errorMessage, qs } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { Lookups, PayrollItem, PayrollRun } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import { PayslipDialog } from "@/components/payroll/PayslipDialog";
 import { monthLabel } from "@/components/payroll/Payslip";
 import { RUN_STATUS_LABEL } from "@/components/payroll/PayrollCard";
 import { AdjustmentDialog, HoldDialog, LopDialog } from "@/components/payroll/review/dialogs";
+import { OvertimeDialog } from "@/components/payroll/review/OvertimeDialog";
 
 type Filter = "all" | "exceptions" | "lop" | "hold";
 
@@ -43,6 +44,7 @@ export default function Review() {
   const [hold, setHold] = useState<PayrollItem[] | null>(null);
   const [lop, setLop] = useState<PayrollItem | null>(null);
   const [adj, setAdj] = useState<PayrollItem | null>(null);
+  const [overtime, setOvertime] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setTerm(q.trim()), 250);
@@ -62,6 +64,14 @@ export default function Review() {
   });
 
   const editable = run?.status === "calculated" && can("payroll", "edit");
+  const encash = useMutation({
+    mutationFn: () => api.post<{ added: number; total: number }>(`/admin/payroll/runs/${runId}/encashments`),
+    onSuccess: (r) => {
+      toast.success(`Added ${r.added} leave encashment${r.added === 1 ? "" : "s"}: ${inr(r.total)}`);
+      qc.invalidateQueries({ queryKey: ["payroll"] });
+    },
+    onError: (e) => toast.error(errorMessage(e)),
+  });
   const release = useMutation({
     mutationFn: async (list: PayrollItem[]) => {
       for (const it of list) await api.patch(`/admin/payroll/runs/${runId}/items/${it.employeeId}`, { onHold: false, holdReason: null });
@@ -169,8 +179,18 @@ export default function Review() {
             </option>
           ))}
         </Select>
+        {run.status === "calculated" && can("payroll", "edit") ? (
+          <>
+            <Button className="ml-auto" onClick={() => setOvertime(true)}>
+              <Clock size={16} /> Overtime
+            </Button>
+            <Button loading={encash.isPending} onClick={() => encash.mutate()}>
+              <Wallet size={16} /> Leave encashment
+            </Button>
+          </>
+        ) : null}
         {can("payroll", "export") ? (
-          <Button className="ml-auto" onClick={() => download(`/admin/payroll/runs/${run.id}/register.csv`, `salary-register-${run.month}.csv`).catch((e) => toast.error(e.message))}>
+          <Button className={run.status === "calculated" && can("payroll", "edit") ? "" : "ml-auto"} onClick={() => download(`/admin/payroll/runs/${run.id}/register.csv`, `salary-register-${run.month}.csv`).catch((e) => toast.error(e.message))}>
             <Download size={16} /> Export register
           </Button>
         ) : null}
@@ -265,6 +285,7 @@ export default function Review() {
       <HoldDialog runId={run.id} items={hold} onClose={() => setHold(null)} />
       <LopDialog runId={run.id} item={lop} onClose={() => setLop(null)} />
       <AdjustmentDialog runId={run.id} item={adj} onClose={() => setAdj(null)} />
+      <OvertimeDialog runId={run.id} open={overtime} onClose={() => setOvertime(false)} />
     </>
   );
 }
