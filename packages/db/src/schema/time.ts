@@ -4,6 +4,7 @@ import {
   doublePrecision,
   index,
   integer,
+  jsonb,
   numeric,
   pgTable,
   text,
@@ -40,6 +41,9 @@ export const attendanceRecords = pgTable(
     ip: text("ip"),
     note: text("note"),
     isManual: boolean("is_manual").notNull().default(false),
+    /** Punch checks that didn't pass (away from the office, not on its network). */
+    flags: jsonb("flags").$type<string[]>().notNull().default([]),
+    distanceM: integer("distance_m"),
     ...timestamps,
   },
   (t) => [

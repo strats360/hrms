@@ -1,4 +1,4 @@
-import { boolean, index, integer, pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, doublePrecision, index, integer, jsonb, pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
 import { tenants } from "./tenancy";
 import { id, timestamps } from "./_helpers";
 
@@ -20,6 +20,12 @@ export const branches = pgTable(
     isHeadOffice: boolean("is_head_office").notNull().default(false),
     esiSubCode: text("esi_sub_code"),
     ptRegistration: text("pt_registration"),
+    /** Office location for punch checks: centre and radius. */
+    geoLat: doublePrecision("geo_lat"),
+    geoLng: doublePrecision("geo_lng"),
+    geoRadiusM: integer("geo_radius_m"),
+    /** Office network: addresses or CIDR ranges punches may come from. */
+    allowedIps: jsonb("allowed_ips").$type<string[]>().notNull().default([]),
     ...timestamps,
   },
   (t) => [uniqueIndex("branches_tenant_name_uq").on(t.tenantId, t.name)],

@@ -26,20 +26,20 @@ const WEEKDAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday
 const dayName = (iso: string) => WEEKDAY[new Date(iso + "T00:00:00Z").getUTCDay()];
 
 /** Best-effort location; resolves undefined if denied or slow. */
-function getLocation(): Promise<{ lat: number; lng: number } | undefined> {
+function getLocation(): Promise<{ lat: number; lng: number; accuracy: number } | undefined> {
   if (!("geolocation" in navigator)) return Promise.resolve(undefined);
   return new Promise((resolve) => {
     const t = setTimeout(() => resolve(undefined), 4000);
     navigator.geolocation.getCurrentPosition(
       (p) => {
         clearTimeout(t);
-        resolve({ lat: p.coords.latitude, lng: p.coords.longitude });
+        resolve({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: Math.round(p.coords.accuracy) });
       },
       () => {
         clearTimeout(t);
         resolve(undefined);
       },
-      { enableHighAccuracy: false, timeout: 3500, maximumAge: 300_000 },
+      { enableHighAccuracy: false, timeout: 3500, maximumAge: 60_000 },
     );
   });
 }
@@ -51,10 +51,11 @@ export default function EssHomePage() {
   const punch = useMutation({
     mutationFn: async () => {
       const loc = await getLocation();
-      return api.post<{ action: "in" | "out"; checkIn: string; checkOut: string; status: string; lateMinutes: number }>("/ess/attendance/punch", { source: wfh ? "wfh" : loc ? "gps" : "web", ...(loc ?? {}) });
+      return api.post<{ action: "in" | "out"; checkIn: string; checkOut: string; status: string; lateMinutes: number; flags?: string[] }>("/ess/attendance/punch", { source: wfh ? "wfh" : loc ? "gps" : "web", ...(loc ?? {}) });
     },
     onSuccess: (r) => {
       toast.success(r.action === "in" ? `Checked in at ${r.checkIn}${r.lateMinutes ? ` · ${r.lateMinutes} min late` : ""}` : `Checked out at ${r.checkOut}`);
+      if (r.flags?.length) toast.warning(`${r.flags.join(". ")}. HR will see this on your attendance.`);
       qc.invalidateQueries({ queryKey: ["ess"] });
     },
   });

@@ -8,7 +8,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { Input, Segmented } from "@/components/ui/field";
 import { ErrorState } from "@/components/ui/page";
 import { PersonCell } from "@/components/ui/avatar";
-import { StatusTag } from "@/components/ui/tag";
+import { StatusTag, Tag } from "@/components/ui/tag";
 import { minsLabel, SOURCE_LABELS, DAY_SHORT, weekdayOf } from "@/components/attendance/shared";
 
 interface Row {
@@ -25,15 +25,17 @@ interface Row {
   lateMinutes: number;
   workMinutes: number;
   overtimeMinutes: number;
+  earlyMinutes: number;
+  flags: string[];
 }
 interface TodayRes {
   date: string;
-  summary: { total: number; present: number; wfh: number; late: number; halfDay: number; absent: number; notMarked: number; onLeave: number; off: number };
+  summary: { total: number; present: number; wfh: number; late: number; flagged: number; halfDay: number; absent: number; notMarked: number; onLeave: number; off: number };
   rows: Row[];
 }
 
-type Filter = "all" | "in" | "late" | "missing" | "leave";
-const FILTERS: Record<Filter, (s: string | null) => boolean> = {
+type Filter = "all" | "in" | "late" | "missing" | "leave" | "flagged";
+const FILTERS: Record<Exclude<Filter, "flagged">, (s: string | null) => boolean> = {
   all: (s) => s !== null,
   in: (s) => ["present", "late", "wfh", "half_day"].includes(s ?? ""),
   late: (s) => s === "late",
@@ -51,7 +53,7 @@ export default function Today() {
 
   const rows = useMemo(() => {
     const t = q.trim().toLowerCase();
-    return (query.data?.rows ?? []).filter((r) => FILTERS[filter](r.status) && (!t || `${r.name} ${r.code} ${r.department ?? ""}`.toLowerCase().includes(t)));
+    return (query.data?.rows ?? []).filter((r) => (filter === "flagged" ? r.flags.length > 0 : FILTERS[filter](r.status)) && (!t || `${r.name} ${r.code} ${r.department ?? ""}`.toLowerCase().includes(t)));
   }, [query.data, filter, q]);
 
   const columns = useMemo<ColumnDef<Row, any>[]>(
@@ -63,8 +65,23 @@ export default function Today() {
       { id: "checkOut", header: "Check-out", accessorFn: (r) => r.checkOut ?? "", cell: ({ getValue }) => getValue() || "—" },
       { id: "source", header: "Source", accessorFn: (r) => r.source ?? "", cell: ({ getValue }) => (getValue() ? SOURCE_LABELS[getValue() as string] ?? getValue() : "—") },
       { id: "late", header: "Late by", accessorFn: (r) => r.lateMinutes, cell: ({ getValue }) => <span style={{ color: getValue() ? "var(--warn-fg)" : undefined }}>{minsLabel(getValue() as number)}</span> },
+      { id: "early", header: "Left early", accessorFn: (r) => r.earlyMinutes, cell: ({ getValue }) => <span style={{ color: getValue() ? "var(--warn-fg)" : undefined }}>{minsLabel(getValue() as number)}</span> },
       { id: "worked", header: "Worked", accessorFn: (r) => r.workMinutes, cell: ({ getValue }) => minsLabel(getValue() as number) },
-      { id: "status", header: "Status", accessorFn: (r) => r.status ?? "", cell: ({ row }) => <StatusTag status={row.original.status} /> },
+      {
+        id: "status",
+        header: "Status",
+        accessorFn: (r) => r.status ?? "",
+        cell: ({ row }) => (
+          <span className="inline-flex flex-wrap items-center gap-1">
+            <StatusTag status={row.original.status} />
+            {row.original.flags.length ? (
+              <Tag tone="warn" title={row.original.flags.join("\n")}>
+                Away from office
+              </Tag>
+            ) : null}
+          </span>
+        ),
+      },
     ],
     [],
   );
@@ -77,6 +94,7 @@ export default function Today() {
         <StatCard label="Late" value={s?.late ?? "–"} meta={s?.halfDay ? `${s.halfDay} half day` : "after grace time"} onClick={() => setFilter("late")} />
         <StatCard label={isToday ? "Not marked yet" : "Absent"} value={s ? s.absent + s.notMarked : "–"} meta={isToday ? "no punch so far today" : "no punch or leave"} onClick={() => setFilter("missing")} />
         <StatCard label="On leave" value={s?.onLeave ?? "–"} meta="approved leave" onClick={() => setFilter("leave")} />
+        {s?.flagged ? <StatCard label="Away from office" value={s.flagged} meta="punched outside the office or network" onClick={() => setFilter("flagged")} /> : null}
       </div>
       {query.error ? <ErrorState error={query.error} retry={() => query.refetch()} /> : null}
       <TableCard>
@@ -106,6 +124,7 @@ export default function Today() {
                   { value: "late", label: "Late" },
                   { value: "missing", label: isToday ? "Not marked" : "Absent" },
                   { value: "leave", label: "On leave" },
+                  ...(s?.flagged ? [{ value: "flagged" as Filter, label: "Away from office" }] : []),
                 ]}
               />
             </>

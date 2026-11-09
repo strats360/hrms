@@ -18,6 +18,9 @@ import {
   tenants,
 } from "@hrms/db";
 import {
+  checkPunch,
+  DEFAULT_PUNCH_POLICY,
+  type PunchPolicy,
   aadhaarLast4Schema,
   accountNumberSchema,
   correctionCreateSchema,
@@ -43,7 +46,7 @@ import { z } from "zod";
 import type { AppEnv } from "../env";
 import { requireEmployee } from "../lib/context";
 import { v } from "../lib/validate";
-import { badRequest, notFound } from "../lib/errors";
+import { ApiError, badRequest, notFound } from "../lib/errors";
 import { audit } from "../lib/audit";
 import { buildCalendar, shiftFor, upsertAttendance } from "../services/attendance";
 import { applyLeave, balanceSummary, cancelLeave } from "../services/leave";
@@ -119,12 +122,27 @@ essRoutes.get("/home", async (c) => {
 });
 
 // ---------- attendance ----------
+/** Is this punch from an office (location and network), per the company's punch policy? */
+async function punchCheck(c: Context<AppEnv>, tid: string, branchId: string | null, body: { source: string; lat?: number; lng?: number; accuracy?: number }) {
+  const db = c.get("db");
+  const [t] = await db.select({ s: tenants.settings }).from(tenants).where(eq(tenants.id, tid));
+  const policy = { ...DEFAULT_PUNCH_POLICY, ...((t?.s as { punchPolicy?: Partial<PunchPolicy> } | undefined)?.punchPolicy ?? {}) };
+  if (policy.location === "off" && policy.ip === "off") return { allowed: true, error: null, flags: [] as string[], distanceM: null };
+  const all = await db.select().from(branches).where(eq(branches.tenantId, tid));
+  const office = (b: typeof branches.$inferSelect) => ({ name: b.name, lat: b.geoLat, lng: b.geoLng, radiusM: b.geoRadiusM, allowedIps: b.allowedIps ?? [] });
+  // no branch set: the head office is their office
+  const home = all.find((b) => b.id === branchId) ?? all.find((b) => b.isHeadOffice) ?? null;
+  return checkPunch(policy, home ? office(home) : null, all.filter((b) => b !== home).map(office), { lat: body.lat, lng: body.lng, accuracyM: body.accuracy, ip: c.req.header("cf-connecting-ip") ?? null, wfh: body.source === "wfh" });
+}
+
 essRoutes.post("/attendance/punch", v("json", punchSchema), async (c) => {
   const { tid, eid } = me(c);
   const db = c.get("db");
   const body = c.req.valid("json");
-  const [emp] = await db.select({ status: employees.status }).from(employees).where(eq(employees.id, eid));
+  const [emp] = await db.select({ status: employees.status, branchId: employees.branchId }).from(employees).where(eq(employees.id, eid));
   if (emp?.status === "onboarding") throw badRequest("Attendance starts once HR verifies your onboarding");
+  const check = await punchCheck(c, tid, emp?.branchId ?? null, body);
+  if (!check.allowed) throw new ApiError(403, check.error!, "outside_office");
   const now = new Date();
   const date = todayIST(now);
   const shift = await shiftFor(db, tid, eid);
@@ -158,8 +176,11 @@ essRoutes.post("/attendance/punch", v("json", punchSchema), async (c) => {
     lng: body.lng ?? rec?.lng ?? null,
     ip: c.req.header("cf-connecting-ip") ?? null,
     note: body.note ?? rec?.note ?? null,
+    // keep what the check-in found, and add anything new from the check-out
+    flags: [...new Set([...(rec?.flags ?? []), ...check.flags.map((f) => `${action === "in" ? "In" : "Out"}: ${f}`)])],
+    distanceM: check.distanceM ?? rec?.distanceM ?? null,
   });
-  return c.json({ action, checkIn: toISTTime(row.checkIn), checkOut: toISTTime(row.checkOut), status: row.status, lateMinutes: row.lateMinutes });
+  return c.json({ action, checkIn: toISTTime(row.checkIn), checkOut: toISTTime(row.checkOut), status: row.status, lateMinutes: row.lateMinutes, flags: check.flags });
 });
 
 essRoutes.get("/attendance", v("query", z.object({ month: z.string().regex(/^\d{4}-\d{2}$/).optional() })), async (c) => {

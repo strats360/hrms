@@ -9,6 +9,7 @@ import {
   TAX_REGIMES,
 } from "./constants";
 import { EXIT_TYPES } from "./fnf";
+import { validIpRule } from "./punch-rules";
 
 // ---------- primitives ----------
 export const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
@@ -176,6 +177,7 @@ export const tenantPayrollSettingsSchema = z.object({
   /** Notice period in calendar days, and the shorter one while on probation. */
   noticeDays: z.number().int().min(0).max(180).default(30),
   probationNoticeDays: z.number().int().min(0).max(180).default(15),
+  punchPolicy: z.object({ location: z.enum(["off", "flag", "block"]), ip: z.enum(["off", "flag", "block"]), wfhExempt: z.boolean() }).optional(),
   overtime: z
     .object({
       enabled: z.boolean(),
@@ -198,6 +200,10 @@ export const branchSchema = z.object({
   isHeadOffice: z.boolean().default(false),
   esiSubCode: nullable(trimmed(40)),
   ptRegistration: nullable(trimmed(40)),
+  geoLat: z.preprocess(blankToNull, z.coerce.number().min(-90).max(90).nullable().optional()),
+  geoLng: z.preprocess(blankToNull, z.coerce.number().min(-180).max(180).nullable().optional()),
+  geoRadiusM: z.preprocess(blankToNull, z.coerce.number().int().min(25, "At least 25 m").max(5000, "At most 5 km").nullable().optional()),
+  allowedIps: z.array(z.string().trim().refine(validIpRule, "Use an IP address or a range like 203.0.113.0/24")).max(50).default([]),
 });
 export const departmentSchema = z.object({ name: trimmed(120).min(1), code: nullable(trimmed(20)) });
 export const designationSchema = z.object({ name: trimmed(120).min(1), grade: nullable(trimmed(20)) });
@@ -236,6 +242,8 @@ export const punchSchema = z.object({
   source: z.enum(["web", "mobile", "gps", "wfh"]).default("web"),
   lat: z.number().min(-90).max(90).optional(),
   lng: z.number().min(-180).max(180).optional(),
+  /** GPS accuracy in metres, as the browser reports it. */
+  accuracy: z.number().min(0).max(100000).optional(),
   note: nullable(trimmed(200)),
 });
 export const manualAttendanceSchema = z.object({

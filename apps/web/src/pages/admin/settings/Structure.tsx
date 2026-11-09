@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
 import { CardHeader, TableCard } from "@/components/ui/card";
-import { Checkbox, Field, Input, Select } from "@/components/ui/field";
+import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/field";
 import { Dialog } from "@/components/ui/dialog";
 import { Loading } from "@/components/ui/page";
 import { Tag } from "@/components/ui/tag";
@@ -22,6 +22,10 @@ interface Branch {
   isHeadOffice: boolean;
   esiSubCode: string | null;
   ptRegistration: string | null;
+  geoLat?: number | null;
+  geoLng?: number | null;
+  geoRadiusM?: number | null;
+  allowedIps?: string[];
 }
 interface Named {
   id: string;
@@ -85,6 +89,7 @@ export default function Structure() {
                   <th>State</th>
                   <th>ESI sub-code</th>
                   <th>PT registration</th>
+                  <th>Punch checks</th>
                   {editable ? <th /> : null}
                 </tr>
               </thead>
@@ -98,6 +103,7 @@ export default function Structure() {
                     <td>{b.state}</td>
                     <td className="text-muted text-[12.5px]">{b.esiSubCode || "—"}</td>
                     <td className="text-muted text-[12.5px]">{b.ptRegistration || "—"}</td>
+                    <td className="text-muted whitespace-nowrap text-[12.5px]">{[b.geoRadiusM ? `${b.geoRadiusM} m radius` : null, b.allowedIps?.length ? `${b.allowedIps.length} IP${b.allowedIps.length === 1 ? "" : "s"}` : null].filter(Boolean).join(" · ") || "—"}</td>
                     {editable ? (
                       <td>
                         <div className="flex justify-end gap-1">
@@ -166,6 +172,32 @@ export default function Structure() {
               <Input value={edit.ptRegistration ?? ""} onChange={(e) => setEdit({ ...edit, ptRegistration: e.target.value })} />
             </Field>
             <Checkbox label="This is the head office" checked={!!edit.isHeadOffice} onChange={(v) => setEdit({ ...edit, isHeadOffice: v })} />
+            <div className="col-span-full mt-1 border-t border-[var(--color-divider)] pt-3 text-[13px] font-medium">Office location and network (for punch checks)</div>
+            <Field label="Latitude">
+              <Input inputMode="decimal" value={edit.geoLat ?? ""} onChange={(e) => setEdit({ ...edit, geoLat: e.target.value === "" ? null : (e.target.value as unknown as number) })} placeholder="21.7645" />
+            </Field>
+            <Field label="Longitude">
+              <Input inputMode="decimal" value={edit.geoLng ?? ""} onChange={(e) => setEdit({ ...edit, geoLng: e.target.value === "" ? null : (e.target.value as unknown as number) })} placeholder="72.1519" />
+            </Field>
+            <Field label="Radius (metres)" hint="How far from that point counts as the office. 100 to 300 m suits most buildings">
+              <Input inputMode="numeric" value={edit.geoRadiusM ?? ""} onChange={(e) => setEdit({ ...edit, geoRadiusM: e.target.value === "" ? null : (e.target.value as unknown as number) })} placeholder="150" />
+            </Field>
+            <div className="flex items-end">
+              <Button
+                onClick={() =>
+                  navigator.geolocation.getCurrentPosition(
+                    (p) => setEdit((cur) => ({ ...cur, geoLat: Math.round(p.coords.latitude * 1e6) / 1e6, geoLng: Math.round(p.coords.longitude * 1e6) / 1e6, geoRadiusM: cur?.geoRadiusM ?? 150 })),
+                    () => toast.error("Couldn't read your location. Allow location for this site, or enter it by hand."),
+                    { enableHighAccuracy: true, timeout: 10000 },
+                  )
+                }
+              >
+                Use my current location
+              </Button>
+            </div>
+            <Field label="Office IP addresses" hint="One per line: an address or a range like 203.0.113.0/24. Ask your IT team for the office's public IP" span>
+              <Textarea rows={3} className="font-mono !text-[12.5px]" value={(edit.allowedIps ?? []).join("\n")} onChange={(e) => setEdit({ ...edit, allowedIps: e.target.value.split(/[\n,]+/).map((x) => x.trim()).filter(Boolean) })} placeholder="203.0.113.10" />
+            </Field>
           </div>
         ) : null}
       </Dialog>

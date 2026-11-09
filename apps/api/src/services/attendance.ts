@@ -120,6 +120,8 @@ export async function upsertAttendance(
         overtimeMinutes: values.overtimeMinutes ?? 0,
         note: values.note,
         isManual: values.isManual ?? false,
+        flags: values.flags ?? [],
+        distanceM: values.distanceM ?? null,
         updatedAt: new Date(),
       },
     })

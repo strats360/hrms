@@ -79,6 +79,8 @@ attendanceRoutes.get("/today", requirePerm("attendance", "view"), v("query", z.o
       lateMinutes: rec?.lateMinutes ?? 0,
       workMinutes: rec?.workMinutes ?? 0,
       overtimeMinutes: rec?.overtimeMinutes ?? 0,
+      earlyMinutes: rec?.earlyMinutes ?? 0,
+      flags: rec?.flags ?? [],
     };
   });
   const count = (...s: (string | null)[]) => rows.filter((r) => s.includes(r.status)).length;
@@ -89,6 +91,7 @@ attendanceRoutes.get("/today", requirePerm("attendance", "view"), v("query", z.o
       present: count("present", "late", "wfh", "half_day"),
       wfh: count("wfh"),
       late: count("late"),
+      flagged: rows.filter((r) => r.flags.length).length,
       halfDay: count("half_day"),
       absent: count("absent"),
       notMarked: count("not_marked"),

@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
-import { and, desc, eq } from "drizzle-orm";
-import { attendanceDevices, branches } from "@hrms/db";
-import { randomToken, sha256Hex } from "@hrms/shared";
+import { and, desc, eq, sql } from "drizzle-orm";
+import { attendanceDevices, branches, tenants } from "@hrms/db";
+import { DEFAULT_PUNCH_POLICY, randomToken, sha256Hex, type PunchPolicy } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
 import { requirePerm } from "../lib/context";
@@ -52,6 +52,34 @@ attendanceImportRoutes.post(
     return c.json({ ...r, results: ordered.slice(0, 2000), truncated: r.results.length > 2000 });
   },
 );
+
+// ---------------------------------------------------------------------------
+// Where punches may come from
+// ---------------------------------------------------------------------------
+const punchPolicySchema = z.object({ location: z.enum(["off", "flag", "block"]), ip: z.enum(["off", "flag", "block"]), wfhExempt: z.boolean() });
+
+attendanceImportRoutes.get("/punch-policy", requirePerm("attendance", "view"), async (c) => {
+  const db = c.get("db");
+  const [t] = await db.select({ s: tenants.settings }).from(tenants).where(eq(tenants.id, tid(c)));
+  const rows = await db.select({ name: branches.name, lat: branches.geoLat, radius: branches.geoRadiusM, ips: branches.allowedIps }).from(branches).where(eq(branches.tenantId, tid(c)));
+  return c.json({
+    policy: { ...DEFAULT_PUNCH_POLICY, ...((t?.s as { punchPolicy?: Partial<PunchPolicy> } | undefined)?.punchPolicy ?? {}) },
+    offices: rows.map((b) => ({ name: b.name, location: b.lat !== null && !!b.radius, ips: (b.ips ?? []).length })),
+  });
+});
+
+attendanceImportRoutes.put("/punch-policy", requirePerm("attendance", "configure"), v("json", punchPolicySchema), async (c) => {
+  const b = c.req.valid("json");
+  const db = c.get("db");
+  if (b.location !== "off" || b.ip !== "off") {
+    const rows = await db.select({ lat: branches.geoLat, radius: branches.geoRadiusM, ips: branches.allowedIps }).from(branches).where(eq(branches.tenantId, tid(c)));
+    if (b.location !== "off" && !rows.some((r) => r.lat !== null && r.radius)) throw badRequest("Set an office location on at least one branch first (Settings › Branches)");
+    if (b.ip !== "off" && !rows.some((r) => (r.ips ?? []).length)) throw badRequest("Add the office IP addresses to at least one branch first (Settings › Branches)");
+  }
+  await db.update(tenants).set({ settings: sql`${tenants.settings} || ${JSON.stringify({ punchPolicy: b })}::jsonb` }).where(eq(tenants.id, tid(c)));
+  await audit(c, { action: "attendance.punch_policy", entity: "tenant", summary: `Punch checks: location ${b.location}, office network ${b.ip}${b.wfhExempt ? ", work from home exempt" : ""}`, data: b });
+  return c.json(b);
+});
 
 // ---------------------------------------------------------------------------
 // Biometric devices (admin)
