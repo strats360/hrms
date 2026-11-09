@@ -89,9 +89,11 @@ const router = createBrowserRouter([
             children: [
               { index: true, element: L(() => import("@/pages/admin/employees/Directory")) },
               { path: "onboarding", element: L(() => import("@/pages/admin/employees/Onboarding")) },
+              { path: "exits", element: L(() => import("@/pages/admin/employees/Exits")) },
               { path: "new", element: L(() => import("@/pages/admin/employees/EmployeeForm")) },
             ],
           },
+          { path: "employees/exits/:id", element: L(() => import("@/pages/admin/employees/ExitDetail")) },
           { path: "employees/:id", element: L(() => import("@/pages/admin/employees/EmployeeProfile")) },
           { path: "employees/:id/edit", element: L(() => import("@/pages/admin/employees/EmployeeForm")) },
           {

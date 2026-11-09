@@ -66,6 +66,19 @@ The product design lives in [`design/`](design/). `HRMS v2.dc.html` is the sourc
 | Reports | Queue with totals (waiting, approved unpaid, paid this month, GST input credit), history with filters and CSV export, claims column in the salary register and on the payslip |
 | Access | Admins and finance see every claim. Managers see their direct reports. HR and payroll admins have read-only access. Finance approval needs claim approval plus payments approval |
 
+**Exits and full & final settlement are built:**
+
+| Area | What works |
+| --- | --- |
+| Starting an exit | HR starts a resignation, termination, retirement, end of contract, death or absconding case from Employees › Exits or the employee's profile. Employees can also resign from self-service; HR and their manager get an email, and HR accepts it with the last working day. The employee can withdraw until HR accepts |
+| Notice period | Company default (30 days, 15 on probation) under Settings, changeable per exit. A resignation's notice shortfall is recovered at gross / 30 a day unless waived. A termination can pay the shortfall in lieu |
+| Exit checklist | Assets returned, handover, access removed and no dues from finance. All of it is needed before approval |
+| Settlement | Gratuity after 4 years 240 days (or on death): 15/26 × basic × completed years, part years over 6 months rounded up, capped at ₹20 lakh. Earned leave encashment at basic / 26 a day, with an override per leave type. Other earnings and recoveries, and TDS. The taxable part is shown. Warnings for an unapproved last-month payroll, open claims and pending payments |
+| Approval | Maker-checker, like payroll. Needs the last working day passed, the checklist done and the figures unchanged since drafting. Can be reopened until it's paid |
+| Payment | Pay through a one-line payment batch (normal approval and bank file); the exit closes when the payment is marked paid or reconciled. Or close it by hand for a cheque, cash, recovery from the employee, or nothing due. Closing marks the employee exited and takes the encashed leave off their balance |
+| Letters | Settlement statement (with the employee's acknowledgement), relieving letter and experience letter, printable or saved as PDF |
+| Access | HR and payroll only (managers can't see exits). People without payroll access see the process but not the money |
+
 **Payments are built:**
 
 | Area | What works |

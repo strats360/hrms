@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ChevronLeft, Download, Eye, FileText, Pencil, Trash2, Upload } from "lucide-react";
+import { ChevronLeft, Download, LogOut, Eye, FileText, Pencil, Trash2, Upload } from "lucide-react";
 import {
   DOCUMENT_TYPE_LABELS,
   DOCUMENT_TYPES,
@@ -87,6 +87,9 @@ export default function EmployeeProfile() {
     },
   });
 
+  const exitsQ = useQuery({ queryKey: ["exits", "open"], queryFn: () => api.get<{ rows: { id: string; employeeId: string; statusLabel: string }[] }>("/admin/exits?status=open"), enabled: q.data?.status === "notice" && (edit || can("payroll", "view")) });
+  const openExit = exitsQ.data?.rows.find((r) => r.employeeId === id) ?? null;
+
   if (q.isLoading) return <Loading />;
   if (q.error || !q.data) return <ErrorState error={q.error ?? new Error("Employee not found")} retry={() => q.refetch()} />;
   const e = q.data;
@@ -111,11 +114,22 @@ export default function EmployeeProfile() {
         title={e.fullName}
         sub={[e.designation, e.department].filter(Boolean).join(" · ") || e.employeeCode}
         actions={
-          edit ? (
-            <Button variant="primary" onClick={() => nav(`/employees/${id}/edit`)}>
-              <Pencil size={15} /> Edit
-            </Button>
-          ) : null
+          <>
+            {openExit ? (
+              <Button onClick={() => nav(`/employees/exits/${openExit.id}`)}>
+                <LogOut size={15} /> {openExit.statusLabel}
+              </Button>
+            ) : edit && !["exited", "inactive", "notice"].includes(e.status) ? (
+              <Button onClick={() => nav(`/employees/exits?employee=${id}`)}>
+                <LogOut size={15} /> Start exit
+              </Button>
+            ) : null}
+            {edit ? (
+              <Button variant="primary" onClick={() => nav(`/employees/${id}/edit`)}>
+                <Pencil size={15} /> Edit
+              </Button>
+            ) : null}
+          </>
         }
       />
       {inviteOpen ? (

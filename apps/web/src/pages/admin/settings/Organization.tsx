@@ -26,7 +26,7 @@ interface Tenant {
   contactPhone: string | null;
   plan: string;
   status: string;
-  settings: { payrollCycle?: string; payDay?: string; paidDaysBasis?: string; weeklyOffs?: number[]; employeeCodePrefix?: string };
+  settings: { payrollCycle?: string; payDay?: string; paidDaysBasis?: string; weeklyOffs?: number[]; employeeCodePrefix?: string; noticeDays?: number; probationNoticeDays?: number };
   statutory: Record<string, { enabled: boolean; registration?: string | null }>;
 }
 
@@ -161,6 +161,12 @@ export default function Organization() {
           </Field>
           <Field label="Employee ID prefix" hint="New employees get IDs like STL-0254">
             <Input value={settings.employeeCodePrefix ?? "EMP"} maxLength={6} onChange={(e) => setSettings((s) => ({ ...s, employeeCodePrefix: e.target.value.toUpperCase() }))} disabled={!configurable} />
+          </Field>
+          <Field label="Notice period (days)" hint="Default for resignations and full and final">
+            <Input type="number" min={0} max={180} value={settings.noticeDays ?? 30} onChange={(e) => setSettings((s) => ({ ...s, noticeDays: Number(e.target.value) }))} disabled={!configurable} />
+          </Field>
+          <Field label="Notice period on probation (days)">
+            <Input type="number" min={0} max={180} value={settings.probationNoticeDays ?? 15} onChange={(e) => setSettings((s) => ({ ...s, probationNoticeDays: Number(e.target.value) }))} disabled={!configurable} />
           </Field>
         </div>
         <Field label="Weekly offs (company default)">

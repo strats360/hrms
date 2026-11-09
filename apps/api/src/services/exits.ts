@@ -3,6 +3,7 @@ import { employeeExits, employees, leaveBalances, leaveTypes, payments, payrollI
 import { computeSettlement, DEFAULT_CLEARANCE, type ExitType, type FnfResult, type ManualLine } from "@hrms/shared";
 import { balanceSummary } from "./leave";
 import { getTemplate, resolveStructure, structuresAsOf } from "./payroll";
+import { monthLabel } from "../lib/months";
 
 export type Exit = typeof employeeExits.$inferSelect;
 type Employee = typeof employees.$inferSelect;
@@ -77,8 +78,8 @@ export async function settlementFor(db: Database, exit: Exit, emp: Employee) {
     .where(and(eq(payments.employeeId, emp.id), inArray(payments.status, ["failed", "held", "pending"]), sql`${payments.id} is distinct from ${exit.paymentId}`));
 
   const warnings: string[] = [];
-  if (!finalRun) warnings.push(`The last month's salary (${month}) hasn't been calculated yet. It's paid through payroll, prorated to the last working day.`);
-  else if (finalRun.status !== "approved" && finalRun.status !== "paid") warnings.push(`The ${month} payroll isn't approved yet. Lock it before approving the settlement.`);
+  if (!finalRun) warnings.push(`The last month's salary (${monthLabel(month)}) hasn't been calculated yet. It's paid through payroll, prorated to the last working day.`);
+  else if (finalRun.status !== "approved" && finalRun.status !== "paid") warnings.push(`The ${monthLabel(month)} payroll isn't approved yet. Lock it before approving the settlement.`);
   if (claims?.n) warnings.push(`${claims.n} reimbursement claim${claims.n === 1 ? " is" : "s are"} still open (₹${Math.round(claims.s).toLocaleString("en-IN")}). Pay or reject ${claims.n === 1 ? "it" : "them"} through reimbursements.`);
   if (owed?.n) warnings.push(`${owed.n} payment${owed.n === 1 ? " is" : "s are"} pending, failed or held (₹${Math.round(owed.s).toLocaleString("en-IN")}). Clear ${owed.n === 1 ? "it" : "them"} under Payments.`);
   if (!result.gratuityEligible && result.service.days >= 4 * 365) warnings.push("Close to gratuity eligibility (4 years 240 days). Check the service dates.");

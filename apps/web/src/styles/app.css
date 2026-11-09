@@ -102,15 +102,15 @@ select.input { appearance: none; padding-right: 30px; background-image: url("dat
   body * { visibility: hidden !important; }
   /* dialogs render outside #root; drop the page behind them so no blank pages print */
   body > #root { display: none !important; }
-  #payslip-print, #payslip-print *, #invoice-print, #invoice-print * { visibility: visible !important; }
-  #payslip-print, #invoice-print {
+  #payslip-print, #payslip-print *, #invoice-print, #invoice-print *, #letter-print, #letter-print * { visibility: visible !important; }
+  #payslip-print, #invoice-print, #letter-print {
     position: absolute; left: 0; top: 0; width: 100%;
     --color-text: #1d1e26; --color-divider: #d9dbe3; --tint-1: #f3f4f8; --ok-bg: #e8f5ec; --ok-fg: #1e5b33; --muted: #5d6070; --color-accent: #5d5294;
     color: #1d1e26;
   }
   .dialog { box-shadow: none !important; background: #fff !important; }
   /* Undo the dialog's fixed centring and height cap so the slip prints whole on A4. */
-  .dialog:has(#payslip-print, #invoice-print) { position: absolute !important; inset: 0 auto auto 0 !important; --tw-translate-x: 0 !important; --tw-translate-y: 0 !important; translate: 0 0 !important; transform: none !important; max-height: none !important; overflow: visible !important; width: 100% !important; padding: 0 !important; }
+  .dialog:has(#payslip-print, #invoice-print, #letter-print) { position: absolute !important; inset: 0 auto auto 0 !important; --tw-translate-x: 0 !important; --tw-translate-y: 0 !important; translate: 0 0 !important; transform: none !important; max-height: none !important; overflow: visible !important; width: 100% !important; padding: 0 !important; }
   #invoice-print [data-print="hide"] { display: none !important; }
-  #payslip-print, #invoice-print { position: static !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  #payslip-print, #invoice-print, #letter-print { position: static !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }

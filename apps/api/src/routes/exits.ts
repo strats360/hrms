@@ -23,6 +23,7 @@ import { v, vPatch } from "../lib/validate";
 import { badRequest, conflict, forbidden, notFound } from "../lib/errors";
 import { audit } from "../lib/audit";
 import { layout } from "../lib/email";
+import { monthLabel } from "../lib/months";
 import { defaultClearance, markSettled, nextExitCode, noticeSettings, settlementFor, type Exit, type SettlementInputs, type SettlementSnapshot } from "../services/exits";
 import { bankInfo, loadAccount, missingBank, nextBatchCode, referenceAllocator } from "../services/payments";
 
@@ -236,7 +237,7 @@ exitRoutes.post("/:id/approve", requirePerm("payroll", "approve"), async (c) => 
   const live = await settlementFor(c.get("db"), x, e);
   if (Math.abs(live.result.net - Number(x.netAmount)) > 0.5) throw conflict(`The figures have changed since the settlement was drafted (now ${inr(live.result.net)}, drafted ${inr(Number(x.netAmount))}). Save the settlement again, then approve.`);
   const fp = live.finalPayroll;
-  if (fp && fp.status !== "approved" && fp.status !== "paid") throw badRequest(`Approve the ${fp.month} payroll first. It pays the last month's salary.`);
+  if (fp && fp.status !== "approved" && fp.status !== "paid") throw badRequest(`Approve the ${monthLabel(fp.month)} payroll first. It pays the last month's salary.`);
   const [row] = await c.get("db").update(employeeExits).set({ status: "approved", approvedBy: uid(c), approvedAt: new Date() }).where(and(eq(employeeExits.id, x.id), eq(employeeExits.status, "settlement"))).returning();
   if (!row) throw badRequest("This exit changed. Reload and try again.");
   await audit(c, { action: "exit.settlement_approve", entity: "employee_exit", entityId: x.id, summary: `Approved the full and final settlement for ${e.fullName}: net ${inr(Number(x.netAmount))}` });

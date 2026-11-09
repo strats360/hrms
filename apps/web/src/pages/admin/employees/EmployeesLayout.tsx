@@ -59,6 +59,7 @@ export default function EmployeesLayout() {
         tabs={[
           { to: "/employees", label: "Directory", end: true },
           { to: "/employees/onboarding", label: "Onboarding" },
+          ...(can("employees", "edit") || can("payroll", "view") ? [{ to: "/employees/exits", label: "Exits" }] : []),
           ...(can("employees", "edit") ? [{ to: "/employees/new", label: "Add employee" }] : []),
         ]}
       />

@@ -12,6 +12,7 @@ import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { ErrorState, KV, Loading } from "@/components/ui/page";
 import { StatusTag } from "@/components/ui/tag";
 import { zodErrors } from "@/components/onboarding/form";
+import { ResignationCard } from "@/components/exits/ResignationCard";
 
 interface EssProfile {
   id: string;
@@ -117,6 +118,7 @@ export default function EssProfilePage() {
       </Card>
 
       <Documents docs={p.documents} />
+      <ResignationCard />
     </>
   );
 }
