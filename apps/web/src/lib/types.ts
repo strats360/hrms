@@ -526,7 +526,8 @@ export interface MyClaims {
 // ---------------------------------------------------------------------------
 // Payments
 // ---------------------------------------------------------------------------
-export type BankFileFormat = "hdfc_enet" | "icici_cib" | "generic_csv";
+import type { BankFileFormat } from "@hrms/shared";
+export type { BankFileFormat };
 export type PaymentType = "salary" | "reimbursement" | "bonus" | "other";
 export type BatchStatus = "draft" | "approved" | "processing" | "completed" | "cancelled";
 export type PaymentStatus = "pending" | "paid" | "failed" | "held" | "cancelled";

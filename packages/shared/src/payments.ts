@@ -5,7 +5,7 @@
  * corporate client, so confirm the column order with your relationship manager
  * before the first live upload.
  */
-export type BankFileFormat = "hdfc_enet" | "icici_cib" | "generic_csv";
+export type BankFileFormat = "hdfc_enet" | "icici_cib" | "generic_csv" | "custom";
 
 export interface BankFileLine {
   reference: string;
@@ -16,6 +16,8 @@ export interface BankFileLine {
   amount: number;
   narration: string;
   email?: string | null;
+  bankName?: string | null;
+  pan?: string | null;
 }
 export interface DebitAccount {
   accountNumber: string;
@@ -27,7 +29,88 @@ export const BANK_FORMAT_LABEL: Record<BankFileFormat, string> = {
   hdfc_enet: "HDFC ENet (CSV)",
   icici_cib: "ICICI CIB bulk (TXT)",
   generic_csv: "Generic CSV",
+  custom: "Custom layout",
 };
+
+/** Columns a company can pick for its own bank file layout. */
+export const EXPORT_COLUMNS = [
+  { key: "reference", label: "Payment reference" },
+  { key: "employee_code", label: "Employee ID" },
+  { key: "beneficiary_name", label: "Beneficiary name" },
+  { key: "account_number", label: "Account number" },
+  { key: "ifsc", label: "IFSC" },
+  { key: "bank_name", label: "Bank" },
+  { key: "amount", label: "Amount" },
+  { key: "mode", label: "Mode (NEFT, RTGS or internal)" },
+  { key: "payment_date", label: "Payment date" },
+  { key: "narration", label: "Narration" },
+  { key: "email", label: "Email" },
+  { key: "pan", label: "PAN" },
+  { key: "debit_account", label: "Debit account" },
+] as const;
+export type ExportColumnKey = (typeof EXPORT_COLUMNS)[number]["key"];
+export const EXPORT_FILE_TYPES = ["csv", "pipe", "tab", "xlsx"] as const;
+export const EXPORT_FILE_TYPE_LABEL: Record<(typeof EXPORT_FILE_TYPES)[number], string> = { csv: "CSV, comma separated", pipe: "Text, pipe separated", tab: "Text, tab separated", xlsx: "Excel (.xlsx)" };
+export const EXPORT_DATE_FORMATS = ["DD/MM/YYYY", "DD-MM-YYYY", "YYYY-MM-DD", "DDMMYYYY"] as const;
+
+export interface ExportLayout {
+  columns: ExportColumnKey[];
+  fileType: (typeof EXPORT_FILE_TYPES)[number];
+  dateFormat: (typeof EXPORT_DATE_FORMATS)[number];
+  /** First row has column names. */
+  header: boolean;
+  /** Upper case names and narration, without special characters, as most bank portals want. */
+  bankSafe: boolean;
+}
+export const DEFAULT_EXPORT_LAYOUT: ExportLayout = {
+  columns: ["employee_code", "beneficiary_name", "bank_name", "account_number", "ifsc", "amount", "reference"],
+  fileType: "csv",
+  dateFormat: "DD/MM/YYYY",
+  header: true,
+  bankSafe: true,
+};
+
+export function formatExportDate(iso: string, f: ExportLayout["dateFormat"]) {
+  const [y, m, d] = [iso.slice(0, 4), iso.slice(5, 7), iso.slice(8, 10)];
+  return f === "YYYY-MM-DD" ? `${y}-${m}-${d}` : f === "DDMMYYYY" ? `${d}${m}${y}` : f === "DD-MM-YYYY" ? `${d}-${m}-${y}` : `${d}/${m}/${y}`;
+}
+
+/** Header and rows for a custom layout. Amounts stay numbers (for Excel). */
+export function layoutTable(layout: ExportLayout, debit: DebitAccount, paymentDate: string, lines: BankFileLine[]) {
+  const label = (k: ExportColumnKey) => EXPORT_COLUMNS.find((c) => c.key === k)!.label.replace(/ \(.*\)$/, "");
+  const name = (v: string, max?: number) => (layout.bankSafe ? bankSafe(v, max) : v);
+  const value = (k: ExportColumnKey, l: BankFileLine): string | number => {
+    switch (k) {
+      case "reference": return l.reference;
+      case "employee_code": return l.employeeCode;
+      case "beneficiary_name": return name(l.beneficiaryName);
+      case "account_number": return l.accountNumber;
+      case "ifsc": return l.ifsc.toUpperCase();
+      case "bank_name": return l.bankName ?? "";
+      case "amount": return Number(l.amount.toFixed(2));
+      case "mode": return transferMode(debit.ifsc, l.ifsc, l.amount).toUpperCase();
+      case "payment_date": return formatExportDate(paymentDate, layout.dateFormat);
+      case "narration": return name(l.narration, 30);
+      case "email": return l.email ?? "";
+      case "pan": return l.pan ?? "";
+      case "debit_account": return debit.accountNumber;
+    }
+  };
+  return { header: layout.columns.map(label), rows: lines.map((l) => layout.columns.map((k) => value(k, l))) };
+}
+
+const SEP = { csv: ",", pipe: "|", tab: "\t" } as const;
+/** Text body for a custom layout (not Excel). */
+export function layoutText(layout: ExportLayout, table: { header: string[]; rows: (string | number)[][] }) {
+  const sep = SEP[layout.fileType as keyof typeof SEP] ?? ",";
+  const cell = (v: unknown) => {
+    const s = typeof v === "number" ? v.toFixed(2) : String(v ?? "");
+    if (sep === ",") return csvCell(s);
+    return s.split(sep).join(" ").replace(/[\r\n]+/g, " ");
+  };
+  const out = [...(layout.header ? [table.header] : []), ...table.rows].map((r) => r.map(cell).join(sep));
+  return (layout.fileType === "csv" && layout.header ? "\uFEFF" : "") + out.join("\r\n") + "\r\n";
+}
 
 const csvCell = (v: unknown) => {
   const s = v === null || v === undefined ? "" : String(v);
@@ -43,8 +126,14 @@ export function transferMode(debitIfsc: string, beneficiaryIfsc: string, amount:
   return amount >= 200000 ? ("rtgs" as const) : ("neft" as const);
 }
 
-export function buildBankFile(format: BankFileFormat, debit: DebitAccount, paymentDate: string, lines: BankFileLine[]) {
+export function buildBankFile(format: BankFileFormat, debit: DebitAccount, paymentDate: string, lines: BankFileLine[], layout: ExportLayout = DEFAULT_EXPORT_LAYOUT) {
   const date = ddmmyyyy(paymentDate);
+  if (format === "custom") {
+    const table = layoutTable(layout, debit, paymentDate, lines);
+    // Excel files are written by the API (it has the zip library); hand back the table
+    if (layout.fileType === "xlsx") return { body: "", table, ext: "xlsx", mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" };
+    return { body: layoutText(layout, table), table, ext: layout.fileType === "csv" ? "csv" : "txt", mime: layout.fileType === "csv" ? "text/csv; charset=utf-8" : "text/plain; charset=utf-8" };
+  }
   if (format === "hdfc_enet") {
     // Transaction type (I = within HDFC, N = NEFT, R = RTGS), beneficiary code, account, amount, name, ... , reference, ..., date, IFSC, ..., email
     const rows = lines.map((l) => {

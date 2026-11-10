@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import { sendNotification } from "../services/notifications";
 import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, notInArray, sql, type SQL } from "drizzle-orm";
-import { companyBankAccounts, employees, paymentBatches, payments, payrollItems, payrollRuns, reimbursementClaims, tenants } from "@hrms/db";
+import { companyBankAccounts, employees, paymentBatches, payments, payrollItems, payrollRuns, reimbursementClaims, tenants, type Database } from "@hrms/db";
 import {
   bankAccountSchema,
   batchCreateSchema,
@@ -15,7 +15,15 @@ import {
   parseBankResponse,
   paymentUpdateSchema,
   todayIST,
+  BANK_FILE_FORMATS,
+  DEFAULT_EXPORT_LAYOUT,
+  EXPORT_COLUMNS,
+  EXPORT_FILE_TYPE_LABEL,
+  exportLayoutSchema,
+  layoutText,
   type BankFileFormat,
+  type BankFileLine,
+  type ExportLayout,
 } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
@@ -370,37 +378,90 @@ paymentRoutes.post("/batches/:id/cancel", requirePerm("payments", "edit"), v("js
  * Bank upload file. Contains the payments still pending (all of them the first time,
  * retries afterwards). Uses the employee's current bank details.
  */
-paymentRoutes.get("/batches/:id/file", requirePerm("payments", "export"), async (c) => {
+async function exportLayoutFor(db: Database, tenantId: string): Promise<ExportLayout> {
+  const [t] = await db.select({ settings: tenants.settings }).from(tenants).where(eq(tenants.id, tenantId));
+  const saved = (t?.settings as { paymentExportLayout?: ExportLayout } | null)?.paymentExportLayout;
+  return saved ? { ...DEFAULT_EXPORT_LAYOUT, ...saved } : DEFAULT_EXPORT_LAYOUT;
+}
+
+/** The company's own bank file layout (used when a batch's format is "Custom layout"). */
+paymentRoutes.get("/export-layout", requirePerm("payments", "view"), async (c) => c.json(await exportLayoutFor(c.get("db"), tid(c))));
+
+paymentRoutes.put("/export-layout", requirePerm("payments", "export"), v("json", exportLayoutSchema), async (c) => {
+  const b = c.req.valid("json");
+  await c.get("db").update(tenants).set({ settings: sql`${tenants.settings} || ${JSON.stringify({ paymentExportLayout: b })}::jsonb` }).where(eq(tenants.id, tid(c)));
+  await audit(c, { action: "payments.export_layout", entity: "tenant", entityId: tid(c), summary: `Bank file layout: ${b.columns.map((k) => EXPORT_COLUMNS.find((x) => x.key === k)!.label).join(", ")} (${EXPORT_FILE_TYPE_LABEL[b.fileType]}, ${b.dateFormat})`, data: b });
+  return c.json(b);
+});
+
+/**
+ * Pending payments with decrypted bank details, ready for a bank file. With `markHeld`,
+ * payments missing bank details are set aside as held (only when actually exporting).
+ */
+async function fileLines(c: Context<AppEnv>, batch: Batch, markHeld: boolean) {
+  const db = c.get("db");
+  const rows = await db
+    .select({ p: payments, code: employees.employeeCode, name: employees.fullName, holder: employees.accountHolderName, enc: employees.accountNumberEnc, ifsc: employees.ifsc, bankName: employees.bankName, last4: employees.accountLast4, email: employees.workEmail, pan: employees.pan, method: employees.paymentMethod })
+    .from(payments)
+    .innerJoin(employees, eq(employees.id, payments.employeeId))
+    .where(and(eq(payments.batchId, batch.id), eq(payments.status, "pending")))
+    .orderBy(asc(payments.reference));
+  if (!rows.length) throw badRequest("No payments are pending in this batch");
+  const lines: BankFileLine[] = [];
+  let missing = 0;
+  const seen = new Map<string, string>();
+  const narration = batch.type === "salary" ? `Salary ${batch.label.replace(/ salary$/, "")}` : batch.type === "reimbursement" ? "Reimbursement" : batch.type === "bonus" ? "Bonus" : batch.label;
+  for (const r of rows) {
+    const acct = await decryptField(r.enc, c.env.ENCRYPTION_KEY);
+    if (!acct || !r.ifsc || r.method !== "bank_transfer") {
+      missing++;
+      if (markHeld) await db.update(payments).set({ status: "held", failureReason: "Bank details missing" }).where(eq(payments.id, r.p.id));
+      continue;
+    }
+    const k = `${acct}|${r.p.amount}`;
+    if (seen.has(k)) throw badRequest(`Duplicate payment: ${seen.get(k)} and ${r.code} go to the same account (ending ${acct.slice(-4)}) for the same amount. Fix bank details first.`);
+    seen.set(k, r.code);
+    lines.push({ reference: r.p.reference, employeeCode: r.code, beneficiaryName: r.holder ?? r.name, accountNumber: acct, ifsc: r.ifsc, amount: Number(r.p.amount), narration, email: r.email, bankName: r.bankName, pan: r.pan });
+  }
+  return { lines, missing };
+}
+
+const fileFormatQuery = z.object({ format: z.enum(BANK_FILE_FORMATS).optional() });
+
+/** What the bank file will look like: the first 3 rows, with account numbers masked. Changes nothing. */
+paymentRoutes.post("/batches/:id/file/preview", requirePerm("payments", "export"), v("json", z.object({ format: z.enum(BANK_FILE_FORMATS), layout: exportLayoutSchema.optional() })), async (c) => {
+  const batch = await loadBatch(c, c.req.param("id"));
+  const b = c.req.valid("json");
+  const account = await loadAccount(c.get("db"), tid(c), batch.bankAccountId);
+  if (!account) throw badRequest("Set the debit account on this batch first");
+  const { lines, missing } = await fileLines(c, batch, false);
+  const mask = (n: string) => (n.length > 4 ? "X".repeat(n.length - 4) + n.slice(-4) : n);
+  const sample = lines.slice(0, 3).map((l) => ({ ...l, accountNumber: mask(l.accountNumber) }));
+  const layout = b.layout ?? (await exportLayoutFor(c.get("db"), tid(c)));
+  const file = buildBankFile(b.format, { accountNumber: mask(account.accountLast4 ? `XXXXXXXX${account.accountLast4}` : ""), ifsc: account.ifsc, clientCode: account.clientCode }, batch.paymentDate, sample, layout);
+  const text = file.ext === "xlsx" && file.table ? layoutText({ ...layout, fileType: "csv" }, file.table) : file.body;
+  return c.json({ preview: text.replace(/^\uFEFF/, "").trimEnd().split("\r\n"), ext: file.ext, total: lines.length, missing, amount: lines.reduce((s, l) => s + l.amount, 0) });
+});
+
+/**
+ * Bank upload file. Contains the payments still pending (all of them the first time,
+ * retries afterwards). Uses the employee's current bank details. `?format=` picks a
+ * different layout than the batch's own for this download.
+ */
+paymentRoutes.get("/batches/:id/file", requirePerm("payments", "export"), v("query", fileFormatQuery), async (c) => {
   const batch = await loadBatch(c, c.req.param("id"));
   if (batch.status === "draft") throw badRequest("Approve the batch before exporting the bank file");
   if (batch.status === "cancelled") throw badRequest("This batch is cancelled");
   const db = c.get("db");
   const account = await loadAccount(db, tid(c), batch.bankAccountId);
   if (!account) throw badRequest("Set the debit account on this batch first");
-  const rows = await db
-    .select({ p: payments, code: employees.employeeCode, name: employees.fullName, holder: employees.accountHolderName, enc: employees.accountNumberEnc, ifsc: employees.ifsc, bankName: employees.bankName, last4: employees.accountLast4, email: employees.workEmail, method: employees.paymentMethod })
-    .from(payments)
-    .innerJoin(employees, eq(employees.id, payments.employeeId))
-    .where(and(eq(payments.batchId, batch.id), eq(payments.status, "pending")))
-    .orderBy(asc(payments.reference));
-  if (!rows.length) throw badRequest("No payments are pending in this batch");
-  const lines = [];
-  const seen = new Map<string, string>();
-  const narration = batch.type === "salary" ? `Salary ${batch.label.replace(/ salary$/, "")}` : batch.type === "reimbursement" ? "Reimbursement" : batch.type === "bonus" ? "Bonus" : batch.label;
-  for (const r of rows) {
-    const acct = await decryptField(r.enc, c.env.ENCRYPTION_KEY);
-    if (!acct || !r.ifsc || r.method !== "bank_transfer") {
-      await db.update(payments).set({ status: "held", failureReason: "Bank details missing" }).where(eq(payments.id, r.p.id));
-      continue;
-    }
-    const k = `${acct}|${r.p.amount}`;
-    if (seen.has(k)) throw badRequest(`Duplicate payment: ${seen.get(k)} and ${r.code} go to the same account (ending ${acct.slice(-4)}) for the same amount. Fix bank details first.`);
-    seen.set(k, r.code);
-    lines.push({ reference: r.p.reference, employeeCode: r.code, beneficiaryName: r.holder ?? r.name, accountNumber: acct, ifsc: r.ifsc, amount: Number(r.p.amount), narration, email: r.email });
-  }
+  const format = (c.req.valid("query").format ?? batch.fileFormat) as BankFileFormat;
+  const { lines } = await fileLines(c, batch, true);
   if (!lines.length) throw badRequest("Every pending payment is missing bank details");
   const debit = await decryptField(account.accountNumberEnc, c.env.ENCRYPTION_KEY);
-  const file = buildBankFile(batch.fileFormat as BankFileFormat, { accountNumber: debit ?? "", ifsc: account.ifsc, clientCode: account.clientCode }, batch.paymentDate, lines);
+  const layout = format === "custom" ? await exportLayoutFor(db, tid(c)) : undefined;
+  const file = buildBankFile(format, { accountNumber: debit ?? "", ifsc: account.ifsc, clientCode: account.clientCode }, batch.paymentDate, lines, layout);
+  const body: string | Uint8Array = file.ext === "xlsx" && file.table ? toXlsx([{ name: batch.code, header: file.table.header, rows: file.table.rows, noHeader: !layout!.header }]) : file.body;
   const now = new Date();
   await db
     .update(payments)
@@ -408,8 +469,8 @@ paymentRoutes.get("/batches/:id/file", requirePerm("payments", "export"), async 
     .where(inArray(payments.reference, lines.map((l) => l.reference)));
   await db.update(paymentBatches).set({ status: "processing", exportedAt: batch.exportedAt ?? now, exportCount: sql`${paymentBatches.exportCount} + 1` }).where(eq(paymentBatches.id, batch.id));
   if (batch.payrollRunId) await db.update(payrollRuns).set({ bankFileExportedAt: now }).where(and(eq(payrollRuns.id, batch.payrollRunId), isNull(payrollRuns.bankFileExportedAt)));
-  await audit(c, { action: "payments.file_export", entity: "payment_batch", entityId: batch.id, summary: `Exported ${BANK_FORMAT_LABEL[batch.fileFormat as BankFileFormat]} file for ${batch.code}: ${lines.length} payments, ${inr(lines.reduce((s, l) => s + l.amount, 0))}${batch.exportCount ? " (re-export)" : ""}` });
-  return c.body(file.body, 200, { "Content-Type": file.mime, "Content-Disposition": `attachment; filename="${batch.code}${batch.exportCount ? `-retry${batch.exportCount}` : ""}.${file.ext}"`, "Cache-Control": "no-store" });
+  await audit(c, { action: "payments.file_export", entity: "payment_batch", entityId: batch.id, summary: `Exported ${BANK_FORMAT_LABEL[format]} file for ${batch.code}: ${lines.length} payments, ${inr(lines.reduce((s, l) => s + l.amount, 0))}${batch.exportCount ? " (re-export)" : ""}` });
+  return c.body(body as never, 200, { "Content-Type": file.mime, "Content-Disposition": `attachment; filename="${batch.code}${batch.exportCount ? `-retry${batch.exportCount}` : ""}.${file.ext}"`, "Cache-Control": "no-store" });
 });
 
 // ---------------------------------------------------------------------------

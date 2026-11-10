@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { NOTIFICATION_KEYS } from "./notifications";
+import { EXPORT_COLUMNS, EXPORT_DATE_FORMATS, EXPORT_FILE_TYPES, type ExportColumnKey } from "./payments";
 import {
   ATTENDANCE_STATUSES,
   DOCUMENT_TYPES,
@@ -436,7 +437,7 @@ export const claimCreateSchema = z.object({
 });
 
 // ---------- payments ----------
-export const BANK_FILE_FORMATS = ["hdfc_enet", "icici_cib", "generic_csv"] as const;
+export const BANK_FILE_FORMATS = ["hdfc_enet", "icici_cib", "generic_csv", "custom"] as const;
 export const bankAccountSchema = z.object({
   label: trimmed(60).min(1, "Give the account a name"),
   bankName: trimmed(80).min(2, "Enter the bank name"),
@@ -578,3 +579,15 @@ export const approvalPolicySchema = z.object({
 export const securityPolicySchema = z.object({ twoFactor: z.enum(["off", "admins", "everyone"]) });
 
 export const notificationPrefsSchema = z.partialRecord(z.enum(NOTIFICATION_KEYS), z.boolean());
+
+export const exportLayoutSchema = z.object({
+  columns: z
+    .array(z.enum(EXPORT_COLUMNS.map((c) => c.key) as [ExportColumnKey, ...ExportColumnKey[]]))
+    .min(1, "Pick at least one column")
+    .refine((c) => new Set(c).size === c.length, "Each column only once")
+    .refine((c) => c.includes("account_number") && c.includes("amount"), "The bank needs the account number and amount"),
+  fileType: z.enum(EXPORT_FILE_TYPES),
+  dateFormat: z.enum(EXPORT_DATE_FORMATS),
+  header: z.boolean(),
+  bankSafe: z.boolean(),
+});

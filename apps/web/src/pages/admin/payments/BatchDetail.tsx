@@ -5,7 +5,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { ArrowLeft, CheckCheck, Download, FileCheck2, Plus, Upload } from "lucide-react";
 import { fmtDate, inr } from "@hrms/shared";
-import { api, download, errorMessage } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
+import { ExportDialog } from "@/components/payments/ExportDialog";
 import { useSession } from "@/lib/session";
 import type { BatchDetail as Detail, Payment } from "@/lib/types";
 import { Card, StatCard, TableCard } from "@/components/ui/card";
@@ -65,7 +66,7 @@ export default function BatchDetail() {
   const [reconcile, setReconcile] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [downloading, setDownloading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["payments"] });
     qc.invalidateQueries({ queryKey: ["payroll"] });
@@ -81,18 +82,6 @@ export default function BatchDetail() {
   const canEdit = can("payments", "edit");
   const sent = b.status === "processing" || b.status === "completed";
   const editableLines = b.status === "draft" && (b.type === "bonus" || b.type === "other") && canEdit;
-  const getFile = async () => {
-    setDownloading(true);
-    try {
-      await download(`/admin/payments/batches/${id}/file`, `${b.code}.csv`);
-      toast.success(b.exportCount ? "Retry file downloaded (pending payments only)" : "Bank file downloaded. Upload it on your bank's portal.");
-      refresh();
-    } catch (e) {
-      toast.error(errorMessage(e));
-    } finally {
-      setDownloading(false);
-    }
-  };
   const act = (a: PaymentAction, items: Payment[]) => setAction({ a, items });
   return (
     <div className="flex flex-col gap-4">
@@ -122,7 +111,7 @@ export default function BatchDetail() {
             </Button>
           ) : null}
           {(b.status === "approved" || (sent && b.pending > 0)) && can("payments", "export") ? (
-            <Button variant={b.status === "approved" ? "primary" : "secondary"} loading={downloading} onClick={getFile}>
+            <Button variant={b.status === "approved" ? "primary" : "secondary"} onClick={() => setExporting(true)}>
               <Download size={15} /> {b.exportCount ? "Download retry file" : "Download bank file"}
             </Button>
           ) : null}
@@ -186,6 +175,7 @@ export default function BatchDetail() {
         />
       </TableCard>
       <PaymentActionDialog action={action?.a ?? null} items={action?.items ?? []} onClose={() => setAction(null)} />
+      {exporting ? <ExportDialog batch={b} onClose={() => setExporting(false)} onDone={refresh} /> : null}
       <ReconcileDialog batchId={b.id} open={reconcile} onClose={() => setReconcile(false)} />
       <ReasonDialog
         open={cancelling}

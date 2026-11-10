@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { BANK_FORMAT_LABEL, type BankFileFormat } from "@hrms/shared";
 import { useNavigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -27,11 +28,7 @@ export const TYPE_LABEL: Record<PaymentType, string> = { salary: "Salary", reimb
 export const useAccounts = () => useQuery({ queryKey: ["payments", "accounts"], queryFn: () => api.get<DebitAccount[]>("/admin/payments/accounts") });
 export const usePaymentsSummary = () => useQuery({ queryKey: ["payments", "summary"], queryFn: () => api.get<PaymentsSummary>("/admin/payments/summary") });
 
-const FORMATS = [
-  { value: "hdfc_enet", label: "HDFC ENet (CSV)" },
-  { value: "icici_cib", label: "ICICI CIB bulk (TXT)" },
-  { value: "generic_csv", label: "Generic CSV" },
-];
+const FORMATS = (Object.entries(BANK_FORMAT_LABEL) as [BankFileFormat, string][]).map(([value, label]) => ({ value, label: value === "custom" ? "Custom layout (your own columns)" : label }));
 export const FORMAT_OPTIONS = FORMATS;
 
 /** Pasted lines: "STL-0042, 5000, Referral bonus" (comma or tab separated, header optional). */

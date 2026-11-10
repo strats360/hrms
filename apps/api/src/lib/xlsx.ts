@@ -8,6 +8,8 @@ export interface Sheet {
   name: string;
   header: string[];
   rows: unknown[][];
+  /** Leave out the header row (some bank uploads want data from row 1). */
+  noHeader?: boolean;
 }
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "");
@@ -30,12 +32,13 @@ function cell(v: unknown, ref: string, style = 0) {
 }
 
 function sheetXml(sh: Sheet) {
-  const all = [sh.header, ...sh.rows];
-  const widths = sh.header.map((_, i) => Math.min(60, Math.max(8, ...all.slice(0, 200).map((r) => String(r[i] ?? "").length + 2))));
+  const all = sh.noHeader ? sh.rows : [sh.header, ...sh.rows];
+  const bold = sh.noHeader ? -1 : 0;
+  const widths = (sh.noHeader ? (sh.rows[0] ?? []) : sh.header).map((_, i) => Math.min(60, Math.max(8, ...all.slice(0, 200).map((r) => String(r[i] ?? "").length + 2))));
   const rows = all
-    .map((r, ri) => `<row r="${ri + 1}">${r.map((v, ci) => cell(v, `${colName(ci)}${ri + 1}`, ri === 0 ? 1 : 0)).join("")}</row>`)
+    .map((r, ri) => `<row r="${ri + 1}">${r.map((v, ci) => cell(v, `${colName(ci)}${ri + 1}`, ri === bold ? 1 : 0)).join("")}</row>`)
     .join("");
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join("")}</cols><sheetData>${rows}</sheetData></worksheet>`;
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0">${sh.noHeader ? "" : '<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/>'}</sheetView></sheetViews><cols>${widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join("")}</cols><sheetData>${rows}</sheetData></worksheet>`;
 }
 
 export function toXlsx(sheets: Sheet[]): Uint8Array {
