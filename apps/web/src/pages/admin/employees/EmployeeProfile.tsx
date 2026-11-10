@@ -24,6 +24,7 @@ import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { EmployeeDetail } from "@/lib/types";
 import { AttendanceMonth } from "@/components/employees/AttendanceMonth";
+import { ResetTwoFactorDialog } from "@/components/account/ResetTwoFactorDialog";
 
 type Tab = "personal" | "employment" | "bank" | "statutory" | "documents" | "attendance";
 
@@ -42,6 +43,7 @@ export default function EmployeeProfile() {
   const [docType, setDocType] = useState<DocumentType>("resume");
   const [file, setFile] = useState<File | null>(null);
   const [fileKey, setFileKey] = useState(0);
+  const [resetting, setResetting] = useState(false);
 
   const q = useQuery({ queryKey: ["employee", id], queryFn: () => api.get<EmployeeDetail>(`/admin/employees/${id}`) });
   const refresh = () => qc.invalidateQueries({ queryKey: ["employee", id] });
@@ -167,7 +169,20 @@ export default function EmployeeProfile() {
               ["Reports to", e.manager ?? "—"],
               ["Joined", fmtDate(e.dateOfJoining)],
               ...(e.annualCtc !== null ? [["Annual CTC", <b key="ctc" className="num font-semibold">{inr(e.annualCtc)}</b>]] : []),
-              ["Login", e.hasLogin ? "Active" : "Not set up"],
+              [
+                "Login",
+                e.login ? (
+                  <span key="login">
+                    Active{e.login.twoFactorEnabled ? " · two-factor on" : ""}
+                    {e.login.twoFactorEnabled && can("users", "configure") ? (
+                      <button type="button" className="ml-1.5 cursor-pointer border-0 bg-transparent p-0 text-[12.5px] text-[var(--bad)]" onClick={() => setResetting(true)}>
+                        Reset
+                      </button>
+                    ) : null}
+                    {resetting ? <ResetTwoFactorDialog member={{ id: e.login.membershipId, name: e.fullName }} onClose={() => setResetting(false)} /> : null}
+                  </span>
+                ) : e.hasLogin ? "Active" : "Not set up",
+              ],
             ].map(([k, v]) => (
               <div key={String(k)} className="flex justify-between gap-3">
                 <span className="text-muted">{k}</span>

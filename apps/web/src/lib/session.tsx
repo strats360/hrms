@@ -18,6 +18,8 @@ export interface Membership {
   plan?: string;
   /** Feature flags for this company (plan gates and staged rollouts). */
   features?: Record<string, boolean>;
+  /** The company requires two-factor sign-in for this person. */
+  twoFactorRequired?: boolean;
   /** Set when platform support is viewing the company read-only. */
   support?: { ticketId: string; ticketNumber: number; accessId: string; expiresAt: string } | null;
 }
@@ -34,7 +36,7 @@ export interface SupportSession {
   expiresAt: string;
 }
 export interface Me {
-  user: { id: string; name: string; email: string };
+  user: { id: string; name: string; email: string; twoFactorEnabled?: boolean };
   platformRole: string | null;
   memberships: Membership[];
   supportSessions?: SupportSession[];
@@ -67,6 +69,8 @@ interface SessionValue {
   tenant: Membership | null;
   isAdmin: boolean;
   isEmployee: boolean;
+  /** The active company requires two-factor sign-in and it isn't set up yet. */
+  needsTwoFactor: boolean;
   can: (m: Module, a?: Action) => boolean;
   /** Is a feature flag on for this company? Unknown flags count as on. */
   has: (feature: string) => boolean;
@@ -120,6 +124,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     tenant,
     isAdmin: !!tenant?.roleId,
     isEmployee: !!tenant?.employeeId,
+    needsTwoFactor: !!tenant?.twoFactorRequired && !me?.user.twoFactorEnabled && !tenant.support,
     can: (m, a = "view") => canDo(tenant?.permissions, m, a) && tenant?.features?.[MODULE_FEATURE[m] ?? ""] !== false,
     has: (f) => tenant?.features?.[f] !== false,
     switchTenant: (id) => {

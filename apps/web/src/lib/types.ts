@@ -35,6 +35,7 @@ export interface EmployeeDocument {
 
 export interface EmployeeDetail {
   id: string;
+  login?: { membershipId: string; twoFactorEnabled: boolean } | null;
   employeeCode: string;
   firstName: string;
   lastName: string | null;

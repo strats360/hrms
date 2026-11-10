@@ -4,7 +4,7 @@ import { employees, memberships, platformStaff, roles, tenants } from "@hrms/db"
 import type { AppEnv } from "../env";
 import { loadFlags } from "../services/flags";
 import { activeAccess } from "../services/support";
-import { evaluateFlags } from "@hrms/shared";
+import { evaluateFlags, readTwoFactorPolicy, twoFactorRequired } from "@hrms/shared";
 
 export const meRoutes = new Hono<AppEnv>();
 
@@ -21,6 +21,7 @@ meRoutes.get("/", async (c) => {
       tenantCode: tenants.code,
       tenantStatus: tenants.status,
       plan: tenants.plan,
+      settings: tenants.settings,
       setupCompletedAt: tenants.setupCompletedAt,
       roleId: roles.id,
       roleName: roles.name,
@@ -46,7 +47,7 @@ meRoutes.get("/", async (c) => {
   const support = staff?.status === "active" ? await activeAccess(db, s.userId) : [];
   const supportTenants = support.length ? await db.select({ id: tenants.id, name: tenants.name, code: tenants.code, status: tenants.status, plan: tenants.plan }).from(tenants) : [];
   return c.json({
-    user: { id: s.userId, name: s.name, email: s.email },
+    user: { id: s.userId, name: s.name, email: s.email, twoFactorEnabled: s.twoFactorEnabled },
     supportSessions: support.map((a) => {
       const t = supportTenants.find((x) => x.id === a.access.tenantId)!;
       return { tenantId: t.id, tenantName: t.name, tenantCode: t.code, tenantStatus: t.status, plan: t.plan, features: evaluateFlags(flags, { id: t.id, plan: t.plan }), ticketId: a.access.ticketId, ticketNumber: a.number, accessId: a.access.id, expiresAt: a.access.expiresAt };
@@ -68,6 +69,7 @@ meRoutes.get("/", async (c) => {
         employeeCode: r.employeeCode,
         plan: r.plan,
         features: evaluateFlags(flags, { id: r.tenantId, plan: r.plan }),
+        twoFactorRequired: twoFactorRequired(readTwoFactorPolicy(r.settings), !!r.roleId),
       })),
   });
 });

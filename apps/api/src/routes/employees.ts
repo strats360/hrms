@@ -10,6 +10,7 @@ import {
   memberships,
   onboardingInvites,
   shifts,
+  user,
 } from "@hrms/db";
 import {
   can,
@@ -155,7 +156,11 @@ employeeRoutes.get("/:id", requirePerm("employees", "view"), async (c) => {
   if (!row) throw notFound("Employee");
   const docs = await db.select().from(employeeDocuments).where(and(eq(employeeDocuments.tenantId, t.tenantId), eq(employeeDocuments.employeeId, row.e.id))).orderBy(asc(employeeDocuments.createdAt));
   const [invite] = await db.select().from(onboardingInvites).where(and(eq(onboardingInvites.tenantId, t.tenantId), eq(onboardingInvites.employeeId, row.e.id)));
-  const [membership] = await db.select({ id: memberships.id }).from(memberships).where(and(eq(memberships.tenantId, t.tenantId), eq(memberships.employeeId, row.e.id)));
+  const [membership] = await db
+    .select({ id: memberships.id, twoFactor: user.twoFactorEnabled })
+    .from(memberships)
+    .innerJoin(user, eq(user.id, memberships.userId))
+    .where(and(eq(memberships.tenantId, t.tenantId), eq(memberships.employeeId, row.e.id)));
 
   const sensitive = can(t.permissions, "employees", "edit") || can(t.permissions, "payroll", "view");
   const reveal = c.req.query("reveal") === "account" && can(t.permissions, "employees", "edit");
@@ -176,6 +181,7 @@ employeeRoutes.get("/:id", requirePerm("employees", "view"), async (c) => {
     manager: row.manager,
     shift: row.shift ? `${row.shift} · ${row.shiftStart}–${row.shiftEnd}` : null,
     hasLogin: !!membership,
+    login: membership ? { membershipId: membership.id, twoFactorEnabled: membership.twoFactor } : null,
     invite: invite ? { status: invite.status, progress: invite.progress, sentAt: invite.sentAt, expiresAt: invite.expiresAt, submittedAt: invite.submittedAt } : null,
     documents: docs,
   });

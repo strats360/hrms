@@ -177,12 +177,17 @@ describe("leave", () => {
     const types = (await hr.get("/admin/leave/types")).body;
     const lop = types.find((t: any) => t.code === "LOP");
     const d = new Date(todayIST() + "T00:00:00Z");
-    do d.setUTCDate(d.getUTCDate() + 1); while ([0, 6].includes(d.getUTCDay()) || d.toISOString().slice(5, 10) === "11-09" || d.toISOString().slice(5, 10) === "11-10");
-    const day = d.toISOString().slice(0, 10);
-    const created = await hr.post("/admin/leave/requests", { employeeId: ravi.id, leaveTypeId: lop.id, startDate: day, endDate: day, halfDay: false, reason: "Test" });
-    expect(created.status).toBe(201);
+    // seeded leave and holidays move with today's date: take the first weekday that works
+    let created: Awaited<ReturnType<typeof hr.post>> | null = null;
+    for (let i = 0; i < 30 && created?.status !== 201; i++) {
+      do d.setUTCDate(d.getUTCDate() + 1);
+      while ([0, 6].includes(d.getUTCDay()));
+      const day = d.toISOString().slice(0, 10);
+      created = await hr.post("/admin/leave/requests", { employeeId: ravi.id, leaveTypeId: lop.id, startDate: day, endDate: day, halfDay: false, reason: "Test" });
+    }
+    expect(created!.status).toBe(201);
     const pending = await hr.get("/admin/leave/requests?status=pending");
-    const reqRow = pending.body.find((x: any) => x.id === created.body.id);
+    const reqRow = pending.body.find((x: any) => x.id === created!.body.id);
     expect((await hr.post(`/admin/leave/requests/${reqRow.id}/decision`, { decision: "rejected" })).status).toBe(400);
     const own = pending.body.find((x: any) => x.employeeCode === "STL-0063");
     if (own) expect((await hr.post(`/admin/leave/requests/${own.id}/decision`, { decision: "approved" })).status).toBe(403);

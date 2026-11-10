@@ -17,3 +17,4 @@ export * from "./attendance-import";
 export * from "./overtime";
 export * from "./punch-rules";
 export * from "./approvals";
+export * from "./security";

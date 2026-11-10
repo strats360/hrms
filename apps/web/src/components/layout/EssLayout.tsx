@@ -1,5 +1,5 @@
 import { Navigate, NavLink, Outlet } from "react-router";
-import { CalendarDays, Clock, Home, LayoutDashboard, LogOut, Percent, Receipt, User, Wallet } from "lucide-react";
+import { CalendarDays, Clock, Home, LayoutDashboard, LogOut, Percent, ShieldCheck, Receipt, User, Wallet } from "lucide-react";
 import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./Header";
@@ -41,6 +41,9 @@ export function EssLayout() {
               </NavLink>
             ) : null}
             <ThemeToggle />
+            <NavLink to="/account/security" className="btn btn-secondary btn-icon" aria-label="Sign-in and security" title="Sign-in and security">
+              <ShieldCheck size={17} />
+            </NavLink>
             <span className="hidden text-[13px] font-medium sm:inline">{me?.user.name}</span>
             <Button icon onClick={signOut} aria-label="Sign out" title="Sign out">
               <LogOut size={17} />

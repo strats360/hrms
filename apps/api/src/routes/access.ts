@@ -1,11 +1,13 @@
 import { Hono, type Context } from "hono";
 import { and, desc, eq, isNull, isNotNull, sql } from "drizzle-orm";
 import { adminInvites, employees, memberships, roles, tenants, user } from "@hrms/db";
-import { inviteAdminSchema, randomToken, roleSchema, sanitizeMatrix, sha256Hex, updateMemberSchema } from "@hrms/shared";
+import { inviteAdminSchema, randomToken, readTwoFactorPolicy, roleSchema, sanitizeMatrix, securityPolicySchema, sha256Hex, TWO_FACTOR_POLICY_LABELS, updateMemberSchema } from "@hrms/shared";
 import type { AppEnv } from "../env";
 import { requirePerm } from "../lib/context";
 import { v, vPatch } from "../lib/validate";
 import { badRequest, conflict, notFound } from "../lib/errors";
+import { sendTwoFactorNotice } from "../lib/auth";
+import { resetTwoFactor } from "../services/two-factor";
 import { audit } from "../lib/audit";
 import { layout } from "../lib/email";
 
@@ -76,6 +78,7 @@ accessRoutes.get("/members", requirePerm("users", "view"), async (c) => {
       userId: user.id,
       name: user.name,
       email: user.email,
+      twoFactorEnabled: user.twoFactorEnabled,
       roleId: roles.id,
       roleName: roles.name,
       scope: memberships.scope,
@@ -189,4 +192,58 @@ accessRoutes.patch("/members/:id", requirePerm("users", "edit"), v("json", updat
   const [row] = await db.update(memberships).set(patch).where(eq(memberships.id, m.id)).returning();
   await audit(c, { action: "member.update", entity: "membership", entityId: m.id, summary: "Changed admin access", data: patch });
   return c.json(row);
+});
+
+// ---------- sign-in security ----------
+accessRoutes.get("/security", requirePerm("users", "view"), async (c) => {
+  const db = c.get("db");
+  const tid = c.get("tenant").tenantId;
+  const [t] = await db.select({ settings: tenants.settings }).from(tenants).where(eq(tenants.id, tid));
+  const [n] = await db
+    .select({
+      admins: sql<number>`count(*) filter (where ${memberships.roleId} is not null)::int`,
+      adminsOn: sql<number>`count(*) filter (where ${memberships.roleId} is not null and ${user.twoFactorEnabled})::int`,
+      everyone: sql<number>`count(*)::int`,
+      everyoneOn: sql<number>`count(*) filter (where ${user.twoFactorEnabled})::int`,
+    })
+    .from(memberships)
+    .innerJoin(user, eq(user.id, memberships.userId))
+    .where(and(eq(memberships.tenantId, tid), eq(memberships.status, "active")));
+  return c.json({ twoFactor: readTwoFactorPolicy(t?.settings), coverage: n ?? { admins: 0, adminsOn: 0, everyone: 0, everyoneOn: 0 } });
+});
+
+accessRoutes.put("/security", requirePerm("users", "configure"), v("json", securityPolicySchema), async (c) => {
+  const db = c.get("db");
+  const tid = c.get("tenant").tenantId;
+  const body = c.req.valid("json");
+  // don't let an admin lock themselves out of the console
+  if (body.twoFactor !== "off" && !c.get("session")!.twoFactorEnabled) throw badRequest("Turn on two-factor sign-in for your own account first.");
+  await db.update(tenants).set({ settings: sql`${tenants.settings} || ${JSON.stringify({ security: body })}::jsonb` }).where(eq(tenants.id, tid));
+  await audit(c, { action: "settings.security", entity: "tenant", entityId: tid, summary: `Two-factor sign-in: ${TWO_FACTOR_POLICY_LABELS[body.twoFactor].toLowerCase()}`, data: body });
+  return c.json(body);
+});
+
+/** Reset a user's two-factor sign-in when they've lost their authenticator and backup codes. */
+accessRoutes.post("/members/:id/reset-two-factor", requirePerm("users", "configure"), async (c) => {
+  const db = c.get("db");
+  const tid = c.get("tenant").tenantId;
+  const [m] = await db
+    .select({ userId: memberships.userId, name: user.name, email: user.email, on: user.twoFactorEnabled })
+    .from(memberships)
+    .innerJoin(user, eq(user.id, memberships.userId))
+    .where(and(eq(memberships.id, c.req.param("id")), eq(memberships.tenantId, tid)));
+  if (!m) throw notFound("User");
+  if (m.userId === c.get("session")!.userId) throw badRequest("Manage your own two-factor sign-in from your account security page.");
+  if (!m.on) throw badRequest("Two-factor sign-in isn't on for this person.");
+  // the login is shared across companies; only reset it from the one company it belongs to
+  const [other] = await db
+    .select({ id: memberships.id })
+    .from(memberships)
+    .where(and(eq(memberships.userId, m.userId), eq(memberships.status, "active"), sql`${memberships.tenantId} <> ${tid}`))
+    .limit(1);
+  if (other) throw badRequest("This person also signs in to another company. Contact support to reset their two-factor sign-in.");
+  await resetTwoFactor(db, m.userId);
+  await sendTwoFactorNotice(c.get("mailer"), m, false, c.get("session")!.name).catch((e) => console.error("2fa notice failed", e));
+  await audit(c, { action: "member.reset_2fa", entity: "membership", entityId: c.req.param("id"), summary: `Reset two-factor sign-in for ${m.email}` });
+  return c.json({ ok: true });
 });

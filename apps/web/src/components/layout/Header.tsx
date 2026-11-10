@@ -92,13 +92,15 @@ export function Header({ crumb, org, searchPlaceholder, onMenu, alerts = [], rol
           </Popover.Portal>
         </Popover.Root>
         <div className="flex items-center gap-2.5 pl-1.5">
-          <div className="hidden h-9 w-9 place-items-center rounded-full text-[13px] font-bold sm:grid" style={{ background: "var(--ok-bg)", color: "var(--ok-fg)" }}>
-            {me?.user.name.split(" ").map((p) => p[0]).slice(0, 2).join("")}
-          </div>
-          <div className="hidden min-w-0 leading-tight sm:block">
-            <div className="text-[13px] font-semibold">{me?.user.name}</div>
-            <div className="text-[11.5px]" style={{ color: "var(--muted)" }}>{roleLabel}</div>
-          </div>
+          <Link to="/account/security" title="Sign-in and security" className="flex items-center gap-2.5 rounded-[var(--radius-md)] no-underline" style={{ color: "var(--color-text)" }}>
+            <div className="hidden h-9 w-9 place-items-center rounded-full text-[13px] font-bold sm:grid" style={{ background: "var(--ok-bg)", color: "var(--ok-fg)" }}>
+              {me?.user.name.split(" ").map((p) => p[0]).slice(0, 2).join("")}
+            </div>
+            <div className="hidden min-w-0 leading-tight sm:block">
+              <div className="text-[13px] font-semibold">{me?.user.name}</div>
+              <div className="text-[11.5px]" style={{ color: "var(--muted)" }}>{roleLabel}</div>
+            </div>
+          </Link>
           <Button icon onClick={signOut} title="Sign out" aria-label="Sign out">
             <LogOut size={17} />
           </Button>

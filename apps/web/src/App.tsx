@@ -17,10 +17,12 @@ const L = (f: () => Promise<{ default: React.ComponentType }>) => {
 
 /** Must be signed in. */
 function RequireAuth({ children }: { children?: ReactNode }) {
-  const { me, loading } = useSession();
+  const { me, loading, needsTwoFactor } = useSession();
   const loc = useLocation();
   if (loading) return <Loading />;
   if (!me) return <Navigate to={`/login?next=${encodeURIComponent(loc.pathname + loc.search)}`} replace />;
+  // the company requires two-factor: set it up before anything else (platform pages aren't company-bound)
+  if (needsTwoFactor && !loc.pathname.startsWith("/account") && !loc.pathname.startsWith("/platform")) return <Navigate to="/account/security?required=1" replace />;
   return <>{children ?? <Outlet />}</>;
 }
 
@@ -45,6 +47,7 @@ const router = createBrowserRouter([
     element: <RequireAuth />,
     children: [
       { path: "/no-access", element: L(() => import("@/pages/auth/NoAccess")) },
+      { path: "/account/security", element: L(() => import("@/pages/account/Security")) },
       { path: "/setup", element: L(() => import("@/pages/setup/CompanySetup")) },
       { path: "/me/onboarding", element: L(() => import("@/pages/ess/Onboarding")) },
       {

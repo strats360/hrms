@@ -1,11 +1,11 @@
 import { and, eq } from "drizzle-orm";
 import { createMiddleware } from "hono/factory";
 import { createDb, memberships, platformStaff, roles, tenants } from "@hrms/db";
-import { can, MODULES, type Action, type Module, type PermissionMatrix } from "@hrms/shared";
+import { can, MODULES, readTwoFactorPolicy, twoFactorRequired, type Action, type Module, type PermissionMatrix } from "@hrms/shared";
 import type { AppEnv, Env } from "../env";
 import { createAuth } from "./auth";
 import { ConsoleMailer, ResendMailer, UnconfiguredMailer, type Mailer } from "./email";
-import { forbidden, unauthorized } from "./errors";
+import { ApiError, forbidden, unauthorized } from "./errors";
 import { featuresFor } from "../services/flags";
 import { activeAccess, OPEN_STATUSES } from "../services/support";
 
@@ -49,7 +49,7 @@ export const services = createMiddleware<AppEnv>(async (c, next) => {
 /** Resolve the signed-in user (if any). */
 export const loadSession = createMiddleware<AppEnv>(async (c, next) => {
   const res = await c.get("auth").api.getSession({ headers: c.req.raw.headers });
-  if (res?.user) c.set("session", { userId: res.user.id, email: res.user.email, name: res.user.name });
+  if (res?.user) c.set("session", { userId: res.user.id, email: res.user.email, name: res.user.name, twoFactorEnabled: !!res.user.twoFactorEnabled });
   await next();
 });
 
@@ -70,7 +70,7 @@ export const requireTenant = createMiddleware<AppEnv>(async (c, next) => {
   const wanted = c.req.header("x-tenant-id");
 
   const rows = await db
-    .select({ m: memberships, role: roles, tenantStatus: tenants.status, plan: tenants.plan })
+    .select({ m: memberships, role: roles, tenantStatus: tenants.status, plan: tenants.plan, settings: tenants.settings })
     .from(memberships)
     .innerJoin(tenants, eq(tenants.id, memberships.tenantId))
     .leftJoin(roles, eq(roles.id, memberships.roleId))
@@ -101,6 +101,9 @@ export const requireTenant = createMiddleware<AppEnv>(async (c, next) => {
   if (!row) throw forbidden("You don't have access to this company");
   if (row.tenantStatus === "suspended" || row.tenantStatus === "cancelled") {
     throw forbidden("This company's account is suspended. Contact your administrator.");
+  }
+  if (!session.twoFactorEnabled && twoFactorRequired(readTwoFactorPolicy(row.settings), !!row.m.roleId)) {
+    throw new ApiError(403, "Your company requires two-factor sign-in. Set it up from your account security page to continue.", "two_factor_required");
   }
 
   c.set("tenant", {

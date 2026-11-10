@@ -46,6 +46,11 @@ const AUTH_ALLOW = [
   "/api/auth/change-password",
   "/api/auth/list-sessions",
   "/api/auth/revoke-other-sessions",
+  "/api/auth/two-factor/enable",
+  "/api/auth/two-factor/disable",
+  "/api/auth/two-factor/verify-totp",
+  "/api/auth/two-factor/verify-backup-code",
+  "/api/auth/two-factor/generate-backup-codes",
 ];
 
 export function buildApp() {

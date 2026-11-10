@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
-import { ACTION_LABELS, ACTIONS, inviteAdminSchema, MODULE_LABELS, MODULES, type Action, type Module, type PermissionMatrix } from "@hrms/shared";
-import { api } from "@/lib/api";
+import { Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { ACTION_LABELS, ACTIONS, inviteAdminSchema, MODULE_LABELS, MODULES, TWO_FACTOR_POLICIES, TWO_FACTOR_POLICY_LABELS, type Action, type Module, type PermissionMatrix, type TwoFactorPolicy } from "@hrms/shared";
+import { Link } from "react-router";
+import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
 import { CardHeader, TableCard, Card } from "@/components/ui/card";
-import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/field";
+import { Checkbox, Field, Input, Segmented, Select, Textarea } from "@/components/ui/field";
 import { Dialog } from "@/components/ui/dialog";
 import { Loading, Notice } from "@/components/ui/page";
 import { StatusTag, Tag } from "@/components/ui/tag";
 import { Menu } from "@/components/ui/menu";
+import { ResetTwoFactorDialog } from "@/components/account/ResetTwoFactorDialog";
 
 interface Role {
   id: string;
@@ -33,6 +35,7 @@ interface Member {
   status: string;
   lastActiveAt: string | null;
   employeeCode: string | null;
+  twoFactorEnabled: boolean;
 }
 interface Invite {
   id: string;
@@ -70,6 +73,7 @@ export default function Access() {
       done();
     },
   });
+  const [resetting, setResetting] = useState<Member | null>(null);
   const revoke = useMutation({
     mutationFn: (id: string) => api.del(`/admin/access/invites/${id}`),
     onSuccess: () => {
@@ -108,7 +112,14 @@ export default function Access() {
                 return (
                   <tr key={m.id}>
                     <td>
-                      <div className="font-medium">{m.name}</div>
+                      <div className="flex items-center gap-1.5 font-medium">
+                        {m.name}
+                        {m.twoFactorEnabled ? (
+                          <span title="Two-factor sign-in is on" className="inline-flex text-[var(--ok-fg)]">
+                            <ShieldCheck size={14} aria-label="Two-factor on" />
+                          </span>
+                        ) : null}
+                      </div>
                       <div className="text-muted text-[12px]">{m.email}</div>
                     </td>
                     <td>
@@ -138,6 +149,7 @@ export default function Access() {
                           items={[
                             m.status === "active" ? { label: "Disable sign-in", onSelect: () => update.mutate({ id: m.id, status: "disabled" }), danger: true } : { label: "Enable sign-in", onSelect: () => update.mutate({ id: m.id, status: "active" }) },
                             { label: m.employeeCode ? "Remove admin access (keeps self-service)" : "Remove admin access", onSelect: () => update.mutate({ id: m.id, roleId: null }), danger: true },
+                            ...(m.twoFactorEnabled && can("users", "configure") ? [{ label: "Reset two-factor sign-in", onSelect: () => setResetting(m), danger: true }] : []),
                           ]}
                         />
                       ) : self ? (
@@ -167,7 +179,9 @@ export default function Access() {
         </div>
       </TableCard>
 
+      <SecurityPolicyCard editable={can("users", "configure")} />
       <PermissionMatrixCard roles={roleList} editable={can("users", "configure")} onSaved={done} />
+      {resetting ? <ResetTwoFactorDialog member={resetting} onClose={() => setResetting(null)} /> : null}
       <InviteDialog open={inviteOpen} onOpenChange={setInviteOpen} roles={roleList} onDone={done} />
     </>
   );
@@ -380,5 +394,63 @@ function InviteDialog({ open, onOpenChange, roles, onDone }: { open: boolean; on
         <Input value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value })} />
       </Field>
     </Dialog>
+  );
+}
+
+interface SecurityPolicy {
+  twoFactor: TwoFactorPolicy;
+  coverage: { admins: number; adminsOn: number; everyone: number; everyoneOn: number };
+}
+
+function SecurityPolicyCard({ editable }: { editable: boolean }) {
+  const qc = useQueryClient();
+  const { me } = useSession();
+  const q = useQuery({ queryKey: ["access", "security"], queryFn: () => api.get<SecurityPolicy>("/admin/access/security") });
+  const [value, setValue] = useState<TwoFactorPolicy>("off");
+  useEffect(() => {
+    if (q.data) setValue(q.data.twoFactor);
+  }, [q.data]);
+  const save = useMutation({
+    mutationFn: () => api.put("/admin/access/security", { twoFactor: value }),
+    onSuccess: () => {
+      toast.success("Sign-in policy saved");
+      qc.invalidateQueries({ queryKey: ["access", "security"] });
+      qc.invalidateQueries({ queryKey: ["me"] });
+    },
+    onError: (e) => toast.error(errorMessage(e)),
+  });
+  if (!q.data) return null;
+  const c = q.data.coverage;
+  const selfOff = !me?.user.twoFactorEnabled;
+  const missing = value === "everyone" ? c.everyone - c.everyoneOn : value === "admins" ? c.admins - c.adminsOn : 0;
+  return (
+    <Card className="!gap-3">
+      <CardHeader
+        title="Two-factor sign-in"
+        sub="Ask for a code from an authenticator app after the password. People who don't have it set up yet are taken to set it up the next time they open the app."
+        actions={
+          <span className="text-muted text-[12.5px]">
+            Set up by {c.adminsOn} of {c.admins} admins · {c.everyoneOn} of {c.everyone} people
+          </span>
+        }
+      />
+      <div className="flex flex-wrap items-center gap-3">
+        <Segmented<TwoFactorPolicy> className="max-w-full overflow-x-auto" value={value} onChange={(v) => editable && setValue(v)} options={TWO_FACTOR_POLICIES.map((p) => ({ value: p, label: TWO_FACTOR_POLICY_LABELS[p] }))} />
+        {editable ? (
+          <Button variant="primary" disabled={value === q.data.twoFactor || (value !== "off" && selfOff)} loading={save.isPending} onClick={() => save.mutate()}>
+            Save
+          </Button>
+        ) : null}
+      </div>
+      {editable && value !== "off" && selfOff ? (
+        <Notice tone="warn">
+          Set up two-factor sign-in for your own account first, so you don't lock yourself out. <Link to="/account/security">Set it up</Link>
+        </Notice>
+      ) : value !== q.data.twoFactor && missing > 0 ? (
+        <div className="text-muted text-[12.5px]">
+          {missing} {missing === 1 ? "person" : "people"} will be asked to set it up before they can continue.
+        </div>
+      ) : null}
+    </Card>
   );
 }

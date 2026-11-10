@@ -571,3 +571,5 @@ export const approvalPolicySchema = z.object({
   leave: z.object({ steps: stepList, longLeaveDays: z.coerce.number().int().min(1).max(365).nullable(), longSteps: stepList }),
   attendance: z.object({ steps: stepList }),
 });
+
+export const securityPolicySchema = z.object({ twoFactor: z.enum(["off", "admins", "everyone"]) });
