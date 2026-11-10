@@ -181,6 +181,8 @@ export const tenantPayrollSettingsSchema = z.object({
   noticeDays: z.number().int().min(0).max(180).default(30),
   probationNoticeDays: z.number().int().min(0).max(180).default(15),
   minWageBasis: z.enum(["basic", "gross"]).optional(),
+  /** Show employees their salary structure (CTC breakdown and revisions) in self-service. */
+  essSalaryView: z.boolean().optional(),
   compOff: z.object({ expiryDays: z.number().int().min(7).max(365), claimWithinDays: z.number().int().min(1).max(90) }).optional(),
   punchPolicy: z.object({ location: z.enum(["off", "flag", "block"]), ip: z.enum(["off", "flag", "block"]), wfhExempt: z.boolean() }).optional(),
   overtime: z

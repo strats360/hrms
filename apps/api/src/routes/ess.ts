@@ -54,6 +54,7 @@ import { applyLeave, balanceSummary, cancelLeave } from "../services/leave";
 import { bankFields } from "../services/employees";
 import { storeUpload } from "./employees";
 import { payslipView } from "./payroll";
+import { essSalaryVisible, mySalary } from "../services/my-salary";
 
 export const essRoutes = new Hono<AppEnv>();
 essRoutes.use("*", requireEmployee);
@@ -373,6 +374,17 @@ essRoutes.post("/onboarding/submit", async (c) => {
   await c.get("db").update(onboardingInvites).set({ status: "submitted", submittedAt: new Date(), progress: 100 }).where(eq(onboardingInvites.id, row.id));
   await audit(c, { action: "onboarding.submit", entity: "employee", entityId: me(c).eid, summary: "Submitted joining details" });
   return c.json({ ok: true });
+});
+
+// ---------- my salary ----------
+essRoutes.get("/salary", async (c) => {
+  const { tid, eid } = me(c);
+  const db = c.get("db");
+  const [t] = await db.select({ settings: tenants.settings }).from(tenants).where(eq(tenants.id, tid));
+  if (!essSalaryVisible(t?.settings)) throw new ApiError(403, "Your company doesn't show salary details here. Ask HR for your salary letter.", "salary_hidden");
+  const out = await mySalary(db, tid, eid);
+  if (!out) throw notFound("Employee");
+  return c.json(out);
 });
 
 // ---------- payslips ----------

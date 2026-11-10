@@ -115,7 +115,7 @@ export async function payableEmployees(db: Database, tenantId: string, start: st
 }
 
 /** Year-to-date figures (approved/paid runs earlier in the same FY). */
-async function yearToDate(db: Database, tenantId: string, month: string) {
+export async function yearToDate(db: Database, tenantId: string, month: string) {
   const fy = fyOfMonth(month);
   const fyStart = `${fy.slice(0, 4)}-04`;
   const rows = await db

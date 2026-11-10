@@ -26,7 +26,7 @@ interface Tenant {
   contactPhone: string | null;
   plan: string;
   status: string;
-  settings: { payrollCycle?: string; payDay?: string; paidDaysBasis?: string; weeklyOffs?: number[]; employeeCodePrefix?: string; noticeDays?: number; probationNoticeDays?: number; overtime?: OvertimeSettings; minWageBasis?: "basic" | "gross" };
+  settings: { payrollCycle?: string; payDay?: string; paidDaysBasis?: string; weeklyOffs?: number[]; employeeCodePrefix?: string; noticeDays?: number; probationNoticeDays?: number; overtime?: OvertimeSettings; minWageBasis?: "basic" | "gross"; essSalaryView?: boolean };
   statutory: Record<string, { enabled: boolean; registration?: string | null }>;
 }
 
@@ -185,6 +185,12 @@ export default function Organization() {
             <Select value={settings.minWageBasis ?? "basic"} onChange={(e) => setSettings((s) => ({ ...s, minWageBasis: e.target.value as "basic" | "gross" }))} disabled={!configurable}>
               <option value="basic">Monthly basic</option>
               <option value="gross">Monthly gross</option>
+            </Select>
+          </Field>
+          <Field label="Salary structure in self-service" hint="Employees see their CTC breakdown, estimated take-home and past revisions. Payslips show either way">
+            <Select value={settings.essSalaryView === false ? "hide" : "show"} onChange={(e) => setSettings((s) => ({ ...s, essSalaryView: e.target.value === "show" }))} disabled={!configurable}>
+              <option value="show">Show to employees</option>
+              <option value="hide">Hide</option>
             </Select>
           </Field>
           <Field label="Notice period on probation (days)">

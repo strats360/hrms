@@ -1,8 +1,11 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "lucide-react";
 import { fmtDate, inr } from "@hrms/shared";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
+import { PillTabs } from "@/components/ui/tabs";
+import { MySalary, type MySalaryData } from "@/components/ess/MySalary";
 import { Card } from "@/components/ui/card";
 import { Empty, ErrorState, Loading } from "@/components/ui/page";
 import { Tag } from "@/components/ui/tag";
@@ -23,9 +26,46 @@ interface MySlip {
 export default function EssPayslips() {
   const q = useQuery({ queryKey: ["ess", "payslips"], queryFn: () => api.get<MySlip[]>("/ess/payslips") });
   const [open, setOpen] = useState<string | null>(null);
+  const [params, setParams] = useSearchParams();
+  // the company can hide the salary structure; payslips always show
+  const salary = useQuery({
+    queryKey: ["ess", "salary"],
+    queryFn: async () => {
+      try {
+        return await api.get<MySalaryData>("/ess/salary");
+      } catch (e) {
+        if (e instanceof ApiError && e.code === "salary_hidden") return null;
+        throw e;
+      }
+    },
+    retry: false,
+  });
+  const view = params.get("view") === "salary" && salary.data ? "salary" : "payslips";
+  const tabs = salary.data ? (
+    <PillTabs<"payslips" | "salary">
+      value={view}
+      onChange={(v) => setParams(v === "salary" ? { view: "salary" } : {}, { replace: true })}
+      tabs={[
+        { value: "payslips", label: "Payslips" },
+        { value: "salary", label: "My salary" },
+      ]}
+    />
+  ) : null;
 
   if (q.isLoading) return <Loading />;
   if (q.error) return <ErrorState error={q.error} retry={() => q.refetch()} />;
+  if (view === "salary" && salary.data) {
+    return (
+      <>
+        <div>
+          <h1 className="!mb-1 text-[26px]">My salary</h1>
+          <div className="text-muted text-[13.5px]">Your salary structure as HR has it on record. Questions about it? Ask HR.</div>
+        </div>
+        {tabs}
+        <MySalary data={salary.data} />
+      </>
+    );
+  }
   const slips = q.data ?? [];
   const latest = slips[0];
 
@@ -35,6 +75,7 @@ export default function EssPayslips() {
         <h1 className="!mb-1 text-[26px]">Payslips</h1>
         <div className="text-muted text-[13.5px]">Payslips appear here once HR publishes them each month. Use Download PDF to save a copy.</div>
       </div>
+      {tabs}
 
       {!latest ? (
         <Card>
