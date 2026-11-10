@@ -1,4 +1,5 @@
 import { Hono, type Context } from "hono";
+import { sendNotification } from "../services/notifications";
 import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { departments, employees, holidays, leaveBalances, leaveRequests, leaveTypes } from "@hrms/db";
 import {
@@ -92,15 +93,15 @@ leaveRoutes.post("/requests", requirePerm("leave", "edit"), v("json", leaveApply
 });
 
 /** Email the next approver in the chain (managers; HR sees it in their queue). */
-async function notifyNextApprover(c: Context<AppEnv>, req: typeof leaveRequests.$inferSelect, next: ResolvedStep | null | undefined) {
+export async function notifyNextApprover(c: Context<AppEnv>, req: typeof leaveRequests.$inferSelect, next: ResolvedStep | null | undefined, first = false) {
   if (!next?.approverEmployeeId) return;
   try {
     const db = c.get("db");
     const [a] = await db.select({ email: employees.workEmail }).from(employees).where(eq(employees.id, next.approverEmployeeId));
     const [e] = await db.select({ name: employees.fullName }).from(employees).where(eq(employees.id, req.employeeId));
     if (!a) return;
-    const { html, text } = layout({ company: "Strats360 People", heading: `Leave to approve: ${e?.name ?? req.code}`, paragraphs: [`${e?.name} has asked for ${req.days} day${Number(req.days) === 1 ? "" : "s"} of leave from ${req.startDate} to ${req.endDate}. It's been approved so far and needs your approval next.`], cta: { label: "Review leave", url: `${c.env.APP_URL}/leave` } });
-    await c.get("mailer").send({ to: a.email, subject: `Leave to approve: ${e?.name ?? req.code}`, html, text });
+    const { html, text } = layout({ company: "Strats360 People", heading: `Leave to approve: ${e?.name ?? req.code}`, paragraphs: [`${e?.name} has asked for ${req.days} day${Number(req.days) === 1 ? "" : "s"} of leave from ${req.startDate} to ${req.endDate}. ${first ? "It needs your approval." : "It's been approved so far and needs your approval next."}`], cta: { label: "Review leave", url: `${c.env.APP_URL}/leave` } });
+    await sendNotification(c, "leave_to_approve", { to: a.email, subject: `Leave to approve: ${e?.name ?? req.code}`, html, text });
   } catch (err) {
     console.error("next approver email failed", err);
   }

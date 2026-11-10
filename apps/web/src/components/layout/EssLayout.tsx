@@ -41,7 +41,7 @@ export function EssLayout() {
               </NavLink>
             ) : null}
             <ThemeToggle />
-            <NavLink to="/account/security" className="btn btn-secondary btn-icon" aria-label="Sign-in and security" title="Sign-in and security">
+            <NavLink to="/account/security" className="btn btn-secondary btn-icon" aria-label="Your account" title="Your account: sign-in, security and email settings">
               <ShieldCheck size={17} />
             </NavLink>
             <span className="hidden text-[13px] font-medium sm:inline">{me?.user.name}</span>

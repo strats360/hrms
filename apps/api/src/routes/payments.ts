@@ -1,4 +1,5 @@
 import { Hono, type Context } from "hono";
+import { sendNotification } from "../services/notifications";
 import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, notInArray, sql, type SQL } from "drizzle-orm";
 import { companyBankAccounts, employees, paymentBatches, payments, payrollItems, payrollRuns, reimbursementClaims, tenants } from "@hrms/db";
 import {
@@ -427,7 +428,7 @@ async function notifyFailed(c: Context<AppEnv>, list: Payment[]) {
         paragraphs: [`Hi ${e.first},`, `A payment of ${inr(Number(p.amount))} (reference ${p.reference}) was returned by the bank${p.failureReason ? `: ${p.failureReason}` : ""}.`, "Please check your bank details in self-service or with HR. We'll retry once they're correct."],
         cta: { label: "Check my bank details", url: `${c.env.APP_URL}/me/profile` },
       });
-      await c.get("mailer").send({ to: e.email, subject: `Payment ${p.reference} returned by the bank`, html, text });
+      await sendNotification(c, "payment_returned", { to: e.email, subject: `Payment ${p.reference} returned by the bank`, html, text });
     }
   } catch (err) {
     console.error("payment failure email failed", err);

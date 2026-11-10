@@ -1,5 +1,5 @@
 import { numeric, boolean, index, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
-import type { PermissionMatrix, TenantSettings } from "@hrms/shared";
+import type { NotificationPrefs, PermissionMatrix, TenantSettings } from "@hrms/shared";
 import { user } from "./auth";
 import { id, timestamps } from "./_helpers";
 
@@ -78,6 +78,8 @@ export const memberships = pgTable(
     scope: text("scope"), // free-text scope note, e.g. "Sales · Ahmedabad"
     status: text("status").notNull().default("active"), // active | disabled | invited
     lastActiveAt: timestamp("last_active_at", { withTimezone: true }),
+    /** Emails this person turned off for this company (see NOTIFICATIONS in @hrms/shared). */
+    notificationPrefs: jsonb("notification_prefs").$type<NotificationPrefs>().notNull().default({}),
     ...timestamps,
   },
   (t) => [

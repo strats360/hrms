@@ -1,4 +1,5 @@
 import type { Context } from "hono";
+import { sendNotification } from "./notifications";
 import { eq } from "drizzle-orm";
 import { employees, leaveRequests, leaveTypes, tenants } from "@hrms/db";
 import { fmtDate } from "@hrms/shared";
@@ -28,7 +29,7 @@ export async function notifyLeaveDecision(c: Context<AppEnv>, req: typeof leaveR
       ],
       cta: { label: "Open self-service", url: `${c.env.APP_URL}/me/leave` },
     });
-    await c.get("mailer").send({ to: row.email, subject: `Leave ${approved ? "approved" : "rejected"}: ${req.code}`, html, text });
+    await sendNotification(c, "leave_decision", { to: row.email, subject: `Leave ${approved ? "approved" : "rejected"}: ${req.code}`, html, text });
   } catch (e) {
     console.error("notifyLeaveDecision failed", e);
   }

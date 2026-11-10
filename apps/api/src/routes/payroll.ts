@@ -1,4 +1,5 @@
 import { Hono, type Context } from "hono";
+import { allowedRecipients } from "../services/notifications";
 import { and, asc, desc, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
 import {
   attendanceCorrections,
@@ -439,7 +440,10 @@ payrollRoutes.post("/runs/:id/publish", requirePerm("payroll", "approve"), async
   const monthName = new Date(run.month + "-01T00:00:00Z").toLocaleDateString("en-IN", { month: "long", year: "numeric", timeZone: "UTC" });
   let sent = 0;
   const mailer = c.get("mailer");
-  const queue = items.filter((i) => !i.onHold);
+  const wanted = items.filter((i) => !i.onHold);
+  // the company or the employee may have turned these emails off
+  const allowed = await allowedRecipients(db, tid(c), "payslip_published", wanted.map((i) => i.email));
+  const queue = wanted.filter((i) => allowed.has(i.email));
   // Send in small parallel batches to stay well inside Worker subrequest limits.
   for (let i = 0; i < queue.length; i += 10) {
     await Promise.all(
@@ -460,7 +464,7 @@ payrollRoutes.post("/runs/:id/publish", requirePerm("payroll", "approve"), async
     );
   }
   await audit(c, { action: "payroll.publish", entity: "payroll_run", entityId: run.id, summary: `Published ${run.month} payslips (${sent} emailed)` });
-  return c.json({ published: true, emailed: sent, held: items.length - queue.length });
+  return c.json({ published: true, emailed: sent, held: items.length - wanted.length, emailsOff: wanted.length - queue.length });
 });
 
 /** Generic bank upload CSV. Excludes held salaries, zero/negative net and missing bank details. */

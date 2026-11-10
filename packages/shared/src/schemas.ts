@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { NOTIFICATION_KEYS } from "./notifications";
 import {
   ATTENDANCE_STATUSES,
   DOCUMENT_TYPES,
@@ -575,3 +576,5 @@ export const approvalPolicySchema = z.object({
 });
 
 export const securityPolicySchema = z.object({ twoFactor: z.enum(["off", "admins", "everyone"]) });
+
+export const notificationPrefsSchema = z.partialRecord(z.enum(NOTIFICATION_KEYS), z.boolean());

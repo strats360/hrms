@@ -15,6 +15,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Checkbox, Field, Input } from "@/components/ui/field";
 import { Notice } from "@/components/ui/page";
 import { Tag } from "@/components/ui/tag";
+import { MyNotificationsCard } from "@/components/account/Notifications";
 
 /** Sign-in and security for the signed-in person: two-factor, password, devices. */
 export default function Security() {
@@ -46,7 +47,7 @@ export default function Security() {
       </header>
       <main className="mx-auto flex max-w-[760px] flex-col gap-4 px-4 pt-6">
         <div>
-          <h1 className="!mb-1 text-[26px]">Sign-in and security</h1>
+          <h1 className="!mb-1 text-[26px]">Your account</h1>
           <div className="text-muted text-[14px]">{me?.user.email}</div>
         </div>
         {needsTwoFactor || params.get("required") ? (
@@ -59,6 +60,7 @@ export default function Security() {
           )
         ) : null}
         <TwoFactorCard on={on} required={required} />
+        {needsTwoFactor ? null : <MyNotificationsCard />}
         <PasswordCard />
         <SessionsCard />
       </main>

@@ -540,9 +540,9 @@ export function StepPayout({ run }: { run: PayrollRun }) {
   const [exporting, setExporting] = useState(false);
   const locked = isLocked(run);
   const publish = useMutation({
-    mutationFn: () => api.post<{ published: boolean; emailed: number; held: number }>(`/admin/payroll/runs/${run.id}/publish`),
+    mutationFn: () => api.post<{ published: boolean; emailed: number; held: number; emailsOff?: number }>(`/admin/payroll/runs/${run.id}/publish`),
     onSuccess: (r) => {
-      toast.success(`Published. ${r.emailed} emailed${r.held ? `, ${r.held} held` : ""}.`);
+      toast.success(`Published. ${r.emailed} emailed${r.held ? `, ${r.held} held` : ""}${r.emailsOff ? `, ${r.emailsOff} with payslip emails turned off` : ""}.`);
       invalidate();
     },
   });

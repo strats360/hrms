@@ -1,4 +1,6 @@
 import { Hono, type Context } from "hono";
+import { sendNotification } from "../services/notifications";
+import type { NotificationKey } from "@hrms/shared";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { compOffRequests, departments, employees, tenants } from "@hrms/db";
 import { compOffGrantSchema, compOffRequestSchema, fmtDate } from "@hrms/shared";
@@ -60,7 +62,7 @@ compOffRoutes.post("/comp-off/:id/decision", requirePerm("leave", "approve"), v(
       ? await wrap(() => approveCompOff(db, row, uid(c), b.note ?? null))
       : (await db.update(compOffRequests).set({ status: "rejected", decidedBy: uid(c), decidedAt: new Date(), decisionNote: b.note ?? null }).where(and(eq(compOffRequests.id, row.id), eq(compOffRequests.status, "pending"))).returning())[0];
   await audit(c, { action: `leave.comp_off_${b.decision}`, entity: "comp_off", entityId: row.id, summary: `${b.decision === "approved" ? "Approved" : "Rejected"} ${dayLabel(Number(row.days))} comp off for ${e?.fullName} (worked ${fmtDate(row.workDate)})` });
-  if (e) await mail(c, e, b.decision === "approved" ? `Comp off approved: ${dayLabel(Number(row.days))}` : "Comp off not approved", b.decision === "approved" ? [`Your comp off for working on ${fmtDate(row.workDate)} is approved and added to your leave balance.`, `Use it by ${fmtDate(updated!.expiresOn!)}; after that it lapses.`] : [`Your comp off request for ${fmtDate(row.workDate)} wasn't approved: ${b.note}`]);
+  if (e) await mail(c, "comp_off_decision", e, b.decision === "approved" ? `Comp off approved: ${dayLabel(Number(row.days))}` : "Comp off not approved", b.decision === "approved" ? [`Your comp off for working on ${fmtDate(row.workDate)} is approved and added to your leave balance.`, `Use it by ${fmtDate(updated!.expiresOn!)}; after that it lapses.`] : [`Your comp off request for ${fmtDate(row.workDate)} wasn't approved: ${b.note}`]);
   return c.json(updated);
 });
 
@@ -114,7 +116,7 @@ essCompOffRoutes.post("/comp-off", v("json", compOffRequestSchema), async (c) =>
   await audit(c, { action: "leave.comp_off_request", entity: "comp_off", entityId: row.id, summary: `${e.fullName} claimed ${dayLabel(Number(row.days))} comp off for ${fmtDate(row.workDate)}` });
   if (e.managerId) {
     const [m] = await c.get("db").select().from(employees).where(eq(employees.id, e.managerId));
-    if (m) await mail(c, m, `Comp off request: ${e.fullName}`, [`${e.fullName} worked on ${fmtDate(row.workDate)} (${row.dayType === "holiday" ? "a holiday" : "a weekly off"}) and is claiming ${dayLabel(Number(row.days))} comp off.`, `Reason: ${row.reason}`], "/leave");
+    if (m) await mail(c, "comp_off_to_approve", m, `Comp off request: ${e.fullName}`, [`${e.fullName} worked on ${fmtDate(row.workDate)} (${row.dayType === "holiday" ? "a holiday" : "a weekly off"}) and is claiming ${dayLabel(Number(row.days))} comp off.`, `Reason: ${row.reason}`], "/leave");
   }
   return c.json(row, 201);
 });
@@ -126,10 +128,10 @@ essCompOffRoutes.post("/comp-off/:id/cancel", async (c) => {
   return c.json(row);
 });
 
-async function mail(c: Context<AppEnv>, to: typeof employees.$inferSelect, subject: string, paragraphs: string[], path = "/me/leave") {
+async function mail(c: Context<AppEnv>, key: NotificationKey, to: typeof employees.$inferSelect, subject: string, paragraphs: string[], path = "/me/leave") {
   try {
     const { html, text } = layout({ company: "Strats360 People", heading: subject, paragraphs, cta: { label: "Open", url: `${c.env.APP_URL}${path}` } });
-    await c.get("mailer").send({ to: to.workEmail, subject, html, text });
+    await sendNotification(c, key, { to: to.workEmail, subject, html, text });
   } catch (err) {
     console.error("comp off email failed", err);
   }

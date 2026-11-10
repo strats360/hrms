@@ -1,4 +1,5 @@
 import { Hono, type Context } from "hono";
+import { sendNotification } from "../services/notifications";
 import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { departments, designations, employeeExits, employees, memberships, paymentBatches, payments, roles, tenants, user } from "@hrms/db";
 import {
@@ -390,7 +391,7 @@ async function mailEmployee(c: Context<AppEnv>, e: typeof employees.$inferSelect
   try {
     const to = e.personalEmail ?? e.workEmail;
     const { html, text } = layout({ company: await companyName(c), heading: subject, paragraphs, cta: { label: "Open self-service", url: `${c.env.APP_URL}/me/profile` } });
-    await c.get("mailer").send({ to, subject, html, text });
+    await sendNotification(c, "exit_updates", { to, subject, html, text });
   } catch (err) {
     console.error("exit email failed", err);
   }
@@ -414,7 +415,7 @@ async function notifyHr(c: Context<AppEnv>, e: typeof employees.$inferSelect, lw
       .limit(10);
     for (const a of admins) to.add(a.email);
     const { html, text } = layout({ company: await companyName(c), heading: `${e.fullName} has resigned`, paragraphs: [`${e.fullName} (${e.employeeCode}) submitted a resignation today, with a proposed last working day of ${fmt(lwd)}.`, "Review it and confirm the last working day under Employees › Exits."], cta: { label: "Review resignation", url: `${c.env.APP_URL}/employees/exits` } });
-    for (const addr of to) await c.get("mailer").send({ to: addr, subject: `Resignation: ${e.fullName}`, html, text });
+    for (const addr of to) await sendNotification(c, "resignation_submitted", { to: addr, subject: `Resignation: ${e.fullName}`, html, text });
   } catch (err) {
     console.error("resignation email failed", err);
   }

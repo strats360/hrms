@@ -54,6 +54,7 @@ import { applyLeave, balanceSummary, cancelLeave } from "../services/leave";
 import { bankFields } from "../services/employees";
 import { storeUpload } from "./employees";
 import { payslipView } from "./payroll";
+import { notifyNextApprover } from "./leave";
 import { essSalaryVisible, mySalary } from "../services/my-salary";
 
 export const essRoutes = new Hono<AppEnv>();
@@ -253,6 +254,9 @@ essRoutes.post("/leave", v("json", leaveApplySchema), async (c) => {
   const body = c.req.valid("json");
   const { request } = await applyLeave(c.get("db"), tid, { ...body, employeeId: eid }, c.get("session")!.userId);
   await audit(c, { action: "leave.apply", entity: "leave_request", entityId: request.id, summary: `Applied for ${request.days} day(s) leave` });
+  // tell the first approver (HR steps have no single person to email)
+  const chain = await chainFor(c.get("db"), tid, "leave", eid, Number(request.days));
+  await notifyNextApprover(c, request, chain[0], true);
   return c.json(request, 201);
 });
 

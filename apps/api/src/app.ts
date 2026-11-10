@@ -8,6 +8,7 @@ import { cashfreeWebhook, tenantPayRoutes } from "./routes/cashfree";
 import { meRoutes } from "./routes/me";
 import { orgRoutes } from "./routes/org";
 import { accessRoutes } from "./routes/access";
+import { myNotificationRoutes, orgNotificationRoutes } from "./routes/notifications";
 import { employeeRoutes } from "./routes/employees";
 import { onboardingAdminRoutes } from "./routes/onboarding";
 import { attendanceRoutes } from "./routes/attendance";
@@ -135,6 +136,7 @@ export function buildApp() {
   t.use("/admin/compliance/*", requireFeature("module.compliance"));
   t.route("/ess/tax", essTaxRoutes);
   t.route("/ess/claims", essClaimRoutes);
+  t.route("/notifications/mine", myNotificationRoutes);
   t.route("/ess", essRoutes);
   t.route("/ess", essExitRoutes);
   t.route("/ess", essPayslipFileRoutes);
@@ -142,6 +144,7 @@ export function buildApp() {
   t.route("/files", fileRoutes);
   t.use("/admin/*", requireAdmin);
   t.route("/admin/dashboard", dashboardRoutes);
+  t.route("/admin/org/notifications", orgNotificationRoutes);
   t.route("/admin/org", orgRoutes);
   t.route("/admin/access", accessRoutes);
   t.route("/admin/exits", exitRoutes);

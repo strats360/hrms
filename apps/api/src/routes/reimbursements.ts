@@ -1,4 +1,5 @@
 import { Hono, type Context } from "hono";
+import { sendNotification } from "../services/notifications";
 import { and, asc, desc, eq, gte, ilike, inArray, lte, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { claimReceipts, departments, employees, paymentBatches, payments, payrollRuns, reimbursementCategories, reimbursementClaims, tenants } from "@hrms/db";
@@ -188,7 +189,7 @@ async function notifyDecision(c: Context<AppEnv>, claim: Claim, decision: "appro
       paragraphs: [`Hi ${e.first},`, ok ? `Your claim of ${inr(Number(claim.amount))} is approved and will be paid with your next salary.` : `Your claim of ${inr(Number(claim.amount))} was rejected.`, ...(claim.rejectionReason ? [`Reason: ${claim.rejectionReason}`] : [])],
       cta: { label: "View my claims", url: `${c.env.APP_URL}/me/claims` },
     });
-    await c.get("mailer").send({ to: e.email, subject: `Claim ${claim.code} ${ok ? "approved" : "rejected"}`, html, text });
+    await sendNotification(c, "claim_decision", { to: e.email, subject: `Claim ${claim.code} ${ok ? "approved" : "rejected"}`, html, text });
   } catch (err) {
     console.error("claim email failed", err);
   }
