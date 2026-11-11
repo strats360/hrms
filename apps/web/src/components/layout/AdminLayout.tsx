@@ -13,6 +13,7 @@ interface DashboardBadges {
   pendingCorrections: number;
   pendingClaimCount?: number;
   awaitingVerification: number;
+  probationDue?: number;
 }
 
 function useCollapsed(key: string) {
@@ -98,6 +99,7 @@ export function AdminLayout() {
             { label: "Attendance corrections", to: "/attendance/corrections", count: b?.pendingCorrections ?? 0 },
             { label: "Expense claims", to: "/reimbursements", count: b?.pendingClaimCount ?? 0 },
             { label: "Onboarding to verify", to: "/employees/onboarding", count: b?.awaitingVerification ?? 0 },
+            { label: "Probation reviews due", to: "/employees/probation", count: b?.probationDue ?? 0 },
           ]}
         />
         <main className="flex w-full max-w-[1440px] flex-col gap-5 px-4 pb-12 pt-6 sm:px-7">

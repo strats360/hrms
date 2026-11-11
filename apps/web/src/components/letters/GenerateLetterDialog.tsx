@@ -15,11 +15,11 @@ const label = (k: string) => LETTER_FIELDS.find((f) => f.key === k)?.label ?? k;
 const rupees = (n: number) => `Rs. ${Math.round(n).toLocaleString("en-IN")}`;
 
 /** Pick a template, check and edit the filled-in letter, then download or save it. */
-export function GenerateLetterDialog({ employee, onClose }: { employee: { id: string; fullName: string }; onClose: () => void }) {
+export function GenerateLetterDialog({ employee, onClose, initialTemplate = "builtin:offer" }: { employee: { id: string; fullName: string }; onClose: () => void; initialTemplate?: string }) {
   const qc = useQueryClient();
   const { can } = useSession();
   const list = useQuery({ queryKey: ["letters", "templates"], queryFn: () => api.get<{ templates: Template[] }>("/admin/letters/templates") });
-  const [templateId, setTemplateId] = useState("builtin:offer");
+  const [templateId, setTemplateId] = useState(initialTemplate);
   const [text, setText] = useState<string | null>(null);
   const preview = useQuery({
     queryKey: ["letters", "preview", employee.id, templateId],

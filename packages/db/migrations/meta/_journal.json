@@ -176,6 +176,13 @@
       "when": 1794385282388,
       "tag": "0024_early_marvel_zombies",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794387116933,
+      "tag": "0025_marvelous_logan",
+      "breakpoints": true
     }
   ]
 }

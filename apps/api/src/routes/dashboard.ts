@@ -5,6 +5,7 @@ import { can, todayIST } from "@hrms/shared";
 import type { AppEnv } from "../env";
 import { buildCalendar } from "../services/attendance";
 import { teamScope } from "../services/scope";
+import { onProbation } from "../services/probation";
 import { isFinance } from "../services/reimbursements";
 
 export const dashboardRoutes = new Hono<AppEnv>();
@@ -101,6 +102,8 @@ dashboardRoutes.get("/", async (c) => {
     pendingCorrections: corr?.n ?? 0,
     pendingClaimCount,
     awaitingVerification: ob?.n ?? 0,
+    // probation ending soon (or ended) without a decision, for people this user can see
+    probationDue: can(c.get("tenant").permissions, "employees", "view") ? (await onProbation(c.get("db"), c.get("tenant").tenantId, await teamScope(c, "employees"))).filter((p) => p.due).length : 0,
     celebrations: [...celebrations],
   });
 });

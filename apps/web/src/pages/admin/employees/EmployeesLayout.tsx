@@ -60,6 +60,7 @@ export default function EmployeesLayout() {
           { to: "/employees", label: "Directory", end: true },
           { to: "/employees/org-chart", label: "Org chart" },
           { to: "/employees/onboarding", label: "Onboarding" },
+          { to: "/employees/probation", label: "Probation" },
           ...(can("employees", "edit") || can("payroll", "view") ? [{ to: "/employees/exits", label: "Exits" }] : []),
           ...(can("employees", "edit") ? [{ to: "/employees/new", label: "Add employee" }] : []),
         ]}

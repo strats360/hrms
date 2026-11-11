@@ -16,6 +16,7 @@ export const LETTER_FIELDS = [
   { key: "employee.employment_type", label: "Employment type", group: "Employee" },
   { key: "employee.joining_date", label: "Date of joining", group: "Employee" },
   { key: "employee.confirmation_date", label: "Confirmation date", group: "Employee" },
+  { key: "employee.probation_end_date", label: "End of probation", group: "Employee" },
   { key: "employee.probation_months", label: "Probation (months)", group: "Employee" },
   { key: "employee.last_working_day", label: "Last working day", group: "Employee" },
   { key: "employee.resignation_date", label: "Resignation date", group: "Employee" },
@@ -155,6 +156,34 @@ Confidentiality: You will keep all information about the company, its clients an
 Statutory benefits: You will be covered by Provident Fund, ESI (where applicable), gratuity and other benefits as per applicable law.
 
 Please sign and return a copy of this letter as a token of your acceptance.`,
+  },
+  {
+    id: "builtin:confirmation",
+    name: "Confirmation letter",
+    builtIn: true,
+    body: `# Confirmation of employment
+
+Dear {{employee.name}},
+
+We are pleased to inform you that you have successfully completed your probation. Your employment with {{company.name}} as {{employee.designation}} in the {{employee.department}} department is confirmed with effect from {{employee.confirmation_date}}.
+
+All other terms and conditions of your appointment letter remain unchanged.
+
+We appreciate your contribution so far and look forward to your continued growth with us.`,
+  },
+  {
+    id: "builtin:probation_extension",
+    name: "Probation extension letter",
+    builtIn: true,
+    body: `# Extension of probation
+
+Dear {{employee.name}},
+
+Your probation period as {{employee.designation}}, which began when you joined on {{employee.joining_date}}, has been reviewed. We have decided to extend your probation until {{employee.probation_end_date}}.
+
+During this time, {{employee.manager}} will work with you on the areas discussed and review your progress regularly. Your employment will be reviewed again at the end of the extended period.
+
+All other terms and conditions of your appointment letter remain unchanged.`,
   },
   {
     id: "builtin:experience",

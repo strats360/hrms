@@ -52,6 +52,8 @@ export const employees = pgTable(
     status: text("status").notNull().default("probation"),
     probationMonths: integer("probation_months").notNull().default(6),
     confirmationDate: date("confirmation_date", { mode: "string" }),
+    /** The probation end date we last sent a reminder for, so each one goes out once. */
+    probationRemindedFor: date("probation_reminded_for", { mode: "string" }),
     resignationDate: date("resignation_date", { mode: "string" }),
     lastWorkingDay: date("last_working_day", { mode: "string" }),
     annualCtc: numeric("annual_ctc", { precision: 14, scale: 2, mode: "number" }).notNull().default(0),

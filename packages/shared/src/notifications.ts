@@ -11,9 +11,11 @@ export const NOTIFICATION_KEYS = [
   "payment_returned",
   "exit_updates",
   "loan_updates",
+  "probation_outcome",
   "leave_to_approve",
   "comp_off_to_approve",
   "resignation_submitted",
+  "probation_due",
 ] as const;
 export type NotificationKey = (typeof NOTIFICATION_KEYS)[number];
 
@@ -33,8 +35,10 @@ export const NOTIFICATIONS: NotificationDef[] = [
   { key: "payment_returned", group: "self", label: "Salary payment returned", description: "When the bank returns a payment to you, usually because of wrong account details." },
   { key: "exit_updates", group: "self", label: "Resignation updates", description: "When HR accepts or closes your resignation." },
   { key: "loan_updates", group: "self", label: "Loan and advance updates", description: "When a loan or advance you asked for is approved, rejected or paid out." },
+  { key: "probation_outcome", group: "self", label: "Probation confirmed or extended", description: "When HR confirms your employment or extends your probation." },
   { key: "leave_to_approve", group: "approver", label: "Leave waiting for me", description: "When a leave request reaches your step in the approval chain." },
   { key: "comp_off_to_approve", group: "approver", label: "Comp off waiting for me", description: "When someone on your team claims comp off." },
+  { key: "probation_due", group: "approver", label: "Probation reviews due", description: "Before probation ends for someone on your team, or anyone if you're HR." },
   { key: "resignation_submitted", group: "approver", label: "Resignations", description: "When someone on your team, or anyone if you're HR, resigns." },
 ];
 

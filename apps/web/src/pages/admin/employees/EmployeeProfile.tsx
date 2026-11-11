@@ -11,6 +11,7 @@ import {
   fmtDate,
   inr,
   type DocumentType,
+  probationEndDate,
   type EmployeeStatus,
 } from "@hrms/shared";
 import { Button } from "@/components/ui/button";
@@ -176,6 +177,7 @@ export default function EmployeeProfile() {
               ["Branch", e.branch ?? "—"],
               ["Reports to", e.manager ?? "—"],
               ["Joined", fmtDate(e.dateOfJoining)],
+              ...(e.status === "probation" ? [["Probation ends", <Link key="pe" to="/employees/probation">{fmtDate(probationEndDate({ dateOfJoining: e.dateOfJoining, probationMonths: e.probationMonths, confirmationDate: e.confirmationDate }))}</Link>]] : []),
               ...(e.annualCtc !== null ? [["Annual CTC", <b key="ctc" className="num font-semibold">{inr(e.annualCtc)}</b>]] : []),
               [
                 "Login",

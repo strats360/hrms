@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { branches, departments, designations, employees, tenants, type Database } from "@hrms/db";
-import { BUILT_IN_LETTERS, COMPONENT_LABELS, letterBlocks, pronouns, rupeesInWords, todayIST, type LetterTemplate, type LetterValues, type MonthlyComponents } from "@hrms/shared";
+import { BUILT_IN_LETTERS, COMPONENT_LABELS, letterBlocks, probationEndDate, pronouns, rupeesInWords, todayIST, type LetterTemplate, type LetterValues, type MonthlyComponents } from "@hrms/shared";
 import { A4, colors, MARGIN, PdfWriter } from "../lib/pdf";
 import { getTemplate, resolveStructure, structuresAsOf } from "./payroll";
 
@@ -64,6 +64,7 @@ export async function letterValues(db: Database, tenantId: string, employeeId: s
     "employee.employment_type": EMPLOYMENT[e.employmentType ?? ""] ?? e.employmentType ?? "",
     "employee.joining_date": longDate(e.dateOfJoining),
     "employee.confirmation_date": longDate(e.confirmationDate),
+    "employee.probation_end_date": longDate(probationEndDate(e)),
     "employee.probation_months": e.probationMonths != null ? String(e.probationMonths) : "",
     "employee.last_working_day": longDate(e.lastWorkingDay),
     "employee.resignation_date": longDate(e.resignationDate),

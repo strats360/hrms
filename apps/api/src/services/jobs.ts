@@ -9,6 +9,7 @@ import { AUTOPAY_GATEWAY, scheduleAutopay } from "./autopay";
 import { getEntity } from "./billing";
 import { expireCompOff } from "./comp-off";
 import { purgeOldSelfies } from "./selfie-retention";
+import { runProbationReminders } from "./probation";
 
 const istDate = (d: Date) => d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
 
@@ -97,4 +98,10 @@ export async function runScheduled(env: Env) {
   }
   const r = await runAutopayRetries(env);
   if (r.due) console.log(`autopay retries: ${r.scheduled} scheduled, ${r.skipped} skipped of ${r.due} due`);
+  try {
+    const p = await runProbationReminders(env);
+    if (p.sent) console.log(`probation reminders: ${p.sent} sent`);
+  } catch (e) {
+    console.error("probation reminders failed", e);
+  }
 }

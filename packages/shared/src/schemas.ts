@@ -649,3 +649,20 @@ export const loanPolicySchema = z.object({
   loanMaxMonths: z.number().int().min(1).max(120),
   loanInterestPct: z.number().min(0).max(36),
 });
+
+export const probationReviewSchema = z.object({
+  recommendation: z.enum(["confirm", "extend", "not_confirm"]),
+  note: z.string().trim().min(3, "Add a line on how they've done").max(1000),
+});
+export const probationConfirmSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  note: z.string().trim().max(1000).nullable().optional(),
+});
+export const probationExtendSchema = z.object({
+  until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  reason: z.string().trim().min(3, "Give a reason").max(1000),
+});
+export const probationSettingsSchema = z.object({
+  reminderDays: z.number().int().min(1).max(60),
+  defaultMonths: z.number().int().min(1).max(24),
+});
