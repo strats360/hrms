@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { MyShifts } from "@/components/ess/MyShifts";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
+import { useSession } from "@/lib/session";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
@@ -56,6 +57,7 @@ function shiftMonth(m: string, d: number) {
 const monthLabel = (m: string) => new Date(m + "-01T00:00:00Z").toLocaleDateString("en-IN", { month: "long", year: "numeric", timeZone: "UTC" });
 
 export default function EssAttendance() {
+  const { has } = useSession();
   const [params, setParams] = useSearchParams();
   const thisMonth = todayIST().slice(0, 7);
   const [month, setMonth] = useState(thisMonth);
@@ -75,10 +77,13 @@ export default function EssAttendance() {
     <>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="!mb-0 !text-[24px]">Attendance</h1>
+        <div className="flex gap-2">
+        {has("module.timesheets") ? <Link to="/me/timesheets" className="btn btn-secondary">Timesheets</Link> : null}
         <Button variant="primary" onClick={() => { setPrefillDate(undefined); setOpen(true); }}>
           <Plus size={15} />
           Request correction
         </Button>
+        </div>
       </div>
       <MyShifts />
       <div className="flex items-center gap-2">

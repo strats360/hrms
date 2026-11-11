@@ -15,7 +15,7 @@ import { Field, Input, Select } from "@/components/ui/field";
 import { useLookups } from "@/components/attendance/shared";
 
 export default function AttendanceLayout() {
-  const { can } = useSession();
+  const { can, has } = useSession();
   const lookups = useLookups();
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -60,6 +60,7 @@ export default function AttendanceLayout() {
           { to: "/attendance", label: "Today", end: true },
           { to: "/attendance/monthly", label: "Monthly register" },
           { to: "/attendance/roster", label: "Roster" },
+          ...(has("module.timesheets") ? [{ to: "/attendance/timesheets", label: "Timesheets" }] : []),
           { to: "/attendance/corrections", label: "Corrections" },
           { to: "/attendance/policies", label: "Policies & shifts" },
         ]}

@@ -3,7 +3,7 @@ import { Link, Navigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { CalendarPlus, Camera, ClipboardEdit, FileText, MapPin } from "lucide-react";
-import { fmtDate } from "@hrms/shared";
+import { addWeeks, fmtDate, todayIST, weekStart } from "@hrms/shared";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { isNetworkError, QUEUE_EVENT, queuedPunches, queuePunch, savedHome, saveHome } from "@/lib/offline";
@@ -153,6 +153,7 @@ export default function EssHomePage() {
       <InstallCard />
       <ReviewNotice />
       <InterviewNotice />
+      <TimesheetNotice />
       {ob && ob.status === "submitted" ? <Notice tone="sel">Your joining details are with HR for verification. Attendance and leave open up once they're verified.</Notice> : null}
       {ob && ob.status !== "submitted" ? (
         <Notice tone="warn">
@@ -296,6 +297,23 @@ function InterviewNotice() {
     <Notice tone={due.length ? "warn" : "sel"}>
       {due.length ? `${due.length} interview${due.length === 1 ? "" : "s"} waiting for your feedback. ` : `You're interviewing ${today[0]!.candidate} today. `}
       <Link to={`/me/interviews?id=${(due[0] ?? today[0])!.id}`} style={{ color: "inherit", textDecoration: "underline" }}>{due.length ? "Add feedback" : "See details"}</Link>
+    </Notice>
+  );
+}
+
+/** Last week's timesheet, for people who keep timesheets: not submitted yet, or sent back. */
+function TimesheetNotice() {
+  const { has } = useSession();
+  const last = addWeeks(weekStart(todayIST()), -1);
+  const q = useQuery({ queryKey: ["timesheets", "mine", last], queryFn: () => api.get<{ sheet: { status: string; rejectReason: string | null } | null; recent: unknown[]; projects: unknown[] }>(`/ess/timesheets?week=${last}`), enabled: has("module.timesheets"), staleTime: 300_000 });
+  const d = q.data;
+  if (!d || !d.projects.length || !d.recent.length) return null;
+  const s = d.sheet?.status;
+  if (s === "submitted" || s === "approved") return null;
+  return (
+    <Notice tone={s === "rejected" ? "bad" : "warn"}>
+      {s === "rejected" ? `Your timesheet for the week of ${fmtDate(last)} was sent back: ${d.sheet!.rejectReason} ` : `Your timesheet for the week of ${fmtDate(last)} isn't submitted yet. `}
+      <Link to={`/me/timesheets?week=${last}`} style={{ color: "inherit", textDecoration: "underline" }}>Open timesheet</Link>
     </Notice>
   );
 }

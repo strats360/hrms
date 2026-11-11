@@ -1,3 +1,4 @@
+import { essTimesheetRoutes, timesheetRoutes } from "./routes/timesheets";
 import { assetRoutes, essAssetRoutes } from "./routes/assets";
 import { careersRoutes, myInterviewRoutes, recruitmentRoutes } from "./routes/recruitment";
 import { essPerformanceRoutes, performanceRoutes } from "./routes/performance";
@@ -149,6 +150,8 @@ export function buildApp() {
   t.use("/ess/interviews/*", requireFeature("module.recruitment"));
   t.use("/admin/assets/*", requireFeature("module.assets"));
   t.use("/ess/assets/*", requireFeature("module.assets"));
+  t.use("/ess/timesheets/*", requireFeature("module.timesheets"));
+  t.use("/admin/attendance/timesheets/*", requireFeature("module.timesheets"));
   t.use("/admin/tds/*", requireFeature("module.tds"));
   t.use("/ess/claims/*", requireFeature("module.reimbursements"));
   t.use("/admin/reimbursements/*", requireFeature("module.reimbursements"));
@@ -166,6 +169,7 @@ export function buildApp() {
   t.route("/ess/reviews", essPerformanceRoutes);
   t.route("/ess/interviews", myInterviewRoutes);
   t.route("/ess/assets", essAssetRoutes);
+  t.route("/ess/timesheets", essTimesheetRoutes);
   t.route("/ess", essRoutes);
   t.route("/ess", essExitRoutes);
   t.route("/ess", essPayslipFileRoutes);
@@ -189,6 +193,7 @@ export function buildApp() {
   t.route("/admin/onboarding", onboardingAdminRoutes);
   t.route("/admin/attendance", attendanceImportRoutes);
   t.route("/admin/attendance/roster", rosterRoutes);
+  t.route("/admin/attendance/timesheets", timesheetRoutes);
   t.route("/admin/attendance", attendanceRoutes);
   t.route("/admin/leave", leaveExtrasRoutes);
   t.route("/admin/leave", compOffRoutes);

@@ -65,6 +65,7 @@ const router = createBrowserRouter([
           { path: "claims", element: L(() => import("@/pages/ess/Claims")) },
           { path: "reviews", element: L(() => import("@/pages/ess/Reviews")) },
           { path: "interviews", element: L(() => import("@/pages/ess/Interviews")) },
+          { path: "timesheets", element: L(() => import("@/pages/ess/Timesheets")) },
         ],
       },
       {
@@ -124,6 +125,7 @@ const router = createBrowserRouter([
               { path: "corrections", element: L(() => import("@/pages/admin/attendance/Corrections")) },
               { path: "policies", element: L(() => import("@/pages/admin/attendance/Policies")) },
               { path: "roster", element: L(() => import("@/pages/admin/attendance/Roster")) },
+              { path: "timesheets", element: L(() => import("@/pages/admin/attendance/Timesheets")) },
             ],
           },
           {
