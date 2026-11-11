@@ -12,10 +12,12 @@ export const NOTIFICATION_KEYS = [
   "exit_updates",
   "loan_updates",
   "probation_outcome",
+  "review_updates",
   "leave_to_approve",
   "comp_off_to_approve",
   "resignation_submitted",
   "probation_due",
+  "reviews_to_complete",
   "privacy_requests",
 ] as const;
 export type NotificationKey = (typeof NOTIFICATION_KEYS)[number];
@@ -37,8 +39,10 @@ export const NOTIFICATIONS: NotificationDef[] = [
   { key: "exit_updates", group: "self", label: "Resignation updates", description: "When HR accepts or closes your resignation." },
   { key: "loan_updates", group: "self", label: "Loan and advance updates", description: "When a loan or advance you asked for is approved, rejected or paid out." },
   { key: "probation_outcome", group: "self", label: "Probation confirmed or extended", description: "When HR confirms your employment or extends your probation." },
+  { key: "review_updates", group: "self", label: "Performance reviews", description: "When your review opens, and when your manager's review is shared with you." },
   { key: "leave_to_approve", group: "approver", label: "Leave waiting for me", description: "When a leave request reaches your step in the approval chain." },
   { key: "comp_off_to_approve", group: "approver", label: "Comp off waiting for me", description: "When someone on your team claims comp off." },
+  { key: "reviews_to_complete", group: "approver", label: "Reviews to complete", description: "When someone on your team submits their self review, or HR sends a reminder." },
   { key: "probation_due", group: "approver", label: "Probation reviews due", description: "Before probation ends for someone on your team, or anyone if you're HR." },
   { key: "privacy_requests", group: "approver", label: "Data erasure requests", description: "When an employee asks the company to erase their personal data (HR only)." },
   { key: "resignation_submitted", group: "approver", label: "Resignations", description: "When someone on your team, or anyone if you're HR, resigns." },

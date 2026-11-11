@@ -43,12 +43,13 @@ export function crumbFor(path: string, groups: NavGroup[]) {
   const items = groups.flatMap((g) => g.items);
   const seg = path.split("/").filter(Boolean);
   const base = items.find((i) => i.to !== "/" && path.startsWith(i.to)) ?? items[0];
-  const sub = seg[1] && !/^[0-9a-f-]{36}$/.test(seg[1]) ? seg[1].replace(/-/g, " ") : seg[1] ? "Profile" : "";
+  const ID_LABEL: Record<string, string> = { "/employees": "Profile", "/performance": "Cycle" };
+  const sub = seg[1] === "reviews" && base?.to === "/performance" ? "Review" : seg[1] && !/^[0-9a-f-]{36}$/.test(seg[1]) ? seg[1].replace(/-/g, " ") : seg[1] ? (ID_LABEL[base?.to ?? ""] ?? "Details") : "";
   return base ? base.label + (sub ? " / " + sub.charAt(0).toUpperCase() + sub.slice(1) : "") : "";
 }
 
 export function AdminLayout() {
-  const { tenant, can, isEmployee } = useSession();
+  const { tenant, can, has, isEmployee } = useSession();
   const loc = useLocation();
   const [collapsed, toggle] = useCollapsed("sidebarCollapsed");
   const [drawer, setDrawer] = useState(false);
@@ -64,7 +65,7 @@ export function AdminLayout() {
   if (!tenant?.roleId) return <Navigate to={isEmployee ? "/me" : "/login"} replace />;
   if (!tenant.setupComplete && can("settings", "configure") && !sessionStorageGet("skipSetup") && loc.pathname !== "/setup") return <Navigate to="/setup" replace />;
 
-  const groups = ADMIN_NAV.map((g) => ({ ...g, items: g.items.filter((i) => !i.perm || can(i.perm[0], i.perm[1])) })).filter((g) => g.items.length);
+  const groups = ADMIN_NAV.map((g) => ({ ...g, items: g.items.filter((i) => (!i.perm || can(i.perm[0], i.perm[1])) && (!i.feature || has(i.feature))) })).filter((g) => g.items.length);
   const b = badges.data;
   const sidebarProps = {
     groups,

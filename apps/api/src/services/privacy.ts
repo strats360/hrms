@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, notInArray, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, ne, notInArray, or, sql } from "drizzle-orm";
 import { strToU8, zipSync } from "fflate";
 import {
   attendanceCorrections,
@@ -16,6 +16,9 @@ import {
   loanRepayments,
   memberships,
   onboardingInvites,
+  performanceReviews,
+  reviewCycles,
+  reviewGoals,
   payments,
   payrollAdjustments,
   payrollItems,
@@ -37,6 +40,25 @@ import { deleteFile, getFile, safeName } from "../lib/storage";
 export async function privacySettings(db: Database, tenantId: string): Promise<PrivacySettings> {
   const [t] = await db.select({ settings: tenants.settings }).from(tenants).where(eq(tenants.id, tenantId));
   return { ...DEFAULT_PRIVACY, ...((t?.settings as { privacy?: Partial<PrivacySettings> } | null)?.privacy ?? {}) };
+}
+
+async function myReviews(db: Database, tenantId: string, employeeId: string) {
+  const rows = await db.select({ r: performanceReviews, cycle: reviewCycles.name }).from(performanceReviews).innerJoin(reviewCycles, eq(reviewCycles.id, performanceReviews.cycleId)).where(and(eq(performanceReviews.tenantId, tenantId), eq(performanceReviews.employeeId, employeeId), ne(reviewCycles.status, "draft")));
+  const out = [];
+  for (const { r, cycle } of rows) {
+    const shared = r.stage === "shared" || r.stage === "acknowledged";
+    const goals = await db.select().from(reviewGoals).where(eq(reviewGoals.reviewId, r.id));
+    out.push({
+      cycle,
+      stage: r.stage,
+      selfReview: r.self,
+      managerReview: shared ? r.manager : null,
+      finalRating: shared ? r.finalRating : null,
+      employeeComment: r.employeeComment,
+      goals: goals.map((g) => ({ title: g.title, description: g.description, weight: g.weight, selfRating: g.selfRating, selfComment: g.selfComment, ...(shared ? { managerRating: g.managerRating, managerComment: g.managerComment } : {}) })),
+    });
+  }
+  return out;
 }
 
 /** Columns that are internal plumbing or secrets, never part of the copy. */
@@ -99,6 +121,8 @@ export async function exportEmployeeData(db: Database, env: Env, tenantId: strin
     probation: clean(await db.select().from(probationEvents).where(own(probationEvents))),
     exit: clean(await db.select().from(employeeExits).where(own(employeeExits))),
     dataRequests: clean(await db.select().from(privacyRequests).where(own(privacyRequests))),
+    // reviews: only what the employee can already see (the manager's part once shared)
+    performanceReviews: await myReviews(db, tenantId, employeeId),
     account: membership ? { status: membership.status, lastActiveAt: membership.lastActiveAt, emailSettings: membership.prefs } : null,
   };
 
@@ -121,7 +145,7 @@ export async function exportEmployeeData(db: Database, env: Env, tenantId: strin
     `Your data held by ${data.company}`,
     `Prepared ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} for ${e.fullName} (${e.employeeCode}).`,
     "",
-    "data.json has every record about you, grouped by area: profile, attendance, leave, salary and payslips, tax, expense claims, loans, probation, exit and your requests about your data.",
+    "data.json has every record about you, grouped by area: profile, attendance, leave, salary and payslips, tax, expense claims, loans, probation, performance reviews, exit and your requests about your data.",
     "Dates are in YYYY-MM-DD. Times are in UTC. Amounts are in rupees.",
     "The folders hold the files you or HR uploaded: your photo, documents, expense receipts and tax proofs.",
     "Punch selfies aren't included; HR can share them on request. Bank account numbers show only the last 4 digits.",

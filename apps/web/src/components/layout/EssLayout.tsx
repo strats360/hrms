@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { WifiOff } from "lucide-react";
 import { queuedPunches, sendQueuedPunches } from "@/lib/offline";
 import { useOnline } from "@/lib/pwa";
-import { CalendarDays, Clock, Home, LayoutDashboard, LogOut, Percent, ShieldCheck, Receipt, User, Wallet } from "lucide-react";
+import { CalendarDays, Clock, Home, LayoutDashboard, LogOut, Percent, ShieldCheck, Receipt, Target, User, Wallet } from "lucide-react";
 import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./Header";
@@ -17,6 +17,8 @@ const TABS = [
   { to: "/me/payslips", label: "Payslips", icon: Wallet },
   { to: "/me/tax", label: "Tax", icon: Percent, feature: "module.tds" },
   { to: "/me/claims", label: "Claims", icon: Receipt, feature: "module.reimbursements" },
+  // the phone tab bar has no room; phones reach reviews from Home
+  { to: "/me/reviews", label: "Reviews", icon: Target, feature: "module.performance", phone: false },
   { to: "/me/profile", label: "Profile", icon: User },
 ];
 
@@ -24,6 +26,7 @@ const TABS = [
 export function EssLayout() {
   const { tenant, me, signOut, has } = useSession();
   const tabs = TABS.filter((t) => !("feature" in t) || has((t as { feature: string }).feature));
+  const phoneTabs = tabs.filter((t) => !("phone" in t && t.phone === false));
   const online = useOnline();
   const eid = tenant?.employeeId ?? null;
   // send punches saved offline as soon as there's a connection
@@ -74,8 +77,8 @@ export function EssLayout() {
       <main className="mx-auto flex max-w-[1100px] flex-col gap-4 px-4 pt-5">
         <Outlet />
       </main>
-      <nav className="fixed inset-x-0 bottom-0 z-10 grid border-t border-[var(--color-divider)] md:hidden" aria-label="Self-service" style={{ background: "var(--color-surface)", gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))`, paddingBottom: "env(safe-area-inset-bottom)" }}>
-        {tabs.map((t) => (
+      <nav className="fixed inset-x-0 bottom-0 z-10 grid border-t border-[var(--color-divider)] md:hidden" aria-label="Self-service" style={{ background: "var(--color-surface)", gridTemplateColumns: `repeat(${phoneTabs.length}, minmax(0, 1fr))`, paddingBottom: "env(safe-area-inset-bottom)" }}>
+        {phoneTabs.map((t) => (
           <NavLink key={t.to} to={t.to} end={t.end} className="flex min-w-0 flex-col items-center gap-0.5 py-2 text-[10.5px] no-underline" style={({ isActive }) => ({ color: isActive ? "var(--sel-fg)" : "var(--muted)" })}>
             <t.icon size={20} />
             {t.label}

@@ -151,6 +151,7 @@ export default function EssHomePage() {
       </div>
 
       <InstallCard />
+      <ReviewNotice />
       {ob && ob.status === "submitted" ? <Notice tone="sel">Your joining details are with HR for verification. Attendance and leave open up once they're verified.</Notice> : null}
       {ob && ob.status !== "submitted" ? (
         <Notice tone="warn">
@@ -262,4 +263,22 @@ function QuickLink({ to, icon, label }: { to: string; icon: React.ReactNode; lab
       {label}
     </Link>
   );
+}
+
+/** A nudge when the employee's review needs them, and the way in to reviews on phones. */
+function ReviewNotice() {
+  const { has } = useSession();
+  const q = useQuery({ queryKey: ["reviews", "mine"], queryFn: () => api.get<{ id: string; cycle: string; cycleStatus: string; selfDue: string; stage: string }[]>("/ess/reviews"), enabled: has("module.performance"), staleTime: 60_000 });
+  const list = q.data ?? [];
+  const todo = list.find((r) => r.cycleStatus === "active" && r.stage === "self") ?? list.find((r) => r.stage === "shared");
+  if (todo)
+    return (
+      <Notice tone={todo.stage === "self" ? "warn" : "sel"}>
+        {todo.stage === "self" ? `Your self review for ${todo.cycle} is due by ${fmtDate(todo.selfDue)}. ` : `Your review for ${todo.cycle} is ready to read. `}
+        <Link to={`/me/reviews?id=${todo.id}`} style={{ color: "inherit", textDecoration: "underline" }}>{todo.stage === "self" ? "Start my review" : "Read it"}</Link>
+      </Notice>
+    );
+  return list.length ? (
+    <Link to="/me/reviews" className="text-[13px] md:hidden">Your performance reviews</Link>
+  ) : null;
 }

@@ -14,7 +14,7 @@ interface Hit {
 
 /** ⌘K: jump to a page or an employee. */
 export function CommandPalette({ open, onOpenChange, onGo }: { open: boolean; onOpenChange: (v: boolean) => void; onGo: (to: string) => void }) {
-  const { can } = useSession();
+  const { can, has } = useSession();
   const [q, setQ] = useState("");
   const [active, setActive] = useState(0);
   const [debounced, setDebounced] = useState("");
@@ -34,7 +34,7 @@ export function CommandPalette({ open, onOpenChange, onGo }: { open: boolean; on
 
   const hits = useMemo<Hit[]>(() => {
     const pages: Hit[] = ADMIN_NAV.flatMap((g) => g.items)
-      .filter((i) => !i.soon && (!i.perm || can(i.perm[0], i.perm[1])))
+      .filter((i) => !i.soon && (!i.perm || can(i.perm[0], i.perm[1])) && (!i.feature || has(i.feature)))
       .map((i) => ({ label: i.label, sub: "Page", to: i.to }));
     const extra: Hit[] = [
       { label: "Add employee", sub: "Employees", to: "/employees/new" },
@@ -50,7 +50,7 @@ export function CommandPalette({ open, onOpenChange, onGo }: { open: boolean; on
     const pg = [...pages, ...extra].filter((p) => !s || p.label.toLowerCase().includes(s));
     const ppl = (people.data?.rows ?? []).map((e) => ({ label: e.fullName, sub: `${e.employeeCode}${e.designation ? " · " + e.designation : ""}`, to: `/employees/${e.id}` }));
     return [...ppl, ...pg].slice(0, 12);
-  }, [q, people.data, can]);
+  }, [q, people.data, can, has]);
 
   useEffect(() => setActive(0), [hits.length]);
 

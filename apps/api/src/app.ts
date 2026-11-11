@@ -1,3 +1,4 @@
+import { essPerformanceRoutes, performanceRoutes } from "./routes/performance";
 import { essPrivacyRoutes, privacyRoutes } from "./routes/privacy";
 import { Hono } from "hono";
 import { secureHeaders } from "hono/secure-headers";
@@ -139,6 +140,8 @@ export function buildApp() {
   t.use("*", requireAuth, requireTenant, readOnlyGuard);
   // plan / feature-flag gates (before the routes they guard)
   t.use("/ess/tax/*", requireFeature("module.tds"));
+  t.use("/ess/reviews/*", requireFeature("module.performance"));
+  t.use("/admin/performance/*", requireFeature("module.performance"));
   t.use("/admin/tds/*", requireFeature("module.tds"));
   t.use("/ess/claims/*", requireFeature("module.reimbursements"));
   t.use("/admin/reimbursements/*", requireFeature("module.reimbursements"));
@@ -153,6 +156,7 @@ export function buildApp() {
   t.route("/ess/loans", essLoanRoutes);
   t.route("/ess/roster", essRosterRoutes);
   t.route("/ess/privacy", essPrivacyRoutes);
+  t.route("/ess/reviews", essPerformanceRoutes);
   t.route("/ess", essRoutes);
   t.route("/ess", essExitRoutes);
   t.route("/ess", essPayslipFileRoutes);
@@ -163,6 +167,7 @@ export function buildApp() {
   t.route("/admin/letters", letterRoutes);
   t.route("/admin/probation", probationRoutes);
   t.route("/admin/privacy", privacyRoutes);
+  t.route("/admin/performance", performanceRoutes);
   t.use("/admin/*", requireAdmin);
   t.route("/admin/dashboard", dashboardRoutes);
   t.route("/admin/org/notifications", orgNotificationRoutes);

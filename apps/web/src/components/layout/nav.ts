@@ -13,6 +13,7 @@ import {
   Settings,
   ShieldCheck,
   SlidersHorizontal,
+  Target,
   Users,
 } from "lucide-react";
 import type { Action, Module } from "@hrms/shared";
@@ -22,6 +23,8 @@ export interface NavItem {
   label: string;
   icon: LucideIcon;
   perm?: [Module, Action?];
+  /** Feature flag that must be on. */
+  feature?: string;
   soon?: boolean;
   badgeKey?: "leave" | "corrections" | "claims";
 }
@@ -40,6 +43,7 @@ export const ADMIN_NAV: NavGroup[] = [
       { to: "/employees", label: "Employees", icon: Users, perm: ["employees"] },
       { to: "/attendance", label: "Attendance", icon: Clock, perm: ["attendance"], badgeKey: "corrections" },
       { to: "/leave", label: "Leave", icon: CalendarDays, perm: ["leave"], badgeKey: "leave" },
+      { to: "/performance", label: "Performance", icon: Target, perm: ["employees"], feature: "module.performance" },
     ],
   },
   {
