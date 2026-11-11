@@ -11,7 +11,7 @@ export async function overtimeSettings(db: Database, tenantId: string): Promise<
   return { ...DEFAULT_OVERTIME, ...((t?.s as { overtime?: Partial<OvertimeSettings> } | undefined)?.overtime ?? {}) };
 }
 
-async function monthlyPay(db: Database, tenantId: string, ids: string[], asOf: string) {
+export async function monthlyPay(db: Database, tenantId: string, ids: string[], asOf: string) {
   if (!ids.length) return new Map<string, { basic: number; gross: number }>();
   const template = await getTemplate(db, tenantId);
   const structs = await structuresAsOf(db, tenantId, ids, asOf);

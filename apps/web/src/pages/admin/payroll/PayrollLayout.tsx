@@ -72,6 +72,7 @@ export default function PayrollLayout() {
           { to: "/payroll/structure", label: "Salary structure" },
           { to: "/payroll/review", label: "Review & approve" },
           { to: "/payroll/payslips", label: "Payslips" },
+          { to: "/payroll/loans", label: "Loans & advances" },
         ]}
       />
       <Outlet />

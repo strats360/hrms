@@ -612,3 +612,40 @@ export const letterGenerateSchema = z.object({
   title: z.string().trim().min(2).max(80).optional(),
   save: z.boolean().default(false),
 });
+
+export const loanRequestSchema = z.object({
+  type: z.enum(["advance", "loan"]),
+  amount: z.number().positive().max(10_000_000),
+  months: z.number().int().min(1).max(120),
+  reason: z.string().trim().min(3, "Say what it's for").max(500),
+});
+export const loanCreateSchema = loanRequestSchema.extend({
+  employeeId: z.string().min(1),
+  interestPct: z.number().min(0).max(36).default(0),
+  startMonth: z.string().regex(/^\d{4}-\d{2}$/),
+});
+export const loanApproveSchema = z.object({
+  amount: z.number().positive().max(10_000_000),
+  months: z.number().int().min(1).max(120),
+  interestPct: z.number().min(0).max(36),
+  startMonth: z.string().regex(/^\d{4}-\d{2}$/),
+  note: z.string().trim().max(500).nullable().optional(),
+});
+export const loanDisburseSchema = z.object({
+  paidOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  method: z.enum(["bank_transfer", "cash", "cheque"]),
+  reference: z.string().trim().max(80).nullable().optional(),
+});
+export const loanRepaymentSchema = z.object({
+  amount: z.number().positive().max(10_000_000),
+  paidOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  note: z.string().trim().max(200).nullable().optional(),
+});
+export const loanPolicySchema = z.object({
+  requests: z.boolean(),
+  advanceMaxPctOfGross: z.number().min(10).max(300),
+  advanceMaxMonths: z.number().int().min(1).max(12),
+  loanMaxMonthsOfGross: z.number().min(1).max(36),
+  loanMaxMonths: z.number().int().min(1).max(120),
+  loanInterestPct: z.number().min(0).max(36),
+});

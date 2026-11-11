@@ -44,6 +44,13 @@ describe("full and final settlement", () => {
     expect(death.notice.shortfall).toBe(0);
   });
 
+  it("takes loans and advances still owed off the settlement", () => {
+    const plain = computeSettlement(base);
+    const owed = computeSettlement({ ...base, recoveries: [{ key: "loan:x", label: "Salary advance ADV-0001 balance", amount: 15000 }] });
+    expect(line(owed, "loan:x")).toMatchObject({ kind: "deduction", amount: 15000 });
+    expect(owed.net).toBeCloseTo(plain.net - 15000, 2);
+  });
+
   it("caps gratuity at ₹20 lakh", () => {
     const r = computeSettlement({ ...base, monthlyBasic: 500000, dateOfJoining: "2000-01-01" });
     expect(line(r, "gratuity")!.amount).toBe(2000000);

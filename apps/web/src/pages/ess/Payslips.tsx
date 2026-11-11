@@ -6,6 +6,7 @@ import { fmtDate, inr } from "@hrms/shared";
 import { api, ApiError } from "@/lib/api";
 import { PillTabs } from "@/components/ui/tabs";
 import { MySalary, type MySalaryData } from "@/components/ess/MySalary";
+import { MyLoans, type MyLoansData } from "@/components/ess/MyLoans";
 import { Card } from "@/components/ui/card";
 import { Empty, ErrorState, Loading } from "@/components/ui/page";
 import { Tag } from "@/components/ui/tag";
@@ -40,20 +41,34 @@ export default function EssPayslips() {
     },
     retry: false,
   });
-  const view = params.get("view") === "salary" && salary.data ? "salary" : "payslips";
-  const tabs = salary.data ? (
-    <PillTabs<"payslips" | "salary">
-      value={view}
-      onChange={(v) => setParams(v === "salary" ? { view: "salary" } : {}, { replace: true })}
-      tabs={[
-        { value: "payslips", label: "Payslips" },
-        { value: "salary", label: "My salary" },
-      ]}
-    />
-  ) : null;
+  const loans = useQuery({ queryKey: ["ess", "loans"], queryFn: () => api.get<MyLoansData>("/ess/loans"), retry: false });
+  const showLoans = !!loans.data && (loans.data.policy.requests || loans.data.rows.length > 0);
+  type View = "payslips" | "salary" | "loans";
+  const wanted = params.get("view");
+  const view: View = wanted === "salary" && salary.data ? "salary" : wanted === "loans" && showLoans ? "loans" : "payslips";
+  const tabs =
+    salary.data || showLoans ? (
+      <PillTabs<View>
+        value={view}
+        onChange={(v) => setParams(v === "payslips" ? {} : { view: v }, { replace: true })}
+        tabs={[{ value: "payslips", label: "Payslips" }, ...(salary.data ? [{ value: "salary" as const, label: "My salary" }] : []), ...(showLoans ? [{ value: "loans" as const, label: "Loans" }] : [])]}
+      />
+    ) : null;
 
   if (q.isLoading) return <Loading />;
   if (q.error) return <ErrorState error={q.error} retry={() => q.refetch()} />;
+  if (view === "loans" && loans.data) {
+    return (
+      <>
+        <div>
+          <h1 className="!mb-1 text-[26px]">Loans and advances</h1>
+          <div className="text-muted text-[13.5px]">What you've borrowed from the company, and what's left to repay.</div>
+        </div>
+        {tabs}
+        <MyLoans data={loans.data} />
+      </>
+    );
+  }
   if (view === "salary" && salary.data) {
     return (
       <>

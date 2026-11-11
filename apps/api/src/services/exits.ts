@@ -1,4 +1,5 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
+import { loansToRecover, settleLoansInFnf } from "./loans";
 import { employeeExits, employees, leaveBalances, leaveTypes, payments, payrollItems, payrollRuns, reimbursementClaims, tenants, type Database } from "@hrms/db";
 import { computeSettlement, DEFAULT_CLEARANCE, type ExitType, type FnfResult, type ManualLine } from "@hrms/shared";
 import { balanceSummary } from "./leave";
@@ -59,6 +60,8 @@ export async function settlementFor(db: Database, exit: Exit, emp: Employee) {
     leave,
     manual: inputs.manual ?? [],
     tds: inputs.tds ?? 0,
+    // loans and advances still owed come off the settlement
+    recoveries: await loansToRecover(db, tenantId, emp.id),
   });
 
   // what else is still open for this employee, so nothing is paid twice or forgotten
@@ -111,6 +114,7 @@ export async function markSettled(db: Database, exit: Exit, s: { on: string; met
   if (!row) return null;
   await db.update(employees).set({ status: "exited" }).where(eq(employees.id, exit.employeeId));
   const snap = exit.settlement as SettlementSnapshot | null;
+  await settleLoansInFnf(db, exit.tenantId, (snap?.lines ?? []).filter((l) => l.kind === "deduction"), s.on, null);
   const year = Number(exit.lastWorkingDay.slice(0, 4));
   for (const l of snap?.leave ?? []) {
     if (l.days > 0) await db.update(leaveBalances).set({ adjusted: sql`${leaveBalances.adjusted} - ${l.days}` }).where(and(eq(leaveBalances.employeeId, exit.employeeId), eq(leaveBalances.leaveTypeId, l.leaveTypeId), eq(leaveBalances.year, year)));

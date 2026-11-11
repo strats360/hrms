@@ -75,6 +75,8 @@ export interface FnfInput {
   leave: EncashableLeave[];
   manual: ManualLine[];
   tds: number;
+  /** Amounts the employee still owes the company (loans, advances), taken from the settlement. */
+  recoveries?: { key: string; label: string; amount: number }[];
 }
 
 export interface FnfLine {
@@ -156,6 +158,8 @@ export function computeSettlement(i: FnfInput): FnfResult {
     lines.push({ key: `manual:${n}`, label: m.label, kind: m.kind, amount: r2(m.amount) });
     if (m.kind === "earning" && m.taxable !== false) taxable += m.amount;
   });
+
+  for (const rec of i.recoveries ?? []) if (rec.amount > 0) lines.push({ key: rec.key, label: rec.label, kind: "deduction", amount: r2(rec.amount) });
 
   if (i.tds > 0) lines.push({ key: "tds", label: "TDS on settlement", kind: "deduction", amount: r2(i.tds) });
 

@@ -38,6 +38,7 @@ import { buildCalendar } from "./attendance";
 import { declarationsFor } from "./tax";
 import { claimsForRun } from "./reimbursements";
 import { rulesFor } from "./statutory";
+import { syncLoanRecoveries } from "./loans";
 
 export function monthBounds(month: string) {
   const [y, m] = month.split("-").map(Number) as [number, number];
@@ -198,6 +199,8 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
   const statutory = tenant?.statutory ?? {};
   const emps = await payableEmployees(db, tenantId, start, end);
   const ids = emps.map((x) => x.e.id);
+  // this month's loan and advance instalments, as deduction lines
+  await syncLoanRecoveries(db, { id: run.id, tenantId, month: run.month }, ids);
   const [structs, ytd, unpaid, adjustments, existing, decls] = await Promise.all([
     structuresAsOf(db, tenantId, ids, end),
     yearToDate(db, tenantId, run.month),

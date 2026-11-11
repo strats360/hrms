@@ -1,4 +1,5 @@
 import { Hono, type Context } from "hono";
+import { closeRepaidLoans } from "../services/loans";
 import { allowedRecipients } from "../services/notifications";
 import { and, asc, desc, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
 import {
@@ -386,6 +387,8 @@ payrollRoutes.delete("/runs/:id/adjustments/:adjId", requirePerm("payroll", "edi
   const run = await loadRun(c, c.req.param("id"));
   if (run.status === "approved" || run.status === "paid") throw badRequest("This payroll is locked");
   const db = c.get("db");
+  const [loanLine] = await db.select({ source: payrollAdjustments.source }).from(payrollAdjustments).where(and(eq(payrollAdjustments.id, c.req.param("adjId")), eq(payrollAdjustments.runId, run.id)));
+  if (loanLine?.source === "loan") throw badRequest("Loan recoveries come from the loan. To skip this month, pause it under Payroll › Loans and recalculate.");
   const [row] = await db.delete(payrollAdjustments).where(and(eq(payrollAdjustments.id, c.req.param("adjId")), eq(payrollAdjustments.runId, run.id))).returning();
   if (!row) throw notFound("Adjustment");
   await releaseEncashment(db, row);
@@ -409,6 +412,7 @@ payrollRoutes.post("/runs/:id/approve", requirePerm("payroll", "approve"), async
   const [updated] = await db.update(payrollRuns).set({ status: "approved", approvedBy: uid(c), approvedAt: new Date() }).where(and(eq(payrollRuns.id, run.id), eq(payrollRuns.status, "calculated"))).returning();
   if (!updated) throw badRequest("This payroll changed. Reload and try again.");
   await audit(c, { action: "payroll.approve", entity: "payroll_run", entityId: run.id, summary: `Approved and locked ${run.month} payroll (net ${inr(run.totals?.net ?? 0)})` });
+  await closeRepaidLoans(db, tid(c));
   return c.json(updated);
 });
 

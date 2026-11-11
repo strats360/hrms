@@ -21,3 +21,4 @@ export * from "./security";
 export * from "./notifications";
 export * from "./org-chart";
 export * from "./letters";
+export * from "./loans";

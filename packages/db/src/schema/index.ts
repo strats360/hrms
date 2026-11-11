@@ -11,3 +11,4 @@ export * from "./payments";
 export * from "./billing";
 export * from "./platform";
 export * from "./exits";
+export * from "./loans";
