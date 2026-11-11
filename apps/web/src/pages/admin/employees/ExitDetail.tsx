@@ -52,6 +52,7 @@ interface ExitDetailView extends LetterExit {
   noticeWaived: boolean;
   payInLieu: boolean;
   clearance: { key: string; label: string; done: boolean; doneBy?: string | null; doneAt?: string | null; note?: string | null }[];
+  heldAssets?: { id: string; tag: string; name: string }[];
   inputs: { manual?: Manual[]; tds?: number; encashDays?: Record<string, number>; notes?: string | null };
   settlement: (Result & { leave: { leaveTypeId: string; name: string; days: number }[] }) | null;
   netAmount: number | null;
@@ -251,6 +252,15 @@ function Clearance({ x, editable, onChange }: { x: ExitDetailView; editable: boo
           <div key={i.key} className="flex flex-col gap-0.5">
             <Checkbox checked={i.done} disabled={!editable || tick.isPending} onChange={(v) => tick.mutate({ key: i.key, done: v })} label={i.label} />
             {i.done && i.doneBy ? <div className="text-muted pl-7 text-[12px]">{`${i.doneBy}${i.doneAt ? `, ${fmtDate(i.doneAt.slice(0, 10))}` : ""}`}</div> : null}
+            {i.key === "assets" && x.heldAssets?.length ? (
+              <div className="pl-7 text-[12.5px] text-[var(--bad)]">
+                Still with them:{" "}
+                {x.heldAssets.map((a, n) => (
+                  <span key={a.id}>{n ? ", " : ""}<Link to={`/assets/${a.id}`}>{a.name} ({a.tag})</Link></span>
+                ))}
+                . It ticks itself once they're returned.
+              </div>
+            ) : null}
           </div>
         ))}
       </div>

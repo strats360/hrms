@@ -1,3 +1,4 @@
+import { heldAssets } from "./assets";
 import { Hono, type Context } from "hono";
 import { sendNotification } from "../services/notifications";
 import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
@@ -130,7 +131,7 @@ exitRoutes.get("/:id", requirePerm("employees", "view"), async (c) => {
   const full = can(c.get("tenant").permissions, "payroll", "view");
   // money is for people with payroll access; others see the process only
   if (!full) return c.json({ ...x, settlement: null, netAmount: null, inputs: {}, preview: null, payment: null, typeLabel: EXIT_TYPE_LABELS[x.type as ExitType] ?? x.type, statusLabel: EXIT_STATUS_LABELS[x.status as ExitStatus] ?? x.status, employee: { id: e.id, code: e.employeeCode, name: e.fullName, status: e.status, dateOfJoining: e.dateOfJoining } });
-  return c.json(await view(c, x, e));
+  return c.json({ ...(await view(c, x, e)), heldAssets: await heldAssets(c.get("db"), tid(c), e.id) });
 });
 
 /** Start an exit (HR): resignation received, termination, retirement... */
@@ -193,6 +194,10 @@ exitRoutes.post("/:id/clearance", requirePerm("employees", "edit"), v("json", z.
   const b = c.req.valid("json");
   const items = x.clearance.map((i) => (i.key === b.key ? { ...i, done: b.done, note: b.note ?? i.note ?? null, doneBy: b.done ? c.get("session")!.name : null, doneAt: b.done ? new Date().toISOString() : null } : i));
   if (!x.clearance.some((i) => i.key === b.key)) throw notFound("Checklist item");
+  if (b.key === "assets" && b.done) {
+    const held = await heldAssets(c.get("db"), tid(c), e.id);
+    if (held.length) throw badRequest(`${e.fullName} still has ${held.map((h) => `${h.name} (${h.tag})`).join(", ")}. Record them as returned in Assets first.`);
+  }
   const [row] = await c.get("db").update(employeeExits).set({ clearance: items }).where(eq(employeeExits.id, x.id)).returning();
   const label = x.clearance.find((i) => i.key === b.key)!.label;
   await audit(c, { action: "exit.clearance", entity: "employee_exit", entityId: x.id, summary: `${b.done ? "Cleared" : "Reopened"} "${label}" for ${e.fullName}` });

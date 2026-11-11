@@ -1,6 +1,8 @@
 import { and, eq, inArray, isNotNull, ne, notInArray, or, sql } from "drizzle-orm";
 import { strToU8, zipSync } from "fflate";
 import {
+  assetAssignments,
+  assets,
   attendanceCorrections,
   attendancePunches,
   attendanceRecords,
@@ -123,6 +125,7 @@ export async function exportEmployeeData(db: Database, env: Env, tenantId: strin
     dataRequests: clean(await db.select().from(privacyRequests).where(own(privacyRequests))),
     // reviews: only what the employee can already see (the manager's part once shared)
     performanceReviews: await myReviews(db, tenantId, employeeId),
+    companyAssets: (await db.select({ x: assetAssignments, tag: assets.tag, name: assets.name, serialNumber: assets.serialNumber }).from(assetAssignments).innerJoin(assets, eq(assets.id, assetAssignments.assetId)).where(own(assetAssignments))).map((r) => ({ tag: r.tag, name: r.name, serialNumber: r.serialNumber, ...clean([r.x])[0] })),
     account: membership ? { status: membership.status, lastActiveAt: membership.lastActiveAt, emailSettings: membership.prefs } : null,
   };
 

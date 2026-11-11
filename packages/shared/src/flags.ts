@@ -18,6 +18,7 @@ export const FEATURES = {
   "module.compliance": "Statutory compliance",
   "module.performance": "Performance reviews",
   "module.recruitment": "Recruitment and careers page",
+  "module.assets": "Company assets",
 } as const;
 export type FeatureKey = keyof typeof FEATURES;
 

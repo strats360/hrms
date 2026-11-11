@@ -1,3 +1,4 @@
+import { assetRoutes, essAssetRoutes } from "./routes/assets";
 import { careersRoutes, myInterviewRoutes, recruitmentRoutes } from "./routes/recruitment";
 import { essPerformanceRoutes, performanceRoutes } from "./routes/performance";
 import { essPrivacyRoutes, privacyRoutes } from "./routes/privacy";
@@ -146,6 +147,8 @@ export function buildApp() {
   t.use("/admin/performance/*", requireFeature("module.performance"));
   t.use("/admin/recruitment/*", requireFeature("module.recruitment"));
   t.use("/ess/interviews/*", requireFeature("module.recruitment"));
+  t.use("/admin/assets/*", requireFeature("module.assets"));
+  t.use("/ess/assets/*", requireFeature("module.assets"));
   t.use("/admin/tds/*", requireFeature("module.tds"));
   t.use("/ess/claims/*", requireFeature("module.reimbursements"));
   t.use("/admin/reimbursements/*", requireFeature("module.reimbursements"));
@@ -162,6 +165,7 @@ export function buildApp() {
   t.route("/ess/privacy", essPrivacyRoutes);
   t.route("/ess/reviews", essPerformanceRoutes);
   t.route("/ess/interviews", myInterviewRoutes);
+  t.route("/ess/assets", essAssetRoutes);
   t.route("/ess", essRoutes);
   t.route("/ess", essExitRoutes);
   t.route("/ess", essPayslipFileRoutes);
@@ -174,6 +178,7 @@ export function buildApp() {
   t.route("/admin/privacy", privacyRoutes);
   t.route("/admin/performance", performanceRoutes);
   t.route("/admin/recruitment", recruitmentRoutes);
+  t.route("/admin/assets", assetRoutes);
   t.use("/admin/*", requireAdmin);
   t.route("/admin/dashboard", dashboardRoutes);
   t.route("/admin/org/notifications", orgNotificationRoutes);

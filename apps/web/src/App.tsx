@@ -103,6 +103,8 @@ const router = createBrowserRouter([
               { path: "new", element: L(() => import("@/pages/admin/employees/EmployeeForm")) },
             ],
           },
+          { path: "assets", element: L(() => import("@/pages/admin/assets/Assets")) },
+          { path: "assets/:id", element: L(() => import("@/pages/admin/assets/AssetDetail")) },
           { path: "recruitment", element: L(() => import("@/pages/admin/recruitment/Jobs")) },
           { path: "recruitment/candidates", element: L(() => import("@/pages/admin/recruitment/Candidates")) },
           { path: "recruitment/candidates/:id", element: L(() => import("@/pages/admin/recruitment/CandidateDetail")) },
