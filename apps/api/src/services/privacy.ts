@@ -12,6 +12,8 @@ import {
   employeeExits,
   employeeLoans,
   employees,
+  helpdeskMessages,
+  helpdeskTickets,
   leaveBalances,
   leaveEncashments,
   leaveRequests,
@@ -125,6 +127,12 @@ export async function exportEmployeeData(db: Database, env: Env, tenantId: strin
     dataRequests: clean(await db.select().from(privacyRequests).where(own(privacyRequests))),
     // reviews: only what the employee can already see (the manager's part once shared)
     performanceReviews: await myReviews(db, tenantId, employeeId),
+    // tickets they raised, with the replies they were shown (not the team's internal notes)
+    helpdeskTickets: await (async () => {
+      const ts = await db.select().from(helpdeskTickets).where(own(helpdeskTickets));
+      const msgs = ts.length ? await db.select().from(helpdeskMessages).where(and(inArray(helpdeskMessages.ticketId, ts.map((t) => t.id)), eq(helpdeskMessages.internal, false))) : [];
+      return clean(ts).map((t) => ({ ...t, messages: clean(msgs.filter((m) => m.ticketId === t.id)).map(({ ticketId: _t, authorId: _a, ...m }) => m) }));
+    })(),
     companyAssets: (await db.select({ x: assetAssignments, tag: assets.tag, name: assets.name, serialNumber: assets.serialNumber }).from(assetAssignments).innerJoin(assets, eq(assets.id, assetAssignments.assetId)).where(own(assetAssignments))).map((r) => ({ tag: r.tag, name: r.name, serialNumber: r.serialNumber, ...clean([r.x])[0] })),
     account: membership ? { status: membership.status, lastActiveAt: membership.lastActiveAt, emailSettings: membership.prefs } : null,
   };

@@ -1,3 +1,4 @@
+import { runHelpdeskAutoClose } from "./helpdesk";
 import { and, eq, isNotNull, lte } from "drizzle-orm";
 import { auditLogs, createDb, invoicePayments, invoices, tenants, type Database } from "@hrms/db";
 import { inr } from "@hrms/shared";
@@ -98,6 +99,12 @@ export async function runScheduled(env: Env) {
   }
   const r = await runAutopayRetries(env);
   if (r.due) console.log(`autopay retries: ${r.scheduled} scheduled, ${r.skipped} skipped of ${r.due} due`);
+  try {
+    const h = await runHelpdeskAutoClose(env);
+    if (h) console.log(`helpdesk: ${h} resolved tickets closed`);
+  } catch (e) {
+    console.error("helpdesk auto-close failed", e);
+  }
   try {
     const p = await runProbationReminders(env);
     if (p.sent) console.log(`probation reminders: ${p.sent} sent`);

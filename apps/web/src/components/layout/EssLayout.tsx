@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { WifiOff } from "lucide-react";
 import { queuedPunches, sendQueuedPunches } from "@/lib/offline";
 import { useOnline } from "@/lib/pwa";
-import { CalendarDays, Clock, Home, LayoutDashboard, LogOut, Percent, ShieldCheck, Receipt, Target, User, Wallet } from "lucide-react";
+import { CalendarDays, Clock, Home, LayoutDashboard, LogOut, Percent, ShieldCheck, LifeBuoy, Receipt, Target, User, Wallet } from "lucide-react";
 import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./Header";
@@ -19,6 +19,7 @@ const TABS = [
   { to: "/me/claims", label: "Claims", icon: Receipt, feature: "module.reimbursements" },
   // the phone tab bar has no room; phones reach reviews from Home
   { to: "/me/reviews", label: "Reviews", icon: Target, feature: "module.performance", phone: false },
+  { to: "/me/helpdesk", label: "Help", icon: LifeBuoy, feature: "module.helpdesk", phone: false },
   { to: "/me/profile", label: "Profile", icon: User },
 ];
 

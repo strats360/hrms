@@ -19,3 +19,4 @@ export * from "./recruitment";
 export * from "./assets";
 export * from "./timesheets";
 export * from "./announcements";
+export * from "./helpdesk";

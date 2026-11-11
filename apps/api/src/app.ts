@@ -1,3 +1,4 @@
+import { essHelpdeskRoutes, helpdeskRoutes } from "./routes/helpdesk";
 import { announcementRoutes, essAnnouncementRoutes } from "./routes/announcements";
 import { essTimesheetRoutes, timesheetRoutes } from "./routes/timesheets";
 import { assetRoutes, essAssetRoutes } from "./routes/assets";
@@ -154,6 +155,8 @@ export function buildApp() {
   t.use("/ess/timesheets/*", requireFeature("module.timesheets"));
   t.use("/ess/announcements/*", requireFeature("module.announcements"));
   t.use("/admin/announcements/*", requireFeature("module.announcements"));
+  t.use("/ess/helpdesk/*", requireFeature("module.helpdesk"));
+  t.use("/admin/helpdesk/*", requireFeature("module.helpdesk"));
   t.use("/admin/attendance/timesheets/*", requireFeature("module.timesheets"));
   t.use("/admin/tds/*", requireFeature("module.tds"));
   t.use("/ess/claims/*", requireFeature("module.reimbursements"));
@@ -174,6 +177,7 @@ export function buildApp() {
   t.route("/ess/assets", essAssetRoutes);
   t.route("/ess/timesheets", essTimesheetRoutes);
   t.route("/ess/announcements", essAnnouncementRoutes);
+  t.route("/ess/helpdesk", essHelpdeskRoutes);
   t.route("/ess", essRoutes);
   t.route("/ess", essExitRoutes);
   t.route("/ess", essPayslipFileRoutes);
@@ -188,6 +192,7 @@ export function buildApp() {
   t.route("/admin/recruitment", recruitmentRoutes);
   t.route("/admin/assets", assetRoutes);
   t.route("/admin/announcements", announcementRoutes);
+  t.route("/admin/helpdesk", helpdeskRoutes);
   t.use("/admin/*", requireAdmin);
   t.route("/admin/dashboard", dashboardRoutes);
   t.route("/admin/org/notifications", orgNotificationRoutes);

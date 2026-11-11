@@ -156,6 +156,7 @@ export default function EssHomePage() {
       <InterviewNotice />
       <TimesheetNotice />
       <AnnouncementsCard />
+      <HelpCard />
       {ob && ob.status === "submitted" ? <Notice tone="sel">Your joining details are with HR for verification. Attendance and leave open up once they're verified.</Notice> : null}
       {ob && ob.status !== "submitted" ? (
         <Notice tone="warn">
@@ -333,5 +334,22 @@ function AnnouncementsCard() {
       <CardHeader title={`Announcements${unread ? ` · ${unread} new` : ""}`} actions={list.length > 3 ? <Link to="/me/announcements" className="text-[13px]">All</Link> : null} />
       {top.map((a) => <FeedRow key={a.id} a={a} />)}
     </Card>
+  );
+}
+
+/** The way into the helpdesk, with any tickets waiting on the employee. */
+function HelpCard() {
+  const { has } = useSession();
+  const q = useQuery({ queryKey: ["helpdesk", "mine"], queryFn: () => api.get<{ tickets: { id: string; number: string; subject: string; status: string }[] }>("/ess/helpdesk"), enabled: has("module.helpdesk"), staleTime: 60_000 });
+  if (!has("module.helpdesk")) return null;
+  const waiting = (q.data?.tickets ?? []).filter((t) => t.status === "waiting");
+  const open = (q.data?.tickets ?? []).filter((t) => ["open", "in_progress", "waiting"].includes(t.status)).length;
+  return waiting.length ? (
+    <Notice tone="warn">
+      {waiting.length === 1 ? `${waiting[0]!.number} ${waiting[0]!.subject} needs your reply. ` : `${waiting.length} helpdesk tickets need your reply. `}
+      <Link to={waiting.length === 1 ? `/me/helpdesk/${waiting[0]!.id}` : "/me/helpdesk"} style={{ color: "inherit", textDecoration: "underline" }}>Open</Link>
+    </Notice>
+  ) : (
+    <Link to="/me/helpdesk" className="text-[13px]">Need help? Ask HR, IT or Finance{open ? ` · ${open} open ticket${open === 1 ? "" : "s"}` : ""}</Link>
   );
 }

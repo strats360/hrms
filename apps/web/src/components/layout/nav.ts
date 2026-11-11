@@ -9,6 +9,7 @@ import {
   CreditCard,
   FileText,
   Home,
+  Inbox,
   Laptop,
   LifeBuoy,
   Megaphone,
@@ -65,6 +66,7 @@ export const ADMIN_NAV: NavGroup[] = [
     key: "company",
     label: "Company",
     items: [
+      { to: "/helpdesk", label: "Helpdesk", icon: Inbox, perm: ["helpdesk"], feature: "module.helpdesk" },
       { to: "/announcements", label: "Announcements", icon: Megaphone, perm: ["employees", "edit"], feature: "module.announcements" },
       { to: "/assets", label: "Assets", icon: Laptop, perm: ["assets"], feature: "module.assets" },
       { to: "/reports", label: "Reports", icon: BarChart3, perm: ["reports"] },

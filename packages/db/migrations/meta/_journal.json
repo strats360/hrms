@@ -239,6 +239,13 @@
       "when": 1794411482797,
       "tag": "0033_real_monster_badoon",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1794412105740,
+      "tag": "0034_wild_crystal",
+      "breakpoints": true
     }
   ]
 }
