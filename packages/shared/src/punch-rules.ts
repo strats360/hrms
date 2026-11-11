@@ -8,8 +8,12 @@ export interface PunchPolicy {
   location: PunchCheckMode;
   ip: PunchCheckMode;
   wfhExempt: boolean;
+  /** Ask for a selfie at each punch. */
+  selfie: "off" | "optional" | "required";
+  /** Selfies are deleted this many days after the punch. */
+  selfieRetentionDays: number;
 }
-export const DEFAULT_PUNCH_POLICY: PunchPolicy = { location: "off", ip: "off", wfhExempt: true };
+export const DEFAULT_PUNCH_POLICY: PunchPolicy = { location: "off", ip: "off", wfhExempt: true, selfie: "off", selfieRetentionDays: 90 };
 
 export interface Office {
   name: string;

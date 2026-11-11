@@ -22,6 +22,7 @@ import { v } from "../lib/validate";
 import { badRequest, forbidden, notFound } from "../lib/errors";
 import { audit } from "../lib/audit";
 import { toCsv } from "../lib/csv";
+import { getFile } from "../lib/storage";
 import { buildCalendar, istDateTime, shiftFor, upsertAttendance } from "../services/attendance";
 import { inScope, teamScope } from "../services/scope";
 import { approvalPolicy, approvalScope, chainFor, recordDecision, waitingOn } from "../services/approvals";
@@ -83,6 +84,11 @@ attendanceRoutes.get("/today", requirePerm("attendance", "view"), v("query", z.o
       overtimeMinutes: rec?.overtimeMinutes ?? 0,
       earlyMinutes: rec?.earlyMinutes ?? 0,
       flags: rec?.flags ?? [],
+      // where and how they punched, for the punch details view
+      punch:
+        rec && (rec.lat != null || rec.checkOutLat != null || rec.checkInSelfieKey || rec.checkOutSelfieKey)
+          ? { recordId: rec.id, inLat: rec.lat, inLng: rec.lng, outLat: rec.checkOutLat, outLng: rec.checkOutLng, distanceM: rec.distanceM, inSelfie: !!rec.checkInSelfieKey, outSelfie: !!rec.checkOutSelfieKey }
+          : null,
     };
   });
   const count = (...s: (string | null)[]) => rows.filter((r) => s.includes(r.status)).length;
@@ -102,6 +108,18 @@ attendanceRoutes.get("/today", requirePerm("attendance", "view"), v("query", z.o
     },
     rows,
   });
+});
+
+/** A punch selfie, for HR (and managers, for their own team). */
+attendanceRoutes.get("/records/:id/selfie/:which", requirePerm("attendance", "view"), async (c) => {
+  const which = c.req.param("which");
+  if (which !== "in" && which !== "out") throw notFound("Selfie");
+  const [rec] = await c.get("db").select().from(attendanceRecords).where(and(eq(attendanceRecords.id, c.req.param("id")), eq(attendanceRecords.tenantId, c.get("tenant").tenantId)));
+  if (!rec || !inScope(await teamScope(c, "attendance"), rec.employeeId)) throw notFound("Selfie");
+  const key = which === "in" ? rec.checkInSelfieKey : rec.checkOutSelfieKey;
+  const file = key ? await getFile(c.env, key) : null;
+  if (!file) throw notFound("Selfie");
+  return c.body(file.body as never, 200, { "Content-Type": file.type, "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" });
 });
 
 const monthQuery = z.object({

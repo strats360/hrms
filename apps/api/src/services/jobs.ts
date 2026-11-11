@@ -8,6 +8,7 @@ import { cashfreeConfig } from "./cashfree";
 import { AUTOPAY_GATEWAY, scheduleAutopay } from "./autopay";
 import { getEntity } from "./billing";
 import { expireCompOff } from "./comp-off";
+import { purgeOldSelfies } from "./selfie-retention";
 
 const istDate = (d: Date) => d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
 
@@ -84,6 +85,12 @@ export async function runScheduled(env: Env) {
       if (co.expired) console.log(`comp off: ${co.expired} credits expired, ${co.lapsedDays} unused days lapsed`);
     } catch (e) {
       console.error("comp off expiry failed", e);
+    }
+    try {
+      const s = await purgeOldSelfies(db, env);
+      if (s.removed) console.log(`punch selfies: ${s.removed} past retention deleted`);
+    } catch (e) {
+      console.error("selfie retention failed", e);
     } finally {
       await db.$client.end({ timeout: 5 });
     }

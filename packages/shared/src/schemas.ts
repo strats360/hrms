@@ -188,7 +188,7 @@ export const tenantPayrollSettingsSchema = z.object({
   /** Employees can change their own profile photo. */
   essPhotoEdit: z.boolean().optional(),
   compOff: z.object({ expiryDays: z.number().int().min(7).max(365), claimWithinDays: z.number().int().min(1).max(90) }).optional(),
-  punchPolicy: z.object({ location: z.enum(["off", "flag", "block"]), ip: z.enum(["off", "flag", "block"]), wfhExempt: z.boolean() }).optional(),
+  punchPolicy: z.object({ location: z.enum(["off", "flag", "block"]), ip: z.enum(["off", "flag", "block"]), wfhExempt: z.boolean(), selfie: z.enum(["off", "optional", "required"]).optional(), selfieRetentionDays: z.number().int().min(7).max(365).optional() }).optional(),
   overtime: z
     .object({
       enabled: z.boolean(),
@@ -256,6 +256,8 @@ export const punchSchema = z.object({
   /** GPS accuracy in metres, as the browser reports it. */
   accuracy: z.number().min(0).max(100000).optional(),
   note: nullable(trimmed(200)),
+  /** JPEG selfie as a data URL, resized in the browser (about 30 to 80 KB). */
+  selfie: z.string().max(700_000).optional(),
 });
 export const manualAttendanceSchema = z.object({
   employeeId: z.string().min(1),

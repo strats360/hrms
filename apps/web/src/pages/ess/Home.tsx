@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, Navigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CalendarPlus, ClipboardEdit, FileText, MapPin } from "lucide-react";
+import { CalendarPlus, Camera, ClipboardEdit, FileText, MapPin } from "lucide-react";
 import { fmtDate } from "@hrms/shared";
 import { api } from "@/lib/api";
 import type { Holiday, LeaveBalance, LeaveRequest } from "@/lib/types";
@@ -12,8 +12,10 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/field";
 import { ErrorState, Loading, Notice } from "@/components/ui/page";
 import { StatusTag } from "@/components/ui/tag";
+import { SelfieCamera, type Loc } from "@/components/attendance/SelfieCamera";
 
 export interface EssHome {
+  punch?: { selfie: "off" | "optional" | "required"; location: "off" | "flag" | "block" };
   profile: { id: string; name: string; firstName: string; code: string; designation: string | null; department: string | null; company: string; status: string };
   onboarding: { status: string; progress: number } | null;
   today: { date: string; shift: { name: string; start: string; end: string }; checkIn: string | null; checkOut: string | null; status: string | null; source: string | null };
@@ -26,10 +28,10 @@ const WEEKDAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday
 const dayName = (iso: string) => WEEKDAY[new Date(iso + "T00:00:00Z").getUTCDay()];
 
 /** Best-effort location; resolves undefined if denied or slow. */
-function getLocation(): Promise<{ lat: number; lng: number; accuracy: number } | undefined> {
+function getLocation(precise = false): Promise<Loc> {
   if (!("geolocation" in navigator)) return Promise.resolve(undefined);
   return new Promise((resolve) => {
-    const t = setTimeout(() => resolve(undefined), 4000);
+    const t = setTimeout(() => resolve(undefined), precise ? 9000 : 4000);
     navigator.geolocation.getCurrentPosition(
       (p) => {
         clearTimeout(t);
@@ -39,7 +41,7 @@ function getLocation(): Promise<{ lat: number; lng: number; accuracy: number } |
         clearTimeout(t);
         resolve(undefined);
       },
-      { enableHighAccuracy: false, timeout: 3500, maximumAge: 60_000 },
+      { enableHighAccuracy: precise, timeout: precise ? 8500 : 3500, maximumAge: precise ? 15_000 : 60_000 },
     );
   });
 }
@@ -48,10 +50,21 @@ export default function EssHomePage() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["ess", "home"], queryFn: () => api.get<EssHome>("/ess/home") });
   const [wfh, setWfh] = useState(false);
+  // the camera opens while the location is found in the background
+  const [camera, setCamera] = useState(false);
+  const [where, setWhere] = useState<{ state: "finding" | "found" | "none"; loc?: Loc }>({ state: "finding" });
+  const pending = useRef<Promise<Loc> | null>(null);
+  const locate = () => {
+    const precise = (q.data?.punch?.location ?? "off") !== "off";
+    setWhere({ state: "finding" });
+    pending.current = getLocation(precise).then((loc) => (setWhere(loc ? { state: "found", loc } : { state: "none" }), loc));
+    return pending.current;
+  };
   const punch = useMutation({
-    mutationFn: async () => {
-      const loc = await getLocation();
-      return api.post<{ action: "in" | "out"; checkIn: string; checkOut: string; status: string; lateMinutes: number; flags?: string[] }>("/ess/attendance/punch", { source: wfh ? "wfh" : loc ? "gps" : "web", ...(loc ?? {}) });
+    mutationFn: async (selfie?: string) => {
+      const loc = await (pending.current ?? locate());
+      pending.current = null;
+      return api.post<{ action: "in" | "out"; checkIn: string; checkOut: string; status: string; lateMinutes: number; flags?: string[] }>("/ess/attendance/punch", { source: wfh ? "wfh" : loc ? "gps" : "web", ...(loc ?? {}), ...(selfie ? { selfie } : {}) });
     },
     onSuccess: (r) => {
       toast.success(r.action === "in" ? `Checked in at ${r.checkIn}${r.lateMinutes ? ` · ${r.lateMinutes} min late` : ""}` : `Checked out at ${r.checkOut}`);
@@ -101,8 +114,17 @@ export default function EssHomePage() {
           {t.status ? <div><StatusTag status={t.status} /></div> : null}
           {!checkedOut ? (
             <div className="mt-1 flex flex-wrap items-center gap-3">
-              <Button variant="primary" loading={punch.isPending} onClick={() => punch.mutate()} disabled={d.profile.status === "onboarding"}>
-                <MapPin size={15} />
+              <Button
+                variant="primary"
+                loading={punch.isPending}
+                onClick={() => {
+                  if ((d.punch?.selfie ?? "off") === "off") return punch.mutate(undefined);
+                  void locate();
+                  setCamera(true);
+                }}
+                disabled={d.profile.status === "onboarding"}
+              >
+                {(d.punch?.selfie ?? "off") !== "off" ? <Camera size={15} /> : <MapPin size={15} />}
                 {t.checkIn ? "Check out" : "Check in"}
               </Button>
               {!t.checkIn ? <Checkbox checked={wfh} onChange={setWfh} label={<span className="text-[13px]">Working from home</span>} /> : null}
@@ -110,7 +132,19 @@ export default function EssHomePage() {
           ) : (
             <div className="text-muted text-[12.5px]">Missed something? <Link to="/me/attendance">Request a correction</Link></div>
           )}
-          <div className="text-muted text-[12px]">Your location is used only to record where you checked in, if you allow it.</div>
+          <div className="text-muted text-[12px]">
+            {(d.punch?.selfie ?? "off") !== "off" ? "You'll take a quick selfie. " : ""}Your location is used only to record where you punched, if you allow it.
+          </div>
+          {camera ? (
+            <SelfieCamera
+              action={t.checkIn ? "Check out" : "Check in"}
+              required={d.punch?.selfie === "required"}
+              location={where}
+              onCapture={(img) => (setCamera(false), punch.mutate(img))}
+              onSkip={() => (setCamera(false), punch.mutate(undefined))}
+              onClose={() => ((pending.current = null), setCamera(false))}
+            />
+          ) : null}
         </Card>
         <div className="grid grid-cols-3 gap-2 md:grid-cols-1">
           <QuickLink to="/me/leave?apply=1" icon={<CalendarPlus size={18} />} label="Apply leave" />

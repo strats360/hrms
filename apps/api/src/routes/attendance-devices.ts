@@ -56,7 +56,13 @@ attendanceImportRoutes.post(
 // ---------------------------------------------------------------------------
 // Where punches may come from
 // ---------------------------------------------------------------------------
-const punchPolicySchema = z.object({ location: z.enum(["off", "flag", "block"]), ip: z.enum(["off", "flag", "block"]), wfhExempt: z.boolean() });
+const punchPolicySchema = z.object({
+  location: z.enum(["off", "flag", "block"]),
+  ip: z.enum(["off", "flag", "block"]),
+  wfhExempt: z.boolean(),
+  selfie: z.enum(["off", "optional", "required"]).default("off"),
+  selfieRetentionDays: z.number().int().min(7).max(365).default(90),
+});
 
 attendanceImportRoutes.get("/punch-policy", requirePerm("attendance", "view"), async (c) => {
   const db = c.get("db");
@@ -77,7 +83,7 @@ attendanceImportRoutes.put("/punch-policy", requirePerm("attendance", "configure
     if (b.ip !== "off" && !rows.some((r) => (r.ips ?? []).length)) throw badRequest("Add the office IP addresses to at least one branch first (Settings › Branches)");
   }
   await db.update(tenants).set({ settings: sql`${tenants.settings} || ${JSON.stringify({ punchPolicy: b })}::jsonb` }).where(eq(tenants.id, tid(c)));
-  await audit(c, { action: "attendance.punch_policy", entity: "tenant", summary: `Punch checks: location ${b.location}, office network ${b.ip}${b.wfhExempt ? ", work from home exempt" : ""}`, data: b });
+  await audit(c, { action: "attendance.punch_policy", entity: "tenant", summary: `Punch checks: location ${b.location}, office network ${b.ip}${b.wfhExempt ? ", work from home exempt" : ""}, selfie ${b.selfie}${b.selfie !== "off" ? ` (kept ${b.selfieRetentionDays} days)` : ""}`, data: b });
   return c.json(b);
 });
 

@@ -56,7 +56,9 @@ import { storeUpload } from "./employees";
 import { payslipView } from "./payroll";
 import { notifyNextApprover } from "./leave";
 import { essSalaryVisible, mySalary } from "../services/my-salary";
-import { essPhotoAllowed } from "./photos";
+import { essPhotoAllowed, imageType } from "./photos";
+import { putFile } from "../lib/storage";
+import type { Database } from "@hrms/db";
 
 export const essRoutes = new Hono<AppEnv>();
 essRoutes.use("*", requireEmployee);
@@ -99,7 +101,9 @@ essRoutes.get("/home", async (c) => {
     .orderBy(desc(leaveRequests.createdAt))
     .limit(5);
   const [inv] = await db.select().from(onboardingInvites).where(and(eq(onboardingInvites.tenantId, tid), eq(onboardingInvites.employeeId, eid)));
+  const policy = await punchPolicyFor(db, tid);
   return c.json({
+    punch: { selfie: policy.selfie, location: policy.location },
     profile: {
       id: profile.id,
       name: profile.fullName,
@@ -127,6 +131,26 @@ essRoutes.get("/home", async (c) => {
 
 // ---------- attendance ----------
 /** Is this punch from an office (location and network), per the company's punch policy? */
+async function punchPolicyFor(db: Database, tid: string): Promise<PunchPolicy> {
+  const [t] = await db.select({ s: tenants.settings }).from(tenants).where(eq(tenants.id, tid));
+  return { ...DEFAULT_PUNCH_POLICY, ...((t?.s as { punchPolicy?: Partial<PunchPolicy> } | undefined)?.punchPolicy ?? {}) };
+}
+
+/** A selfie sent as a data URL: must really be a JPEG, PNG or WebP, and small. */
+function decodeSelfie(dataUrl: string) {
+  const b64 = dataUrl.replace(/^data:image\/[a-z]+;base64,/, "");
+  let bytes: Uint8Array;
+  try {
+    bytes = Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0));
+  } catch {
+    throw badRequest("The selfie didn't come through. Take it again.");
+  }
+  if (bytes.byteLength > 500 * 1024) throw badRequest("The selfie is too large. Take it again.");
+  const type = imageType(bytes);
+  if (!type) throw badRequest("The selfie didn't come through. Take it again.");
+  return { bytes, type };
+}
+
 async function punchCheck(c: Context<AppEnv>, tid: string, branchId: string | null, body: { source: string; lat?: number; lng?: number; accuracy?: number }) {
   const db = c.get("db");
   const [t] = await db.select({ s: tenants.settings }).from(tenants).where(eq(tenants.id, tid));
@@ -147,6 +171,9 @@ essRoutes.post("/attendance/punch", v("json", punchSchema), async (c) => {
   if (emp?.status === "onboarding") throw badRequest("Attendance starts once HR verifies your onboarding");
   const check = await punchCheck(c, tid, emp?.branchId ?? null, body);
   if (!check.allowed) throw new ApiError(403, check.error!, "outside_office");
+  const policy = await punchPolicyFor(db, tid);
+  const selfie = body.selfie ? decodeSelfie(body.selfie) : null;
+  if (policy.selfie === "required" && !selfie) throw new ApiError(400, "Your company asks for a selfie when you punch. Allow camera access and take one.", "selfie_required");
   const now = new Date();
   const date = todayIST(now);
   const shift = await shiftFor(db, tid, eid);
@@ -164,6 +191,11 @@ essRoutes.post("/attendance/punch", v("json", punchSchema), async (c) => {
     action = "out";
   }
   const ev = evaluateAttendance(shift, checkIn, checkOut, { wfh });
+  let selfieKey: string | undefined;
+  if (selfie && policy.selfie !== "off") {
+    selfieKey = `tenants/${tid}/attendance/${date}/${eid}-${action}-${crypto.randomUUID()}.${selfie.type.split("/")[1]}`;
+    await putFile(c.env, selfieKey, selfie.bytes.buffer as ArrayBuffer, selfie.type);
+  }
   const row = await upsertAttendance(db, {
     tenantId: tid,
     employeeId: eid,
@@ -176,15 +208,18 @@ essRoutes.post("/attendance/punch", v("json", punchSchema), async (c) => {
     lateMinutes: ev.lateMinutes,
     earlyMinutes: ev.earlyMinutes,
     overtimeMinutes: ev.overtimeMinutes,
-    lat: body.lat ?? rec?.lat ?? null,
-    lng: body.lng ?? rec?.lng ?? null,
+    // lat/lng are where they checked in; the check-out has its own
+    lat: action === "in" ? (body.lat ?? null) : (rec?.lat ?? null),
+    lng: action === "in" ? (body.lng ?? null) : (rec?.lng ?? null),
+    ...(action === "out" ? { checkOutLat: body.lat ?? null, checkOutLng: body.lng ?? null } : {}),
+    ...(selfieKey ? (action === "in" ? { checkInSelfieKey: selfieKey } : { checkOutSelfieKey: selfieKey }) : {}),
     ip: c.req.header("cf-connecting-ip") ?? null,
     note: body.note ?? rec?.note ?? null,
     // keep what the check-in found, and add anything new from the check-out
     flags: [...new Set([...(rec?.flags ?? []), ...check.flags.map((f) => `${action === "in" ? "In" : "Out"}: ${f}`)])],
     distanceM: check.distanceM ?? rec?.distanceM ?? null,
   });
-  return c.json({ action, checkIn: toISTTime(row.checkIn), checkOut: toISTTime(row.checkOut), status: row.status, lateMinutes: row.lateMinutes, flags: check.flags });
+  return c.json({ action, checkIn: toISTTime(row.checkIn), checkOut: toISTTime(row.checkOut), status: row.status, lateMinutes: row.lateMinutes, flags: check.flags, selfie: !!selfieKey });
 });
 
 essRoutes.get("/attendance", v("query", z.object({ month: z.string().regex(/^\d{4}-\d{2}$/).optional() })), async (c) => {

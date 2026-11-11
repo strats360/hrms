@@ -14,6 +14,8 @@ interface Policy {
   location: Mode;
   ip: Mode;
   wfhExempt: boolean;
+  selfie: "off" | "optional" | "required";
+  selfieRetentionDays: number;
 }
 interface PolicyRes {
   policy: Policy;
@@ -70,6 +72,24 @@ export function PunchPolicyCard() {
         </Select>
       </Field>
       <Checkbox label="Work from home punches are exempt" checked={p.wfhExempt} onChange={(v) => setP({ ...p, wfhExempt: v })} disabled={!edit} />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Selfie at each punch" hint="The phone's front camera opens when they check in or out. HR and their manager can see it.">
+          <Select value={p.selfie ?? "off"} onChange={(e) => setP({ ...p, selfie: e.target.value as Policy["selfie"] })} disabled={!edit}>
+            <option value="off">Off</option>
+            <option value="optional">Ask, but let them skip</option>
+            <option value="required">Required</option>
+          </Select>
+        </Field>
+        <Field label="Keep selfies for" hint="Deleted automatically after this, to keep only what's needed">
+          <Select value={String(p.selfieRetentionDays ?? 90)} onChange={(e) => setP({ ...p, selfieRetentionDays: Number(e.target.value) })} disabled={!edit || (p.selfie ?? "off") === "off"}>
+            {[30, 60, 90, 180, 365].map((d) => (
+              <option key={d} value={d}>
+                {d} days
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
       {edit ? (
         <div className="flex justify-end">
           <Button variant="primary" disabled={!dirty} loading={save.isPending} onClick={() => save.mutate()}>

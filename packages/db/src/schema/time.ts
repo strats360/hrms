@@ -45,6 +45,12 @@ export const attendanceRecords = pgTable(
     /** Punch checks that didn't pass (away from the office, not on its network). */
     flags: jsonb("flags").$type<string[]>().notNull().default([]),
     distanceM: integer("distance_m"),
+    /** Where the check-out happened (lat/lng above are the check-in). */
+    checkOutLat: doublePrecision("check_out_lat"),
+    checkOutLng: doublePrecision("check_out_lng"),
+    /** Selfies taken at the punch (R2 keys); removed after the company's retention period. */
+    checkInSelfieKey: text("check_in_selfie_key"),
+    checkOutSelfieKey: text("check_out_selfie_key"),
     ...timestamps,
   },
   (t) => [

@@ -10,6 +10,9 @@ import { ErrorState } from "@/components/ui/page";
 import { PersonCell } from "@/components/ui/avatar";
 import { StatusTag, Tag } from "@/components/ui/tag";
 import { minsLabel, SOURCE_LABELS, DAY_SHORT, weekdayOf } from "@/components/attendance/shared";
+import { Camera, MapPin } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { PunchDetailsDialog, type PunchInfo } from "@/components/attendance/PunchDetailsDialog";
 
 interface Row {
   employeeId: string;
@@ -27,6 +30,7 @@ interface Row {
   overtimeMinutes: number;
   earlyMinutes: number;
   flags: string[];
+  punch: PunchInfo | null;
 }
 interface TodayRes {
   date: string;
@@ -56,6 +60,7 @@ export default function Today() {
     return (query.data?.rows ?? []).filter((r) => (filter === "flagged" ? r.flags.length > 0 : FILTERS[filter](r.status)) && (!t || `${r.name} ${r.code} ${r.department ?? ""}`.toLowerCase().includes(t)));
   }, [query.data, filter, q]);
 
+  const [details, setDetails] = useState<Row | null>(null);
   const columns = useMemo<ColumnDef<Row, any>[]>(
     () => [
       { id: "name", header: "Employee", accessorFn: (r) => r.name, cell: ({ row }) => <PersonCell employeeId={row.original.employeeId} name={row.original.name} sub={`${row.original.code}${row.original.designation ? " · " + row.original.designation : ""}`} /> },
@@ -63,6 +68,19 @@ export default function Today() {
       { id: "branch", header: "Branch", accessorFn: (r) => r.branch ?? "", cell: ({ getValue }) => getValue() || "—" },
       { id: "checkIn", header: "Check-in", accessorFn: (r) => r.checkIn ?? "", cell: ({ getValue }) => getValue() || "—" },
       { id: "checkOut", header: "Check-out", accessorFn: (r) => r.checkOut ?? "", cell: ({ getValue }) => getValue() || "—" },
+      {
+        id: "punch",
+        header: "Punch",
+        enableSorting: false,
+        cell: ({ row: { original: r } }) =>
+          r.punch ? (
+            <Button size="sm" variant="ghost" icon aria-label={`See ${r.name}'s punch selfie and location`} title={r.punch.inSelfie || r.punch.outSelfie ? "Selfie and location" : "Location"} onClick={() => setDetails(r)}>
+              {r.punch.inSelfie || r.punch.outSelfie ? <Camera size={15} /> : <MapPin size={15} />}
+            </Button>
+          ) : (
+            <span className="text-muted">—</span>
+          ),
+      },
       { id: "source", header: "Source", accessorFn: (r) => r.source ?? "", cell: ({ getValue }) => (getValue() ? SOURCE_LABELS[getValue() as string] ?? getValue() : "—") },
       { id: "late", header: "Late by", accessorFn: (r) => r.lateMinutes, cell: ({ getValue }) => <span style={{ color: getValue() ? "var(--warn-fg)" : undefined }}>{minsLabel(getValue() as number)}</span> },
       { id: "early", header: "Left early", accessorFn: (r) => r.earlyMinutes, cell: ({ getValue }) => <span style={{ color: getValue() ? "var(--warn-fg)" : undefined }}>{minsLabel(getValue() as number)}</span> },
@@ -88,6 +106,7 @@ export default function Today() {
 
   return (
     <div className="flex flex-col gap-4">
+      {details?.punch ? <PunchDetailsDialog name={details.name} checkIn={details.checkIn} checkOut={details.checkOut} flags={details.flags} punch={details.punch} onClose={() => setDetails(null)} /> : null}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
         <StatCard label="Present" value={s?.present ?? "–"} meta={s ? `of ${s.total - s.off} expected` : undefined} onClick={() => setFilter("in")} />
         <StatCard label="Work from home" value={s?.wfh ?? "–"} meta="self-marked" />

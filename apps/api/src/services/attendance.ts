@@ -122,6 +122,11 @@ export async function upsertAttendance(
         isManual: values.isManual ?? false,
         flags: values.flags ?? [],
         distanceM: values.distanceM ?? null,
+        // only set when this punch has them (undefined leaves the stored value)
+        checkOutLat: values.checkOutLat,
+        checkOutLng: values.checkOutLng,
+        checkInSelfieKey: values.checkInSelfieKey,
+        checkOutSelfieKey: values.checkOutSelfieKey,
         updatedAt: new Date(),
       },
     })
