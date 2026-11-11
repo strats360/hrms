@@ -1,5 +1,5 @@
 import { gte, inArray, lte } from "drizzle-orm";
-import { attendanceRecords, holidays, leaveRequests } from "@hrms/db";
+import { attendanceRecords, holidays, leaveRequests, shiftRoster } from "@hrms/db";
 import { dateRange, todayIST, weekday, type AttendanceStatus } from "@hrms/shared";
 import { holidaySet } from "./leave";
 import { and, eq } from "drizzle-orm";
@@ -10,15 +10,26 @@ export interface ResolvedShift extends ShiftRule {
   id: string | null;
   name: string;
   weeklyOffs: number[];
+  /** From the roster for the day asked about: true = rostered off, false = rostered to work, null = no roster entry. */
+  rosteredOff?: boolean | null;
 }
 
-/** Shift for an employee: their own, else the tenant default, else 09:00-18:00. */
-export async function shiftFor(db: Database, tenantId: string, employeeId: string): Promise<ResolvedShift> {
+/** Is this a day off for them? The roster decides when there's an entry, else the shift's weekly offs. */
+export const isDayOff = (s: ResolvedShift, date: string) => (s.rosteredOff === true ? true : s.rosteredOff === false ? false : s.weeklyOffs.includes(weekday(date)));
+
+/**
+ * Shift for an employee: on `date`, the roster's shift if there is one; otherwise their
+ * own, else the company default, else 09:00-18:00.
+ */
+export async function shiftFor(db: Database, tenantId: string, employeeId: string, date?: string): Promise<ResolvedShift> {
   const [emp] = await db.select({ shiftId: employees.shiftId }).from(employees).where(eq(employees.id, employeeId));
+  const [roster] = date ? await db.select().from(shiftRoster).where(and(eq(shiftRoster.employeeId, employeeId), eq(shiftRoster.date, date))) : [];
   const all = await db.select().from(shifts).where(eq(shifts.tenantId, tenantId));
-  const s = all.find((x) => x.id === emp?.shiftId) ?? all.find((x) => x.isDefault) ?? all[0];
-  if (!s) return { ...DEFAULT_SHIFT, id: null, name: "General", weeklyOffs: [0, 6] };
+  const s = all.find((x) => x.id === (roster?.shiftId ?? emp?.shiftId)) ?? all.find((x) => x.id === emp?.shiftId) ?? all.find((x) => x.isDefault) ?? all[0];
+  const rosteredOff = roster ? roster.isOff : null;
+  if (!s) return { ...DEFAULT_SHIFT, id: null, name: "General", weeklyOffs: [0, 6], rosteredOff };
   return {
+    rosteredOff,
     id: s.id,
     name: s.name,
     startTime: s.startTime,
@@ -60,7 +71,7 @@ export async function buildCalendar(db: Database, tenantId: string, emps: Calend
   const ids = emps.map((e) => e.id);
   const today = todayIST();
   const { map: shiftMap, def } = await shiftsById(db, tenantId);
-  const [records, leaves, hol] = await Promise.all([
+  const [records, leaves, hol, roster] = await Promise.all([
     ids.length
       ? db
           .select()
@@ -77,7 +88,11 @@ export async function buildCalendar(db: Database, tenantId: string, emps: Calend
       .select({ date: holidays.date, branchId: holidays.branchId })
       .from(holidays)
       .where(and(eq(holidays.tenantId, tenantId), gte(holidays.date, from), lte(holidays.date, to))),
+    ids.length
+      ? db.select().from(shiftRoster).where(and(eq(shiftRoster.tenantId, tenantId), inArray(shiftRoster.employeeId, ids), gte(shiftRoster.date, from), lte(shiftRoster.date, to)))
+      : Promise.resolve([] as (typeof shiftRoster.$inferSelect)[]),
   ]);
+  const rosterMap = new Map(roster.map((r) => [`${r.employeeId}|${r.date}`, r]));
   const recMap = new Map(records.map((r) => [`${r.employeeId}|${r.date}`, r]));
   const leaveDays = new Map<string, boolean>();
   for (const l of leaves) for (const d of dateRange(l.startDate < from ? from : l.startDate, l.endDate > to ? to : l.endDate)) leaveDays.set(`${l.employeeId}|${d}`, l.halfDay);
@@ -90,13 +105,15 @@ export async function buildCalendar(db: Database, tenantId: string, emps: Calend
     const offs = (e.shiftId && shiftMap.get(e.shiftId)?.weeklyOffs) || def?.weeklyOffs || [0, 6];
     const isHoliday = hol.some((h) => h.date === d && (!h.branchId || h.branchId === e.branchId));
     if (isHoliday) return "holiday";
-    if (offs.includes(weekday(d))) return "weekly_off";
+    // the roster overrides the usual weekly offs for that day
+    const r = rosterMap.get(`${e.id}|${d}`);
+    if (r ? r.isOff : offs.includes(weekday(d))) return "weekly_off";
     if (leaveDays.has(`${e.id}|${d}`)) return "on_leave";
     if (d > today) return null;
     if (d === today) return "not_marked";
     return "absent";
   };
-  return { days, records: recMap, status };
+  return { days, records: recMap, roster: rosterMap, status };
 }
 
 /** Upsert a day's attendance record with evaluated status. */

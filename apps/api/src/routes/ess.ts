@@ -49,7 +49,7 @@ import { requireEmployee } from "../lib/context";
 import { v } from "../lib/validate";
 import { ApiError, badRequest, notFound } from "../lib/errors";
 import { audit } from "../lib/audit";
-import { buildCalendar, shiftFor, upsertAttendance } from "../services/attendance";
+import { buildCalendar, istDateTime, shiftFor, upsertAttendance } from "../services/attendance";
 import { approvalPolicy, chainFor, waitingOn } from "../services/approvals";
 import { applyLeave, balanceSummary, cancelLeave } from "../services/leave";
 import { bankFields } from "../services/employees";
@@ -91,7 +91,7 @@ essRoutes.get("/home", async (c) => {
   const today = todayIST();
   const profile = await loadMe(c);
   const [rec] = await db.select().from(attendanceRecords).where(and(eq(attendanceRecords.tenantId, tid), eq(attendanceRecords.employeeId, eid), eq(attendanceRecords.date, today)));
-  const shift = await shiftFor(db, tid, eid);
+  const shift = await shiftFor(db, tid, eid, today);
   const balances = await balanceSummary(db, tid, eid, Number(today.slice(0, 4)));
   const upcoming = await db.select().from(holidays).where(and(eq(holidays.tenantId, tid), gte(holidays.date, today))).orderBy(asc(holidays.date)).limit(4);
   const requests = await db
@@ -132,6 +132,13 @@ essRoutes.get("/home", async (c) => {
 
 // ---------- attendance ----------
 /** Is this punch from an office (location and network), per the company's punch policy? */
+/** When an overnight shift that starts on `date` ends (the next morning), or null for a day shift. */
+function nightShiftEnd(s: { startTime: string; endTime: string }, date: string) {
+  if (s.endTime > s.startTime) return null;
+  const next = new Date(Date.parse(`${date}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+  return istDateTime(next, s.endTime);
+}
+
 async function punchPolicyFor(db: Database, tid: string): Promise<PunchPolicy> {
   const [t] = await db.select({ s: tenants.settings }).from(tenants).where(eq(tenants.id, tid));
   return { ...DEFAULT_PUNCH_POLICY, ...((t?.s as { punchPolicy?: Partial<PunchPolicy> } | undefined)?.punchPolicy ?? {}) };
@@ -186,9 +193,23 @@ essRoutes.post("/attendance/punch", v("json", punchSchema), async (c) => {
   const policy = await punchPolicyFor(db, tid);
   const selfie = body.selfie ? decodeSelfie(body.selfie) : null;
   if (policy.selfie === "required" && !selfie) throw new ApiError(400, "Your company asks for a selfie when you punch. Allow camera access and take one.", "selfie_required");
-  const date = todayIST(now);
-  const shift = await shiftFor(db, tid, eid);
-  const [rec] = await db.select().from(attendanceRecords).where(and(eq(attendanceRecords.tenantId, tid), eq(attendanceRecords.employeeId, eid), eq(attendanceRecords.date, date)));
+  let date = todayIST(now);
+  let shift = await shiftFor(db, tid, eid, date);
+  let [rec] = await db.select().from(attendanceRecords).where(and(eq(attendanceRecords.tenantId, tid), eq(attendanceRecords.employeeId, eid), eq(attendanceRecords.date, date)));
+  // night shift: a punch after midnight closes the shift that started yesterday
+  if (!rec?.checkIn) {
+    const yesterday = new Date(Date.parse(`${date}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+    const [prev] = await db.select().from(attendanceRecords).where(and(eq(attendanceRecords.tenantId, tid), eq(attendanceRecords.employeeId, eid), eq(attendanceRecords.date, yesterday)));
+    if (prev?.checkIn && !prev.checkOut) {
+      const prevShift = await shiftFor(db, tid, eid, yesterday);
+      const ends = nightShiftEnd(prevShift, yesterday);
+      if (ends && now.getTime() <= ends.getTime() + 6 * 3_600_000) {
+        date = yesterday;
+        shift = prevShift;
+        rec = prev;
+      }
+    }
+  }
   const wfh = body.source === "wfh" || rec?.source === "wfh";
   let checkIn = rec?.checkIn ?? null;
   let checkOut = rec?.checkOut ?? null;

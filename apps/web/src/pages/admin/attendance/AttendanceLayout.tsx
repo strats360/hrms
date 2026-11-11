@@ -59,6 +59,7 @@ export default function AttendanceLayout() {
         tabs={[
           { to: "/attendance", label: "Today", end: true },
           { to: "/attendance/monthly", label: "Monthly register" },
+          { to: "/attendance/roster", label: "Roster" },
           { to: "/attendance/corrections", label: "Corrections" },
           { to: "/attendance/policies", label: "Policies & shifts" },
         ]}

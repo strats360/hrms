@@ -31,7 +31,7 @@ export const attendanceRoutes = new Hono<AppEnv>();
 
 const ACTIVE = sql`${employees.status} not in ('exited','inactive','onboarding')`;
 
-async function scopedEmployees(c: Context<AppEnv>, extra?: { departmentId?: string; branchId?: string }) {
+export async function scopedEmployees(c: Context<AppEnv>, extra?: { departmentId?: string; branchId?: string }) {
   const tid = c.get("tenant").tenantId;
   const scope = await teamScope(c, "attendance");
   if (scope && scope.length === 0) return [];
@@ -191,7 +191,7 @@ attendanceRoutes.post("/manual", requirePerm("attendance", "edit"), v("json", ma
   const [emp] = await db.select().from(employees).where(and(eq(employees.id, body.employeeId), eq(employees.tenantId, tid)));
   if (!emp) throw notFound("Employee");
   if (body.date > todayIST()) throw badRequest("You can't mark attendance for a future date");
-  const shift = await shiftFor(db, tid, emp.id);
+  const shift = await shiftFor(db, tid, emp.id, body.date);
   const checkIn = body.checkIn ? istDateTime(body.date, body.checkIn) : null;
   const checkOut = body.checkOut ? istDateTime(body.date, body.checkOut) : null;
   if (checkIn && checkOut && checkOut <= checkIn) throw badRequest("Check-out must be after check-in");
@@ -268,7 +268,7 @@ async function decideCorrection(c: Context<AppEnv>, id: string, decision: "appro
       .select()
       .from(attendanceRecords)
       .where(and(eq(attendanceRecords.tenantId, t.tenantId), eq(attendanceRecords.employeeId, corr.employeeId), eq(attendanceRecords.date, corr.date)));
-    const shift = await shiftFor(db, t.tenantId, corr.employeeId);
+    const shift = await shiftFor(db, t.tenantId, corr.employeeId, corr.date);
     const checkIn = corr.requestedCheckIn ? istDateTime(corr.date, corr.requestedCheckIn) : (existing?.checkIn ?? null);
     const checkOut = corr.requestedCheckOut ? istDateTime(corr.date, corr.requestedCheckOut) : (existing?.checkOut ?? null);
     const wfh = corr.requestedStatus === "wfh" || existing?.source === "wfh";

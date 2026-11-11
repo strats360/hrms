@@ -26,6 +26,7 @@ import { fileRoutes } from "./routes/files";
 import { orgChartRoutes } from "./routes/org-chart";
 import { letterRoutes } from "./routes/letters";
 import { probationRoutes } from "./routes/probation";
+import { essRosterRoutes, rosterRoutes } from "./routes/roster";
 import { essLoanRoutes, loanRoutes } from "./routes/loans";
 import { adminPhotoRoutes, essPhotoRoutes, photoIndexRoutes, photoServeRoutes } from "./routes/photos";
 import { payrollRoutes } from "./routes/payroll";
@@ -149,6 +150,7 @@ export function buildApp() {
   t.route("/photos", photoIndexRoutes);
   t.route("/ess/photo", essPhotoRoutes);
   t.route("/ess/loans", essLoanRoutes);
+  t.route("/ess/roster", essRosterRoutes);
   t.route("/ess", essRoutes);
   t.route("/ess", essExitRoutes);
   t.route("/ess", essPayslipFileRoutes);
@@ -167,6 +169,7 @@ export function buildApp() {
   t.route("/admin/employees", employeeRoutes);
   t.route("/admin/onboarding", onboardingAdminRoutes);
   t.route("/admin/attendance", attendanceImportRoutes);
+  t.route("/admin/attendance/roster", rosterRoutes);
   t.route("/admin/attendance", attendanceRoutes);
   t.route("/admin/leave", leaveExtrasRoutes);
   t.route("/admin/leave", compOffRoutes);

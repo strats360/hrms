@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { MyShifts } from "@/components/ess/MyShifts";
 import { useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -79,6 +80,7 @@ export default function EssAttendance() {
           Request correction
         </Button>
       </div>
+      <MyShifts />
       <div className="flex items-center gap-2">
         <Button icon size="sm" onClick={() => setMonth((m) => shiftMonth(m, -1))} aria-label="Previous month"><ChevronLeft size={16} /></Button>
         <div className="min-w-[130px] text-center font-medium">{monthLabel(month)}</div>

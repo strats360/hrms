@@ -109,6 +109,7 @@ const router = createBrowserRouter([
               { path: "monthly", element: L(() => import("@/pages/admin/attendance/Monthly")) },
               { path: "corrections", element: L(() => import("@/pages/admin/attendance/Corrections")) },
               { path: "policies", element: L(() => import("@/pages/admin/attendance/Policies")) },
+              { path: "roster", element: L(() => import("@/pages/admin/attendance/Roster")) },
             ],
           },
           {

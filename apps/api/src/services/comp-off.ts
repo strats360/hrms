@@ -1,7 +1,7 @@
 import { and, asc, eq, gte, inArray, lt, lte, ne, sql } from "drizzle-orm";
 import { attendanceRecords, compOffRequests, employees, leaveBalances, leaveTypes, tenants, type Database } from "@hrms/db";
 import { todayIST, weekday } from "@hrms/shared";
-import { holidaySet, shiftFor } from "./attendance";
+import { holidaySet, isDayOff, shiftFor } from "./attendance";
 import { ensureBalances } from "./leave";
 
 export type CompOff = typeof compOffRequests.$inferSelect;
@@ -24,9 +24,9 @@ async function compOffType(db: Database, tenantId: string) {
  * shift's worth earns a day, half of it earns half a day.
  */
 export async function eligibility(db: Database, tenantId: string, emp: typeof employees.$inferSelect, date: string) {
-  const shift = await shiftFor(db, tenantId, emp.id);
+  const shift = await shiftFor(db, tenantId, emp.id, date);
   const holiday = (await holidaySet(db, tenantId, date, date, emp.branchId)).has(date);
-  const off = shift.weeklyOffs.includes(weekday(date));
+  const off = isDayOff(shift, date);
   if (!holiday && !off) return { ok: false as const, reason: "That was a working day. Comp off is for work on a weekly off or holiday." };
   const [rec] = await db.select().from(attendanceRecords).where(and(eq(attendanceRecords.tenantId, tenantId), eq(attendanceRecords.employeeId, emp.id), eq(attendanceRecords.date, date)));
   const minutes = rec?.workMinutes ?? 0;

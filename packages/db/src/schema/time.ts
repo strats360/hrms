@@ -266,3 +266,23 @@ export const compOffRequests = pgTable(
     index("comp_off_tenant_status_idx").on(t.tenantId, t.status),
   ],
 );
+
+/**
+ * The shift roster: what someone works on one day, overriding their usual shift and weekly
+ * offs. A row with isOff is a rostered day off; otherwise they work shiftId that day.
+ */
+export const shiftRoster = pgTable(
+  "shift_roster",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    employeeId: employeeId(),
+    date: date("date", { mode: "string" }).notNull(),
+    shiftId: text("shift_id"),
+    isOff: boolean("is_off").notNull().default(false),
+    note: text("note"),
+    createdBy: text("created_by"),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("shift_roster_emp_date_uq").on(t.employeeId, t.date), index("shift_roster_tenant_date_idx").on(t.tenantId, t.date)],
+);
