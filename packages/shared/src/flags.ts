@@ -20,6 +20,7 @@ export const FEATURES = {
   "module.recruitment": "Recruitment and careers page",
   "module.assets": "Company assets",
   "module.timesheets": "Timesheets and projects",
+  "module.announcements": "Announcements",
 } as const;
 export type FeatureKey = keyof typeof FEATURES;
 

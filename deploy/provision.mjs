@@ -132,7 +132,7 @@ export function workerConfig({ hyperdriveId, appUrl, emailFrom, customDomain }) 
     assets: { directory: "../web/dist", binding: "ASSETS", not_found_handling: "single-page-application", run_worker_first: ["/api/*"] },
     observability: { enabled: true },
     // daily at 10:00 IST: automatic retries of failed autopay debits
-    triggers: { crons: ["30 4 * * *"] },
+    triggers: { crons: ["30 4 * * *", "0 * * * *"] },
     workers_dev: !customDomain,
     ...(customDomain ? { routes: [{ pattern: customDomain, custom_domain: true }] } : {}),
     vars: { APP_URL: appUrl, EMAIL_FROM: emailFrom ?? "", ENVIRONMENT: deployEnv, CASHFREE_ENV: env.CASHFREE_ENV === "production" ? "production" : "sandbox" },

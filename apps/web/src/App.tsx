@@ -66,6 +66,8 @@ const router = createBrowserRouter([
           { path: "reviews", element: L(() => import("@/pages/ess/Reviews")) },
           { path: "interviews", element: L(() => import("@/pages/ess/Interviews")) },
           { path: "timesheets", element: L(() => import("@/pages/ess/Timesheets")) },
+          { path: "announcements", element: L(() => import("@/pages/ess/Announcements")) },
+          { path: "announcements/:id", element: L(() => import("@/pages/ess/Announcements").then((m) => ({ default: m.EssAnnouncement }))) },
         ],
       },
       {
@@ -104,6 +106,7 @@ const router = createBrowserRouter([
               { path: "new", element: L(() => import("@/pages/admin/employees/EmployeeForm")) },
             ],
           },
+          { path: "announcements", element: L(() => import("@/pages/admin/announcements/Announcements")) },
           { path: "assets", element: L(() => import("@/pages/admin/assets/Assets")) },
           { path: "assets/:id", element: L(() => import("@/pages/admin/assets/AssetDetail")) },
           { path: "recruitment", element: L(() => import("@/pages/admin/recruitment/Jobs")) },

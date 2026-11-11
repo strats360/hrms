@@ -9,6 +9,7 @@ import { useSession } from "@/lib/session";
 import { isNetworkError, QUEUE_EVENT, queuedPunches, queuePunch, savedHome, saveHome } from "@/lib/offline";
 import { useOnline } from "@/lib/pwa";
 import { InstallCard } from "@/components/InstallCard";
+import { FeedRow, useFeed } from "@/pages/ess/Announcements";
 import type { Holiday, LeaveBalance, LeaveRequest } from "@/lib/types";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -154,6 +155,7 @@ export default function EssHomePage() {
       <ReviewNotice />
       <InterviewNotice />
       <TimesheetNotice />
+      <AnnouncementsCard />
       {ob && ob.status === "submitted" ? <Notice tone="sel">Your joining details are with HR for verification. Attendance and leave open up once they're verified.</Notice> : null}
       {ob && ob.status !== "submitted" ? (
         <Notice tone="warn">
@@ -315,5 +317,21 @@ function TimesheetNotice() {
       {s === "rejected" ? `Your timesheet for the week of ${fmtDate(last)} was sent back: ${d.sheet!.rejectReason} ` : `Your timesheet for the week of ${fmtDate(last)} isn't submitted yet. `}
       <Link to={`/me/timesheets?week=${last}`} style={{ color: "inherit", textDecoration: "underline" }}>Open timesheet</Link>
     </Notice>
+  );
+}
+
+/** The latest announcements: pinned and unread first. */
+function AnnouncementsCard() {
+  const { has } = useSession();
+  const q = useFeed(has("module.announcements"));
+  const list = q.data ?? [];
+  if (!list.length) return null;
+  const unread = list.filter((a) => !a.read).length;
+  const top = [...list].sort((a, b) => Number(b.pinned) - Number(a.pinned) || Number(a.read) - Number(b.read)).slice(0, 3);
+  return (
+    <Card className="!gap-0">
+      <CardHeader title={`Announcements${unread ? ` · ${unread} new` : ""}`} actions={list.length > 3 ? <Link to="/me/announcements" className="text-[13px]">All</Link> : null} />
+      {top.map((a) => <FeedRow key={a.id} a={a} />)}
+    </Card>
   );
 }

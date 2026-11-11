@@ -13,8 +13,8 @@
     "run_worker_first": ["/api/*"]
   },
   "observability": { "enabled": true },
-  // Daily at 10:00 IST: automatic retries of failed autopay debits.
-  "triggers": { "crons": ["30 4 * * *"] },
+  // Daily at 10:00 IST: autopay retries, reminders and clean-up. Hourly: scheduled announcements.
+  "triggers": { "crons": ["30 4 * * *", "0 * * * *"] },
   "vars": {
     "APP_URL": "https://hrms.example.com",
     "EMAIL_FROM": "Strats360 People <people@example.com>",
