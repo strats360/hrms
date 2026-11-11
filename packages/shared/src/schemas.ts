@@ -593,3 +593,20 @@ export const exportLayoutSchema = z.object({
   header: z.boolean(),
   bankSafe: z.boolean(),
 });
+
+export const letterTemplateSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  body: z.string().trim().min(10, "Write the letter").max(20000),
+});
+export const letterSettingsSchema = z.object({
+  signatoryName: z.string().trim().max(80).nullable(),
+  signatoryTitle: z.string().trim().max(80).nullable(),
+});
+export const letterGenerateSchema = z.object({
+  employeeId: z.string().min(1),
+  templateId: z.string().min(1),
+  /** The letter as edited in the preview; filled in again in case merge fields are left. */
+  text: z.string().trim().min(10).max(30000).optional(),
+  title: z.string().trim().min(2).max(80).optional(),
+  save: z.boolean().default(false),
+});

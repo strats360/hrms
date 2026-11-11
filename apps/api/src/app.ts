@@ -24,6 +24,7 @@ import { platformRoutes } from "./routes/platform";
 import { auditRoutes } from "./routes/audit";
 import { fileRoutes } from "./routes/files";
 import { orgChartRoutes } from "./routes/org-chart";
+import { letterRoutes } from "./routes/letters";
 import { adminPhotoRoutes, essPhotoRoutes, photoIndexRoutes, photoServeRoutes } from "./routes/photos";
 import { payrollRoutes } from "./routes/payroll";
 import { complianceRoutes } from "./routes/compliance";
@@ -152,6 +153,7 @@ export function buildApp() {
   t.route("/files", fileRoutes);
   t.route("/admin/employees", adminPhotoRoutes);
   t.route("/admin/employees/org-chart", orgChartRoutes);
+  t.route("/admin/letters", letterRoutes);
   t.use("/admin/*", requireAdmin);
   t.route("/admin/dashboard", dashboardRoutes);
   t.route("/admin/org/notifications", orgNotificationRoutes);

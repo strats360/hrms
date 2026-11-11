@@ -70,10 +70,11 @@ export function qs(params: Record<string, string | number | boolean | null | und
 }
 
 /** Download a file (CSV export) from the API using the session. */
-export async function download(path: string, fallbackName: string) {
+export async function download(path: string, fallbackName: string, body?: unknown) {
   const headers: Record<string, string> = {};
   if (activeTenant) headers["X-Tenant-Id"] = activeTenant;
-  const res = await fetch(`/api${path}`, { headers, credentials: "include" });
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  const res = await fetch(`/api${path}`, { method: body === undefined ? "GET" : "POST", headers, credentials: "include", body: body === undefined ? undefined : JSON.stringify(body) });
   if (!res.ok) {
     let msg = "Download failed";
     try {

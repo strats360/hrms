@@ -25,6 +25,7 @@ import type { EmployeeDetail } from "@/lib/types";
 import { AttendanceMonth } from "@/components/employees/AttendanceMonth";
 import { ResetTwoFactorDialog } from "@/components/account/ResetTwoFactorDialog";
 import { PhotoEditor } from "@/components/account/PhotoEditor";
+import { GenerateLetterDialog } from "@/components/letters/GenerateLetterDialog";
 
 type Tab = "personal" | "employment" | "bank" | "statutory" | "documents" | "attendance";
 
@@ -44,6 +45,7 @@ export default function EmployeeProfile() {
   const [file, setFile] = useState<File | null>(null);
   const [fileKey, setFileKey] = useState(0);
   const [resetting, setResetting] = useState(false);
+  const [letter, setLetter] = useState(false);
 
   const q = useQuery({ queryKey: ["employee", id], queryFn: () => api.get<EmployeeDetail>(`/admin/employees/${id}`) });
   const refresh = () => qc.invalidateQueries({ queryKey: ["employee", id] });
@@ -127,6 +129,11 @@ export default function EmployeeProfile() {
               </Button>
             ) : null}
             {edit ? (
+              <Button onClick={() => setLetter(true)}>
+                <FileText size={15} /> Generate letter
+              </Button>
+            ) : null}
+            {edit ? (
               <Button variant="primary" onClick={() => nav(`/employees/${id}/edit`)}>
                 <Pencil size={15} /> Edit
               </Button>
@@ -134,6 +141,7 @@ export default function EmployeeProfile() {
           </>
         }
       />
+      {letter ? <GenerateLetterDialog employee={e} onClose={() => setLetter(false)} /> : null}
       {inviteOpen ? (
         <Notice tone={e.invite!.status === "submitted" ? "warn" : "sel"}>
           <div className="flex flex-wrap items-center justify-between gap-2">

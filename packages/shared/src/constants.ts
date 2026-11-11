@@ -70,6 +70,7 @@ export const DOCUMENT_TYPES = [
   "appointment_letter",
   "relieving_letter",
   "photo",
+  "company_letter",
   "other",
 ] as const;
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
@@ -84,6 +85,7 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   appointment_letter: "Appointment letter",
   relieving_letter: "Previous employment: relieving letter",
   photo: "Profile photo",
+  company_letter: "Letter from the company",
   other: "Other",
 };
 
