@@ -1,4 +1,9 @@
+import { useEffect } from "react";
 import { Navigate, NavLink, Outlet } from "react-router";
+import { toast } from "sonner";
+import { WifiOff } from "lucide-react";
+import { queuedPunches, sendQueuedPunches } from "@/lib/offline";
+import { useOnline } from "@/lib/pwa";
 import { CalendarDays, Clock, Home, LayoutDashboard, LogOut, Percent, ShieldCheck, Receipt, User, Wallet } from "lucide-react";
 import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
@@ -19,10 +24,20 @@ const TABS = [
 export function EssLayout() {
   const { tenant, me, signOut, has } = useSession();
   const tabs = TABS.filter((t) => !("feature" in t) || has((t as { feature: string }).feature));
+  const online = useOnline();
+  const eid = tenant?.employeeId ?? null;
+  // send punches saved offline as soon as there's a connection
+  useEffect(() => {
+    if (!online || !eid || !queuedPunches(eid).length) return;
+    void sendQueuedPunches(eid).then((r) => {
+      if (r.sent) toast.success(`${r.sent} punch${r.sent === 1 ? "" : "es"} saved offline ${r.sent === 1 ? "was" : "were"} sent`);
+      for (const f of r.failed) toast.error(`A punch saved offline wasn't accepted: ${f}`);
+    });
+  }, [online, eid]);
   if (!tenant?.employeeId) return <Navigate to={tenant?.roleId ? "/" : "/login"} replace />;
   return (
     <div className="min-h-screen pb-20 md:pb-10" style={{ background: "var(--color-bg)", color: "var(--color-text)" }}>
-      <header className="sticky top-0 z-10 border-b border-[var(--color-divider)]" style={{ background: "color-mix(in srgb, var(--color-bg) 92%, transparent)", backdropFilter: "blur(8px)" }}>
+      <header className="sticky top-0 z-10 border-b border-[var(--color-divider)]" style={{ paddingTop: "env(safe-area-inset-top)", background: "color-mix(in srgb, var(--color-bg) 92%, transparent)", backdropFilter: "blur(8px)" }}>
         <div className="mx-auto flex max-w-[1100px] items-center gap-4 px-4 py-2.5">
           <div className="-mb-[18px]">
             <Brand subtitle={tenant.tenantName} />
@@ -51,10 +66,15 @@ export function EssLayout() {
           </div>
         </div>
       </header>
+      {!online ? (
+        <div className="flex items-center justify-center gap-2 px-4 py-1.5 text-[12.5px]" style={{ background: "var(--warn-bg)", color: "var(--warn-fg)" }} role="status">
+          <WifiOff size={14} /> You're offline. Punches are saved on this phone and sent when you reconnect.
+        </div>
+      ) : null}
       <main className="mx-auto flex max-w-[1100px] flex-col gap-4 px-4 pt-5">
         <Outlet />
       </main>
-      <nav className="fixed inset-x-0 bottom-0 z-10 grid border-t border-[var(--color-divider)] md:hidden" aria-label="Self-service" style={{ background: "var(--color-surface)", gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+      <nav className="fixed inset-x-0 bottom-0 z-10 grid border-t border-[var(--color-divider)] md:hidden" aria-label="Self-service" style={{ background: "var(--color-surface)", gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))`, paddingBottom: "env(safe-area-inset-bottom)" }}>
         {tabs.map((t) => (
           <NavLink key={t.to} to={t.to} end={t.end} className="flex min-w-0 flex-col items-center gap-0.5 py-2 text-[10.5px] no-underline" style={({ isActive }) => ({ color: isActive ? "var(--sel-fg)" : "var(--muted)" })}>
             <t.icon size={20} />

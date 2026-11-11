@@ -6,6 +6,9 @@ import "./styles/app.css";
 import { SessionProvider } from "@/lib/session";
 import { ApiError, errorMessage } from "@/lib/api";
 import { App } from "./App";
+import { setupPwa } from "@/lib/pwa";
+
+setupPwa();
 
 const queryClient = new QueryClient({
   defaultOptions: {

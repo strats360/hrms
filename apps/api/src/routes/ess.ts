@@ -20,6 +20,7 @@ import {
 import {
   checkPunch,
   DEFAULT_PUNCH_POLICY,
+  OFFLINE_PUNCH_MAX_HOURS,
   type PunchPolicy,
   aadhaarLast4Schema,
   accountNumberSchema,
@@ -151,7 +152,7 @@ function decodeSelfie(dataUrl: string) {
   return { bytes, type };
 }
 
-async function punchCheck(c: Context<AppEnv>, tid: string, branchId: string | null, body: { source: string; lat?: number; lng?: number; accuracy?: number }) {
+async function punchCheck(c: Context<AppEnv>, tid: string, branchId: string | null, body: { source: string; lat?: number; lng?: number; accuracy?: number; offline?: boolean }) {
   const db = c.get("db");
   const [t] = await db.select({ s: tenants.settings }).from(tenants).where(eq(tenants.id, tid));
   const policy = { ...DEFAULT_PUNCH_POLICY, ...((t?.s as { punchPolicy?: Partial<PunchPolicy> } | undefined)?.punchPolicy ?? {}) };
@@ -160,7 +161,7 @@ async function punchCheck(c: Context<AppEnv>, tid: string, branchId: string | nu
   const office = (b: typeof branches.$inferSelect) => ({ name: b.name, lat: b.geoLat, lng: b.geoLng, radiusM: b.geoRadiusM, allowedIps: b.allowedIps ?? [] });
   // no branch set: the head office is their office
   const home = all.find((b) => b.id === branchId) ?? all.find((b) => b.isHeadOffice) ?? null;
-  return checkPunch(policy, home ? office(home) : null, all.filter((b) => b !== home).map(office), { lat: body.lat, lng: body.lng, accuracyM: body.accuracy, ip: c.req.header("cf-connecting-ip") ?? null, wfh: body.source === "wfh" });
+  return checkPunch(policy, home ? office(home) : null, all.filter((b) => b !== home).map(office), { lat: body.lat, lng: body.lng, accuracyM: body.accuracy, ip: c.req.header("cf-connecting-ip") ?? null, wfh: body.source === "wfh", offline: body.offline });
 }
 
 essRoutes.post("/attendance/punch", v("json", punchSchema), async (c) => {
@@ -169,12 +170,22 @@ essRoutes.post("/attendance/punch", v("json", punchSchema), async (c) => {
   const body = c.req.valid("json");
   const [emp] = await db.select({ status: employees.status, branchId: employees.branchId }).from(employees).where(eq(employees.id, eid));
   if (emp?.status === "onboarding") throw badRequest("Attendance starts once HR verifies your onboarding");
-  const check = await punchCheck(c, tid, emp?.branchId ?? null, body);
+  // a punch saved on the phone without a connection keeps the time it was made
+  const sentAt = new Date();
+  let now = sentAt;
+  if (body.capturedAt) {
+    const at = new Date(body.capturedAt);
+    if (at.getTime() > sentAt.getTime() + 2 * 60_000) throw badRequest("The punch time is in the future. Check the clock on your phone.");
+    if (sentAt.getTime() - at.getTime() > OFFLINE_PUNCH_MAX_HOURS * 3_600_000) throw new ApiError(400, `This punch was saved offline more than ${OFFLINE_PUNCH_MAX_HOURS} hours ago, so it can't be sent. Ask HR for an attendance correction.`, "offline_too_old");
+    now = at.getTime() > sentAt.getTime() ? sentAt : at;
+  }
+  const offline = !!body.capturedAt && sentAt.getTime() - now.getTime() > 2 * 60_000;
+  const check = await punchCheck(c, tid, emp?.branchId ?? null, { ...body, offline });
   if (!check.allowed) throw new ApiError(403, check.error!, "outside_office");
+  if (offline) check.flags.push(`Punched offline at ${toISTTime(now)}, sent at ${toISTTime(sentAt)}`);
   const policy = await punchPolicyFor(db, tid);
   const selfie = body.selfie ? decodeSelfie(body.selfie) : null;
   if (policy.selfie === "required" && !selfie) throw new ApiError(400, "Your company asks for a selfie when you punch. Allow camera access and take one.", "selfie_required");
-  const now = new Date();
   const date = todayIST(now);
   const shift = await shiftFor(db, tid, eid);
   const [rec] = await db.select().from(attendanceRecords).where(and(eq(attendanceRecords.tenantId, tid), eq(attendanceRecords.employeeId, eid), eq(attendanceRecords.date, date)));
@@ -186,7 +197,9 @@ essRoutes.post("/attendance/punch", v("json", punchSchema), async (c) => {
     checkIn = now;
     action = "in";
   } else {
-    if (now.getTime() - checkIn.getTime() < 60_000) throw badRequest("You just checked in. Try again in a minute.");
+    if (now.getTime() - checkIn.getTime() < 60_000) throw badRequest(offline ? "This offline punch is from before your check-in, so it wasn't added." : "You just checked in. Try again in a minute.");
+    // a late-arriving offline check-in shouldn't overwrite a later check-out
+    if (offline && checkOut && now.getTime() < checkOut.getTime()) throw badRequest("You've already checked out after this offline punch, so it wasn't added.");
     checkOut = now;
     action = "out";
   }
@@ -213,7 +226,7 @@ essRoutes.post("/attendance/punch", v("json", punchSchema), async (c) => {
     lng: action === "in" ? (body.lng ?? null) : (rec?.lng ?? null),
     ...(action === "out" ? { checkOutLat: body.lat ?? null, checkOutLng: body.lng ?? null } : {}),
     ...(selfieKey ? (action === "in" ? { checkInSelfieKey: selfieKey } : { checkOutSelfieKey: selfieKey }) : {}),
-    ip: c.req.header("cf-connecting-ip") ?? null,
+    ip: offline ? (rec?.ip ?? null) : (c.req.header("cf-connecting-ip") ?? null),
     note: body.note ?? rec?.note ?? null,
     // keep what the check-in found, and add anything new from the check-out
     flags: [...new Set([...(rec?.flags ?? []), ...check.flags.map((f) => `${action === "in" ? "In" : "Out"}: ${f}`)])],

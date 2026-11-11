@@ -112,7 +112,7 @@ const km = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`)
  * any office counts). `accuracyM` is the phone's reported GPS accuracy; up to 200 m of it
  * is given as the benefit of the doubt.
  */
-export function checkPunch(policy: PunchPolicy, home: Office | null, others: Office[], p: { lat?: number | null; lng?: number | null; accuracyM?: number | null; ip?: string | null; wfh: boolean }): PunchCheck {
+export function checkPunch(policy: PunchPolicy, home: Office | null, others: Office[], p: { lat?: number | null; lng?: number | null; accuracyM?: number | null; ip?: string | null; wfh: boolean; offline?: boolean }): PunchCheck {
   const out: PunchCheck = { allowed: true, error: null, flags: [], distanceM: null };
   if (p.wfh && policy.wfhExempt) return out;
   const offices = [home, ...others].filter(Boolean) as Office[];
@@ -141,7 +141,8 @@ export function checkPunch(policy: PunchPolicy, home: Office | null, others: Off
     }
   }
 
-  if (policy.ip !== "off") {
+  // a punch saved offline is sent later from wherever the phone is: its network says nothing
+  if (policy.ip !== "off" && !p.offline) {
     const rules = offices.flatMap((o) => o.allowedIps);
     if (rules.length) {
       const ok = !!p.ip && rules.some((r) => ipMatches(p.ip!, r));
@@ -153,3 +154,6 @@ export function checkPunch(policy: PunchPolicy, home: Office | null, others: Off
   }
   return out;
 }
+
+/** How old an offline punch can be when it's finally sent. */
+export const OFFLINE_PUNCH_MAX_HOURS = 12;

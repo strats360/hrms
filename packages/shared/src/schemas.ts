@@ -258,6 +258,8 @@ export const punchSchema = z.object({
   note: nullable(trimmed(200)),
   /** JPEG selfie as a data URL, resized in the browser (about 30 to 80 KB). */
   selfie: z.string().max(700_000).optional(),
+  /** Set when the punch was saved on the phone without a connection and sent later. */
+  capturedAt: z.string().datetime({ offset: true }).optional(),
 });
 export const manualAttendanceSchema = z.object({
   employeeId: z.string().min(1),

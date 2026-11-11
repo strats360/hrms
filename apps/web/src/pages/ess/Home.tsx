@@ -1,10 +1,14 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, Navigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { CalendarPlus, Camera, ClipboardEdit, FileText, MapPin } from "lucide-react";
 import { fmtDate } from "@hrms/shared";
-import { api } from "@/lib/api";
+import { api, errorMessage } from "@/lib/api";
+import { useSession } from "@/lib/session";
+import { isNetworkError, QUEUE_EVENT, queuedPunches, queuePunch, savedHome, saveHome } from "@/lib/offline";
+import { useOnline } from "@/lib/pwa";
+import { InstallCard } from "@/components/InstallCard";
 import type { Holiday, LeaveBalance, LeaveRequest } from "@/lib/types";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -48,7 +52,33 @@ function getLocation(precise = false): Promise<Loc> {
 
 export default function EssHomePage() {
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: ["ess", "home"], queryFn: () => api.get<EssHome>("/ess/home") });
+  const { tenant } = useSession();
+  const eid = tenant?.employeeId ?? "";
+  const q = useQuery({
+    queryKey: ["ess", "home"],
+    queryFn: async () => {
+      try {
+        const h = await api.get<EssHome>("/ess/home");
+        // just enough to show today's status and punch without a connection
+        saveHome(eid, { ...h, balances: [], holidays: [], requests: [] });
+        return h;
+      } catch (e) {
+        const saved = isNetworkError(e) ? savedHome<EssHome>(eid) : null;
+        if (saved) return saved;
+        throw e;
+      }
+    },
+  });
+  const online = useOnline();
+  const [queued, setQueued] = useState(() => queuedPunches(eid));
+  useEffect(() => {
+    const refresh = () => {
+      setQueued(queuedPunches(eid));
+      qc.invalidateQueries({ queryKey: ["ess", "home"] });
+    };
+    window.addEventListener(QUEUE_EVENT, refresh);
+    return () => window.removeEventListener(QUEUE_EVENT, refresh);
+  }, [eid, qc]);
   const [wfh, setWfh] = useState(false);
   // the camera opens while the location is found in the background
   const [camera, setCamera] = useState(false);
@@ -61,12 +91,31 @@ export default function EssHomePage() {
     return pending.current;
   };
   const punch = useMutation({
+    meta: { silent: true },
     mutationFn: async (selfie?: string) => {
       const loc = await (pending.current ?? locate());
       pending.current = null;
-      return api.post<{ action: "in" | "out"; checkIn: string; checkOut: string; status: string; lateMinutes: number; flags?: string[] }>("/ess/attendance/punch", { source: wfh ? "wfh" : loc ? "gps" : "web", ...(loc ?? {}), ...(selfie ? { selfie } : {}) });
+      const body = { source: wfh ? "wfh" : loc ? "gps" : "web", ...(loc ?? {}), ...(selfie ? { selfie } : {}) };
+      const save = () => {
+        const action: "in" | "out" = q.data?.today.checkIn || queued.some((x) => x.action === "in") ? "out" : "in";
+        queuePunch(eid, { capturedAt: new Date().toISOString(), action, body });
+        setQueued(queuedPunches(eid));
+        return { offline: true as const, action };
+      };
+      if (!navigator.onLine) return save();
+      try {
+        return await api.post<{ action: "in" | "out"; checkIn: string; checkOut: string; status: string; lateMinutes: number; flags?: string[] }>("/ess/attendance/punch", body);
+      } catch (e) {
+        if (isNetworkError(e)) return save();
+        throw e;
+      }
     },
+    onError: (e) => toast.error(errorMessage(e)),
     onSuccess: (r) => {
+      if ("offline" in r) {
+        toast.success(`${r.action === "in" ? "Check-in" : "Check-out"} saved on your phone at ${new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Kolkata" })}. It's sent as soon as you're back online.`);
+        return;
+      }
       toast.success(r.action === "in" ? `Checked in at ${r.checkIn}${r.lateMinutes ? ` · ${r.lateMinutes} min late` : ""}` : `Checked out at ${r.checkOut}`);
       if (r.flags?.length) toast.warning(`${r.flags.join(". ")}. HR will see this on your attendance.`);
       qc.invalidateQueries({ queryKey: ["ess"] });
@@ -78,7 +127,13 @@ export default function EssHomePage() {
   const d = q.data;
   const ob = d.onboarding;
   if (d.profile.status === "onboarding" && ob && ob.status !== "submitted") return <Navigate to="/me/onboarding" replace />;
-  const t = d.today;
+  const t = { ...d.today };
+  const qIn = queued.find((x) => x.action === "in");
+  const qOut = queued.find((x) => x.action === "out");
+  const hhmm = (iso: string) => new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Kolkata" });
+  // while punches wait to be sent, show them as if they'd gone through
+  if (!t.checkIn && qIn) t.checkIn = `${hhmm(qIn.capturedAt)} (waiting to send)`;
+  if (!t.checkOut && qOut) t.checkOut = `${hhmm(qOut.capturedAt)} (waiting to send)`;
   const checkedOut = !!t.checkOut;
   const headline = !t.checkIn ? "Not checked in" : checkedOut ? `Done for today` : `Checked in at ${t.checkIn}`;
   const paid = d.balances.filter((b) => b.isPaid && (b.annualQuota > 0 || b.available > 0));
@@ -95,6 +150,7 @@ export default function EssHomePage() {
         </div>
       </div>
 
+      <InstallCard />
       {ob && ob.status === "submitted" ? <Notice tone="sel">Your joining details are with HR for verification. Attendance and leave open up once they're verified.</Notice> : null}
       {ob && ob.status !== "submitted" ? (
         <Notice tone="warn">
@@ -133,6 +189,7 @@ export default function EssHomePage() {
             <div className="text-muted text-[12.5px]">Missed something? <Link to="/me/attendance">Request a correction</Link></div>
           )}
           <div className="text-muted text-[12px]">
+            {!online ? "You're offline. Your punch is saved on this phone and sent when you're back online. " : ""}
             {(d.punch?.selfie ?? "off") !== "off" ? "You'll take a quick selfie. " : ""}Your location is used only to record where you punched, if you allow it.
           </div>
           {camera ? (

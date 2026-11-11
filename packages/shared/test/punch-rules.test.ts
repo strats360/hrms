@@ -52,4 +52,10 @@ describe("punch rules", () => {
     expect(checkPunch({ ...policy, wfhExempt: false }, hq, [], { lat: 0, lng: 0, ip: "1.1.1.1", wfh: true }).allowed).toBe(false);
     expect(checkPunch(policy, { ...hq, lat: null, lng: null, allowedIps: [] }, [], { wfh: false })).toMatchObject({ allowed: true, flags: [] });
   });
+  it("skips the office network check for punches saved offline, but still checks location", () => {
+    const blockIp = { ...policy, ip: "block" as const };
+    expect(checkPunch(blockIp, hq, [], { lat: 21.765, lng: 72.152, ip: "198.51.100.1", wfh: false }).allowed).toBe(false);
+    expect(checkPunch(blockIp, hq, [], { lat: 21.765, lng: 72.152, ip: "198.51.100.1", wfh: false, offline: true })).toMatchObject({ allowed: true, flags: [] });
+    expect(checkPunch(blockIp, hq, [], { lat: 21.8, lng: 72.15, ip: null, wfh: false, offline: true }).allowed).toBe(false);
+  });
 });

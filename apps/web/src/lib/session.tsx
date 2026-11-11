@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, type ReactNode } from "r
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { can as canDo, MODULES, type Action, type Module, type PermissionMatrix } from "@hrms/shared";
 import { api, ApiError, getActiveTenant, setActiveTenant } from "./api";
+import { clearOffline, isNetworkError, saveMe, savedMe } from "./offline";
 
 export interface Membership {
   tenantId: string;
@@ -96,9 +97,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     queryKey: ["me"],
     queryFn: async () => {
       try {
-        return await api.get<Me>("/me");
+        const me = await api.get<Me>("/me");
+        saveMe(me);
+        return me;
       } catch (e) {
-        if (e instanceof ApiError && e.status === 401) return null;
+        if (e instanceof ApiError && e.status === 401) {
+          saveMe(null);
+          return null;
+        }
+        // no connection: carry on as the person last signed in on this phone
+        const saved = isNetworkError(e) ? savedMe<Me>() : null;
+        if (saved) return saved;
         throw e;
       }
     },
@@ -137,6 +146,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         await api.post("/auth/sign-out");
       } finally {
         setActiveTenant(null);
+        clearOffline();
         qc.clear();
         window.location.href = "/login";
       }
