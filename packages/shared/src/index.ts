@@ -19,3 +19,4 @@ export * from "./punch-rules";
 export * from "./approvals";
 export * from "./security";
 export * from "./notifications";
+export * from "./org-chart";

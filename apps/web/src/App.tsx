@@ -93,6 +93,7 @@ const router = createBrowserRouter([
               { index: true, element: L(() => import("@/pages/admin/employees/Directory")) },
               { path: "onboarding", element: L(() => import("@/pages/admin/employees/Onboarding")) },
               { path: "exits", element: L(() => import("@/pages/admin/employees/Exits")) },
+              { path: "org-chart", element: L(() => import("@/pages/admin/employees/OrgChart")) },
               { path: "new", element: L(() => import("@/pages/admin/employees/EmployeeForm")) },
             ],
           },
