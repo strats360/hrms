@@ -1,3 +1,4 @@
+import { essPrivacyRoutes, privacyRoutes } from "./routes/privacy";
 import { Hono } from "hono";
 import { secureHeaders } from "hono/secure-headers";
 import type { AppEnv } from "./env";
@@ -151,6 +152,7 @@ export function buildApp() {
   t.route("/ess/photo", essPhotoRoutes);
   t.route("/ess/loans", essLoanRoutes);
   t.route("/ess/roster", essRosterRoutes);
+  t.route("/ess/privacy", essPrivacyRoutes);
   t.route("/ess", essRoutes);
   t.route("/ess", essExitRoutes);
   t.route("/ess", essPayslipFileRoutes);
@@ -160,6 +162,7 @@ export function buildApp() {
   t.route("/admin/employees/org-chart", orgChartRoutes);
   t.route("/admin/letters", letterRoutes);
   t.route("/admin/probation", probationRoutes);
+  t.route("/admin/privacy", privacyRoutes);
   t.use("/admin/*", requireAdmin);
   t.route("/admin/dashboard", dashboardRoutes);
   t.route("/admin/org/notifications", orgNotificationRoutes);

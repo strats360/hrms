@@ -95,6 +95,7 @@ const router = createBrowserRouter([
               { path: "exits", element: L(() => import("@/pages/admin/employees/Exits")) },
               { path: "org-chart", element: L(() => import("@/pages/admin/employees/OrgChart")) },
               { path: "probation", element: L(() => import("@/pages/admin/employees/Probation")) },
+              { path: "data-requests", element: L(() => import("@/pages/admin/employees/DataRequests")) },
               { path: "new", element: L(() => import("@/pages/admin/employees/EmployeeForm")) },
             ],
           },

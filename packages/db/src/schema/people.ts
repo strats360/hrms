@@ -78,6 +78,8 @@ export const employees = pgTable(
     esiApplicable: boolean("esi_applicable").notNull().default(false),
     ptApplicable: boolean("pt_applicable").notNull().default(true),
     taxRegime: text("tax_regime").notNull().default("new"),
+    /** When personal data was erased under the DPDP Act; statutory records stay. */
+    erasedAt: timestamp("erased_at", { withTimezone: true }),
     ...timestamps,
   },
   (t) => [

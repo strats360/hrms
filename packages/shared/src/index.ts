@@ -23,3 +23,4 @@ export * from "./org-chart";
 export * from "./letters";
 export * from "./loans";
 export * from "./probation";
+export * from "./privacy";

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ChevronLeft, Download, LogOut, Eye, FileText, Pencil, Trash2, Upload } from "lucide-react";
+import { ChevronLeft, Database, Download, LogOut, Eye, FileText, Pencil, Trash2, Upload } from "lucide-react";
 import {
   DOCUMENT_TYPE_LABELS,
   DOCUMENT_TYPES,
@@ -27,6 +27,8 @@ import { AttendanceMonth } from "@/components/employees/AttendanceMonth";
 import { ResetTwoFactorDialog } from "@/components/account/ResetTwoFactorDialog";
 import { PhotoEditor } from "@/components/account/PhotoEditor";
 import { GenerateLetterDialog } from "@/components/letters/GenerateLetterDialog";
+import { Menu } from "@/components/ui/menu";
+import { DecideDialog, downloadEmployeeData } from "./DataRequests";
 
 type Tab = "personal" | "employment" | "bank" | "statutory" | "documents" | "attendance";
 
@@ -47,6 +49,7 @@ export default function EmployeeProfile() {
   const [fileKey, setFileKey] = useState(0);
   const [resetting, setResetting] = useState(false);
   const [letter, setLetter] = useState(false);
+  const [erasing, setErasing] = useState(false);
 
   const q = useQuery({ queryKey: ["employee", id], queryFn: () => api.get<EmployeeDetail>(`/admin/employees/${id}`) });
   const refresh = () => qc.invalidateQueries({ queryKey: ["employee", id] });
@@ -94,6 +97,8 @@ export default function EmployeeProfile() {
 
   const exitsQ = useQuery({ queryKey: ["exits", "open"], queryFn: () => api.get<{ rows: { id: string; employeeId: string; statusLabel: string }[] }>("/admin/exits?status=open"), enabled: q.data?.status === "notice" && (edit || can("payroll", "view")) });
   const openExit = exitsQ.data?.rows.find((r) => r.employeeId === id) ?? null;
+  const hr = can("employees", "configure");
+  const privacyQ = useQuery({ queryKey: ["privacy-employee", id], queryFn: () => api.get<{ erasedAt: string | null; blocker: string | null; erased: string[]; kept: string[] }>(`/admin/privacy/employees/${id}`), enabled: hr });
 
   if (q.isLoading) return <Loading />;
   if (q.error || !q.data) return <ErrorState error={q.error ?? new Error("Employee not found")} retry={() => q.refetch()} />;
@@ -129,6 +134,19 @@ export default function EmployeeProfile() {
                 <LogOut size={15} /> Start exit
               </Button>
             ) : null}
+            {hr ? (
+              <Menu
+                trigger={
+                  <Button>
+                    <Database size={15} /> Personal data
+                  </Button>
+                }
+                items={[
+                  { label: "Download their data", onSelect: () => downloadEmployeeData(id) },
+                  ...(["exited", "inactive"].includes(e.status) && !privacyQ.data?.erasedAt ? [{ label: "Erase personal data", onSelect: () => setErasing(true), danger: true }] : []),
+                ]}
+              />
+            ) : null}
             {edit ? (
               <Button onClick={() => setLetter(true)}>
                 <FileText size={15} /> Generate letter
@@ -143,6 +161,8 @@ export default function EmployeeProfile() {
         }
       />
       {letter ? <GenerateLetterDialog employee={e} onClose={() => setLetter(false)} /> : null}
+      {erasing && privacyQ.data ? <DecideDialog action={{ kind: "erase", row: { employeeId: id, name: e.fullName, blocker: privacyQ.data.blocker } }} data={privacyQ.data} onClose={() => setErasing(false)} /> : null}
+      {privacyQ.data?.erasedAt ? <Notice tone="sel">Personal data erased on {fmtDate(privacyQ.data.erasedAt.slice(0, 10))}. Payroll, tax and statutory records are kept as the law requires.</Notice> : null}
       {inviteOpen ? (
         <Notice tone={e.invite!.status === "submitted" ? "warn" : "sel"}>
           <div className="flex flex-wrap items-center justify-between gap-2">

@@ -16,6 +16,7 @@ export const NOTIFICATION_KEYS = [
   "comp_off_to_approve",
   "resignation_submitted",
   "probation_due",
+  "privacy_requests",
 ] as const;
 export type NotificationKey = (typeof NOTIFICATION_KEYS)[number];
 
@@ -39,6 +40,7 @@ export const NOTIFICATIONS: NotificationDef[] = [
   { key: "leave_to_approve", group: "approver", label: "Leave waiting for me", description: "When a leave request reaches your step in the approval chain." },
   { key: "comp_off_to_approve", group: "approver", label: "Comp off waiting for me", description: "When someone on your team claims comp off." },
   { key: "probation_due", group: "approver", label: "Probation reviews due", description: "Before probation ends for someone on your team, or anyone if you're HR." },
+  { key: "privacy_requests", group: "approver", label: "Data erasure requests", description: "When an employee asks the company to erase their personal data (HR only)." },
   { key: "resignation_submitted", group: "approver", label: "Resignations", description: "When someone on your team, or anyone if you're HR, resigns." },
 ];
 

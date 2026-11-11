@@ -16,6 +16,7 @@ import { Checkbox, Field, Input } from "@/components/ui/field";
 import { Notice } from "@/components/ui/page";
 import { Tag } from "@/components/ui/tag";
 import { MyNotificationsCard } from "@/components/account/Notifications";
+import { MyDataCard } from "@/components/account/MyData";
 
 /** Sign-in and security for the signed-in person: two-factor, password, devices. */
 export default function Security() {
@@ -63,6 +64,7 @@ export default function Security() {
         {needsTwoFactor ? null : <MyNotificationsCard />}
         <PasswordCard />
         <SessionsCard />
+        {needsTwoFactor ? null : <MyDataCard />}
       </main>
     </div>
   );
