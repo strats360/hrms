@@ -26,7 +26,7 @@ interface Tenant {
   contactPhone: string | null;
   plan: string;
   status: string;
-  settings: { payrollCycle?: string; payDay?: string; paidDaysBasis?: string; weeklyOffs?: number[]; employeeCodePrefix?: string; noticeDays?: number; probationNoticeDays?: number; overtime?: OvertimeSettings; minWageBasis?: "basic" | "gross"; essSalaryView?: boolean };
+  settings: { payrollCycle?: string; payDay?: string; paidDaysBasis?: string; weeklyOffs?: number[]; employeeCodePrefix?: string; noticeDays?: number; probationNoticeDays?: number; overtime?: OvertimeSettings; minWageBasis?: "basic" | "gross"; essSalaryView?: boolean; essPhotoEdit?: boolean };
   statutory: Record<string, { enabled: boolean; registration?: string | null }>;
 }
 
@@ -191,6 +191,12 @@ export default function Organization() {
             <Select value={settings.essSalaryView === false ? "hide" : "show"} onChange={(e) => setSettings((s) => ({ ...s, essSalaryView: e.target.value === "show" }))} disabled={!configurable}>
               <option value="show">Show to employees</option>
               <option value="hide">Hide</option>
+            </Select>
+          </Field>
+          <Field label="Profile photos" hint="HR can always change photos from the employee's profile">
+            <Select value={settings.essPhotoEdit === false ? "hr" : "self"} onChange={(e) => setSettings((s) => ({ ...s, essPhotoEdit: e.target.value === "self" }))} disabled={!configurable}>
+              <option value="self">Employees can change their own</option>
+              <option value="hr">Only HR changes them</option>
             </Select>
           </Field>
           <Field label="Notice period on probation (days)">

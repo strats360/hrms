@@ -73,7 +73,7 @@ export default function EssHomePage() {
   return (
     <>
       <div className="flex items-center gap-3">
-        <Avatar name={d.profile.name} size={44} tone="sel" />
+        <Avatar employeeId={d.profile.id} name={d.profile.name} size={44} tone="sel" />
         <div className="min-w-0">
           <div className="text-[20px] font-medium">Namaste, {d.profile.firstName}</div>
           <div className="text-muted text-[12.5px]">

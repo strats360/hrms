@@ -77,7 +77,7 @@ function EmployeeComputation({ id, fy }: { id: string; fy: string }) {
       <Card className="!gap-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Avatar name={d.employee.name} size={44} tone="sel" />
+            <Avatar employeeId={d.employee.id} name={d.employee.name} size={44} tone="sel" />
             <div>
               <div className="text-[17px] font-semibold">{d.employee.name}</div>
               <div className="text-muted text-[12.5px]">

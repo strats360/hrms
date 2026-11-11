@@ -21,7 +21,7 @@ export function claimColumns(opts: { payment?: boolean; gst?: boolean } = {}): C
         </div>
       ),
     },
-    { id: "employee", header: "Employee", accessorFn: (r) => r.employeeName, cell: ({ row: { original: r } }) => <PersonCell name={r.employeeName} sub={`${r.employeeCode}${r.department ? " · " + r.department : ""}`} /> },
+    { id: "employee", header: "Employee", accessorFn: (r) => r.employeeName, cell: ({ row: { original: r } }) => <PersonCell employeeId={r.employeeId} name={r.employeeName} sub={`${r.employeeCode}${r.department ? " · " + r.department : ""}`} /> },
     { id: "category", header: "Category", accessorFn: (r) => r.category },
     { id: "date", header: "Date", accessorFn: (r) => r.expenseDate, cell: ({ getValue }) => fmtDate(getValue<string>()) },
     {

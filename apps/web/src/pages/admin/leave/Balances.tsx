@@ -53,7 +53,7 @@ export default function Balances() {
 
   const columns = useMemo<ColumnDef<BalRow, any>[]>(
     () => [
-      { id: "employee", header: "Employee", accessorFn: (r) => r.name, cell: ({ row }) => <PersonCell name={row.original.name} sub={`${row.original.code}${row.original.department ? " · " + row.original.department : ""}`} /> },
+      { id: "employee", header: "Employee", accessorFn: (r) => r.name, cell: ({ row }) => <PersonCell employeeId={row.original.employeeId} name={row.original.name} sub={`${row.original.code}${row.original.department ? " · " + row.original.department : ""}`} /> },
       ...types.map<ColumnDef<BalRow, any>>((t) => ({
         id: t.code,
         header: t.name,

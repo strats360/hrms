@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { PhotoEditor } from "@/components/account/PhotoEditor";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Download, FileText, Pencil, Upload } from "lucide-react";
 import { DOCUMENT_TYPES, DOCUMENT_TYPE_LABELS, EMPLOYMENT_TYPE_LABELS, essProfileUpdateSchema, fmtDate, maskAccount, type DocumentType } from "@hrms/shared";
 import { api } from "@/lib/api";
 import type { EmployeeDocument } from "@/lib/types";
-import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
@@ -63,8 +63,8 @@ export default function EssProfilePage() {
   const p = q.data;
   return (
     <>
-      <div className="flex items-center gap-3">
-        <Avatar name={p.fullName} size={56} tone="sel" />
+      <div className="flex items-start gap-4">
+        <PhotoEditor employeeId={p.id} name={p.fullName} size={64} endpoint="/ess/photo" canEdit={(p as { canEditPhoto?: boolean }).canEditPhoto !== false} />
         <div className="min-w-0">
           <div className="text-[22px] font-medium">{p.fullName}</div>
           <div className="text-muted text-[13px]">{[p.designation, p.department].filter(Boolean).join(" · ")} · {p.employeeCode}</div>

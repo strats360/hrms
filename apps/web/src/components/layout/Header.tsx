@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router";
 import { Bell, LogOut, Menu as MenuIcon, Moon, Search, Sun } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
 import { Button } from "@/components/ui/button";
+import { Avatar } from "@/components/ui/avatar";
 import { useTheme } from "@/lib/theme";
 import { useSession } from "@/lib/session";
 import { CommandPalette } from "./CommandPalette";
@@ -23,7 +24,7 @@ export interface Alert {
 }
 
 export function Header({ crumb, org, searchPlaceholder, onMenu, alerts = [], roleLabel, palette = true }: { crumb: string; org: string; searchPlaceholder: string; onMenu?: () => void; alerts?: Alert[]; roleLabel?: string | null; palette?: boolean }) {
-  const { me, signOut } = useSession();
+  const { me, signOut, tenant } = useSession();
   const [open, setOpen] = useState(false);
   const nav = useNavigate();
   const total = alerts.reduce((a, b) => a + b.count, 0);
@@ -93,9 +94,7 @@ export function Header({ crumb, org, searchPlaceholder, onMenu, alerts = [], rol
         </Popover.Root>
         <div className="flex items-center gap-2.5 pl-1.5">
           <Link to="/account/security" title="Your account: sign-in, security and email settings" className="flex items-center gap-2.5 rounded-[var(--radius-md)] no-underline" style={{ color: "var(--color-text)" }}>
-            <div className="hidden h-9 w-9 place-items-center rounded-full text-[13px] font-bold sm:grid" style={{ background: "var(--ok-bg)", color: "var(--ok-fg)" }}>
-              {me?.user.name.split(" ").map((p) => p[0]).slice(0, 2).join("")}
-            </div>
+            <Avatar name={me?.user.name ?? ""} size={36} employeeId={tenant?.employeeId} className="hidden sm:grid" />
             <div className="hidden min-w-0 leading-tight sm:block">
               <div className="text-[13px] font-semibold">{me?.user.name}</div>
               <div className="text-[11.5px]" style={{ color: "var(--muted)" }}>{roleLabel}</div>

@@ -56,6 +56,7 @@ import { storeUpload } from "./employees";
 import { payslipView } from "./payroll";
 import { notifyNextApprover } from "./leave";
 import { essSalaryVisible, mySalary } from "../services/my-salary";
+import { essPhotoAllowed } from "./photos";
 
 export const essRoutes = new Hono<AppEnv>();
 essRoutes.use("*", requireEmployee);
@@ -286,7 +287,8 @@ essRoutes.get("/holidays", async (c) => {
 essRoutes.get("/profile", async (c) => {
   const p = await loadMe(c);
   const docs = await c.get("db").select().from(employeeDocuments).where(and(eq(employeeDocuments.tenantId, me(c).tid), eq(employeeDocuments.employeeId, me(c).eid))).orderBy(asc(employeeDocuments.createdAt));
-  return c.json({ ...p, documents: docs });
+  const [t] = await c.get("db").select({ settings: tenants.settings }).from(tenants).where(eq(tenants.id, me(c).tid));
+  return c.json({ ...p, documents: docs, canEditPhoto: essPhotoAllowed(t?.settings) });
 });
 
 essRoutes.patch("/profile", v("json", essProfileUpdateSchema), async (c) => {

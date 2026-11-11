@@ -96,7 +96,7 @@ export default function Directory() {
 
   const columns = useMemo<ColumnDef<EmployeeRow>[]>(() => {
     const cols: ColumnDef<EmployeeRow>[] = [
-      { id: "fullName", accessorKey: "fullName", header: "Employee", enableHiding: false, cell: ({ row }) => <PersonCell name={row.original.fullName} sub={row.original.employeeCode} /> },
+      { id: "fullName", accessorKey: "fullName", header: "Employee", enableHiding: false, cell: ({ row }) => <PersonCell employeeId={row.original.id} name={row.original.fullName} sub={row.original.employeeCode} /> },
       { id: "department", accessorKey: "department", header: "Department", cell: ({ getValue }) => getValue() ?? "—" },
       { id: "designation", accessorKey: "designation", header: "Designation", enableSorting: false, cell: ({ getValue }) => getValue() ?? "—" },
       { id: "branch", accessorKey: "branch", header: "Branch", enableSorting: false, cell: ({ getValue }) => getValue() ?? "—" },

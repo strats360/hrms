@@ -25,7 +25,7 @@ export function paymentColumns(opts: { batch?: boolean } = {}): ColumnDef<Paymen
   return [
     { id: "ref", header: "Reference", accessorFn: (p) => p.reference, cell: ({ row: { original: p } }) => <div><div className="font-semibold">{p.reference}</div>{p.description ? <div className="text-muted text-[11.5px]">{p.description}</div> : null}</div> },
     ...(opts.batch ? [{ id: "batch", header: "Batch", accessorFn: (p: Payment) => p.batchCode, cell: ({ row: { original: p } }: { row: { original: Payment } }) => <Link to={`/payments/batches/${p.batchId}`}>{p.batchCode}</Link> } as ColumnDef<Payment, any>] : []),
-    { id: "employee", header: "Employee", accessorFn: (p) => p.employeeName, cell: ({ row: { original: p } }) => <PersonCell name={p.employeeName} sub={p.employeeCode} /> },
+    { id: "employee", header: "Employee", accessorFn: (p) => p.employeeName, cell: ({ row: { original: p } }) => <PersonCell employeeId={p.employeeId} name={p.employeeName} sub={p.employeeCode} /> },
     { id: "bank", header: "Bank", accessorFn: (p) => p.bankName ?? "", cell: ({ row: { original: p } }) => (p.accountLast4 ? <div>{p.bankName}<div className="text-muted text-[11.5px]">····{p.accountLast4} · {p.ifsc}</div></div> : <span className="text-muted">Not on file</span>) },
     { id: "amount", header: "Amount", accessorFn: (p) => Number(p.amount), meta: { align: "right" }, cell: ({ getValue }) => <span className="font-semibold">{inr(getValue<number>())}</span> },
     { id: "status", header: "Status", accessorFn: (p) => p.status, cell: ({ row: { original: p } }) => <PaymentStatusTag status={p.status} /> },

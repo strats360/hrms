@@ -13,7 +13,6 @@ import {
   type DocumentType,
   type EmployeeStatus,
 } from "@hrms/shared";
-import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/field";
@@ -25,6 +24,7 @@ import { useSession } from "@/lib/session";
 import type { EmployeeDetail } from "@/lib/types";
 import { AttendanceMonth } from "@/components/employees/AttendanceMonth";
 import { ResetTwoFactorDialog } from "@/components/account/ResetTwoFactorDialog";
+import { PhotoEditor } from "@/components/account/PhotoEditor";
 
 type Tab = "personal" | "employment" | "bank" | "statutory" | "documents" | "attendance";
 
@@ -154,7 +154,7 @@ export default function EmployeeProfile() {
       ) : null}
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
         <Card className="!gap-3.5 items-center text-center">
-          <Avatar name={e.fullName} size={88} tone="sel" />
+          <PhotoEditor employeeId={e.id} name={e.fullName} size={88} endpoint={`/admin/employees/${e.id}/photo`} canEdit={edit} />
           <div>
             <div className="text-[22px] font-medium">{e.fullName}</div>
             <div className="text-muted text-[13px]">{[e.designation, e.department].filter(Boolean).join(" · ") || "—"}</div>

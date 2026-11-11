@@ -83,7 +83,7 @@ export default function Requests() {
 
   const columns = useMemo<ColumnDef<LeaveRequest, any>[]>(
     () => [
-      { id: "employee", header: "Employee", accessorFn: (r) => r.employeeName, cell: ({ row }) => <PersonCell name={row.original.employeeName ?? ""} sub={`${row.original.employeeCode}${row.original.department ? " · " + row.original.department : ""}`} /> },
+      { id: "employee", header: "Employee", accessorFn: (r) => r.employeeName, cell: ({ row }) => <PersonCell employeeId={row.original.employeeId} name={row.original.employeeName ?? ""} sub={`${row.original.employeeCode}${row.original.department ? " · " + row.original.department : ""}`} /> },
       { id: "type", header: "Type", accessorFn: (r) => r.typeName },
       { id: "dates", header: "Dates", accessorFn: (r) => r.startDate, cell: ({ row }) => dates(row.original) },
       { id: "days", header: "Days", accessorFn: (r) => Number(r.days), meta: { align: "right" }, cell: ({ row }) => `${row.original.days}${row.original.halfDay ? " (half)" : ""}` },

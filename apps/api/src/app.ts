@@ -23,6 +23,7 @@ import { compOffRoutes, essCompOffRoutes } from "./routes/comp-off";
 import { platformRoutes } from "./routes/platform";
 import { auditRoutes } from "./routes/audit";
 import { fileRoutes } from "./routes/files";
+import { adminPhotoRoutes, essPhotoRoutes, photoIndexRoutes, photoServeRoutes } from "./routes/photos";
 import { payrollRoutes } from "./routes/payroll";
 import { complianceRoutes } from "./routes/compliance";
 import { essTaxRoutes, tdsRoutes } from "./routes/tds";
@@ -62,7 +63,8 @@ export function buildApp() {
   api.use("*", secureHeaders());
   api.use("*", async (c, next) => {
     await next();
-    c.header("Cache-Control", "no-store");
+    // responses that set their own caching (profile photos) keep it
+    if (!c.res.headers.has("Cache-Control")) c.header("Cache-Control", "no-store");
   });
   api.get("/health", async (c) => {
     const base = { ok: true, version: RELEASE.version, environment: c.env.ENVIRONMENT ?? "development" };
@@ -113,6 +115,9 @@ export function buildApp() {
   api.route("/public/attendance", devicePunchRoutes);
   api.route("/public", publicRoutes);
 
+  api.use("/photo/*", requireAuth);
+  api.route("/photo", photoServeRoutes);
+
   api.use("/me/*", requireAuth);
   api.route("/me", meRoutes);
 
@@ -137,11 +142,14 @@ export function buildApp() {
   t.route("/ess/tax", essTaxRoutes);
   t.route("/ess/claims", essClaimRoutes);
   t.route("/notifications/mine", myNotificationRoutes);
+  t.route("/photos", photoIndexRoutes);
+  t.route("/ess/photo", essPhotoRoutes);
   t.route("/ess", essRoutes);
   t.route("/ess", essExitRoutes);
   t.route("/ess", essPayslipFileRoutes);
   t.route("/ess", essCompOffRoutes);
   t.route("/files", fileRoutes);
+  t.route("/admin/employees", adminPhotoRoutes);
   t.use("/admin/*", requireAdmin);
   t.route("/admin/dashboard", dashboardRoutes);
   t.route("/admin/org/notifications", orgNotificationRoutes);

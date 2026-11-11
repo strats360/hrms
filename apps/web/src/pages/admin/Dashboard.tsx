@@ -19,7 +19,7 @@ interface Dashboard {
   employees: { total: number; active: number; inactive: number; onboarding: number; probation: number };
   attendance: { present: number; wfh: number; late: number; absent: number; notMarked: number; onLeave: number; off: number } | null;
   pendingLeaveCount: number;
-  pendingLeaves: { id: string; code: string; employeeName: string; employeeCode: string; type: string; startDate: string; endDate: string; days: number }[];
+  pendingLeaves: { id: string; code: string; employeeId: string; employeeName: string; employeeCode: string; type: string; startDate: string; endDate: string; days: number }[];
   pendingCorrections: number;
   awaitingVerification: number;
   celebrations: { id: string; name: string; department: string | null; kind: "birthday" | "anniversary"; date: string; years: number }[];
@@ -107,7 +107,7 @@ export default function DashboardPage() {
                     {d.pendingLeaves.map((l) => (
                       <tr key={l.id}>
                         <td>
-                          <PersonCell name={l.employeeName} sub={l.employeeCode} />
+                          <PersonCell employeeId={l.employeeId} name={l.employeeName} sub={l.employeeCode} />
                         </td>
                         <td className="whitespace-nowrap">{l.type}</td>
                         <td className="whitespace-nowrap">{l.startDate === l.endDate ? fmtDate(l.startDate, false) : `${fmtDate(l.startDate, false)} – ${fmtDate(l.endDate, false)}`}</td>

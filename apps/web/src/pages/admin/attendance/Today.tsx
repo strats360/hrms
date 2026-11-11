@@ -58,7 +58,7 @@ export default function Today() {
 
   const columns = useMemo<ColumnDef<Row, any>[]>(
     () => [
-      { id: "name", header: "Employee", accessorFn: (r) => r.name, cell: ({ row }) => <PersonCell name={row.original.name} sub={`${row.original.code}${row.original.designation ? " · " + row.original.designation : ""}`} /> },
+      { id: "name", header: "Employee", accessorFn: (r) => r.name, cell: ({ row }) => <PersonCell employeeId={row.original.employeeId} name={row.original.name} sub={`${row.original.code}${row.original.designation ? " · " + row.original.designation : ""}`} /> },
       { id: "department", header: "Department", accessorFn: (r) => r.department ?? "", cell: ({ getValue }) => getValue() || "—" },
       { id: "branch", header: "Branch", accessorFn: (r) => r.branch ?? "", cell: ({ getValue }) => getValue() || "—" },
       { id: "checkIn", header: "Check-in", accessorFn: (r) => r.checkIn ?? "", cell: ({ getValue }) => getValue() || "—" },

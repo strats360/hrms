@@ -62,7 +62,7 @@ export default function CompOff() {
 
   const columns = useMemo<ColumnDef<CompOffRow>[]>(
     () => [
-      { id: "employee", header: "Employee", accessorFn: (r) => r.employeeName, cell: ({ row: { original: r } }) => <PersonCell name={r.employeeName ?? ""} sub={[r.employeeCode, r.department].filter(Boolean).join(" · ")} /> },
+      { id: "employee", header: "Employee", accessorFn: (r) => r.employeeName, cell: ({ row: { original: r } }) => <PersonCell employeeId={r.employeeId} name={r.employeeName ?? ""} sub={[r.employeeCode, r.department].filter(Boolean).join(" · ")} /> },
       { id: "date", header: "Worked on", accessorKey: "workDate", cell: ({ row: { original: r } }) => <div>{fmtDate(r.workDate)}<div className="text-muted text-[12px]">{DAY_TYPE[r.dayType]}</div></div> },
       { id: "worked", header: "Worked", accessorKey: "workMinutes", cell: ({ getValue }) => hours(getValue<number>()) },
       { id: "days", header: "Comp off", accessorKey: "days", meta: { align: "right" }, cell: ({ getValue }) => `${getValue<number>()} day${getValue<number>() === 1 ? "" : "s"}` },

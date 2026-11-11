@@ -70,7 +70,7 @@ export default function Corrections() {
 
   const columns = useMemo<ColumnDef<Correction, any>[]>(
     () => [
-      { id: "employee", header: "Employee", accessorFn: (r) => r.employeeName, cell: ({ row }) => <PersonCell name={row.original.employeeName} sub={row.original.employeeCode} /> },
+      { id: "employee", header: "Employee", accessorFn: (r) => r.employeeName, cell: ({ row }) => <PersonCell employeeId={row.original.employeeId} name={row.original.employeeName} sub={row.original.employeeCode} /> },
       { id: "date", header: "Date", accessorFn: (r) => r.date, cell: ({ getValue }) => fmtDate(getValue() as string) },
       { id: "issue", header: "Issue", accessorFn: (r) => r.issue },
       { id: "requested", header: "Requested change", accessorFn: (r) => requested(r), enableSorting: false },

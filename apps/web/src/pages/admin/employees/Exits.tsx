@@ -59,7 +59,7 @@ export default function Exits() {
 
   const columns = useMemo<ColumnDef<ExitRow>[]>(
     () => [
-      { id: "employee", accessorKey: "employeeName", header: "Employee", enableHiding: false, cell: ({ row }) => <PersonCell name={row.original.employeeName} sub={[row.original.employeeCode, row.original.department].filter(Boolean).join(" · ")} /> },
+      { id: "employee", accessorKey: "employeeName", header: "Employee", enableHiding: false, cell: ({ row }) => <PersonCell employeeId={row.original.employeeId} name={row.original.employeeName} sub={[row.original.employeeCode, row.original.department].filter(Boolean).join(" · ")} /> },
       { id: "type", accessorKey: "typeLabel", header: "Type" },
       { id: "lastWorkingDay", accessorKey: "lastWorkingDay", header: "Last working day", cell: ({ getValue }) => fmtDate(getValue() as string) },
       { id: "clearance", header: "Checklist", enableSorting: false, cell: ({ row }) => <span className="num">{row.original.clearanceDone}/{row.original.clearanceTotal}</span> },
