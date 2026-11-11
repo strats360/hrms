@@ -152,6 +152,7 @@ export default function EssHomePage() {
 
       <InstallCard />
       <ReviewNotice />
+      <InterviewNotice />
       {ob && ob.status === "submitted" ? <Notice tone="sel">Your joining details are with HR for verification. Attendance and leave open up once they're verified.</Notice> : null}
       {ob && ob.status !== "submitted" ? (
         <Notice tone="warn">
@@ -281,4 +282,20 @@ function ReviewNotice() {
   return list.length ? (
     <Link to="/me/reviews" className="text-[13px] md:hidden">Your performance reviews</Link>
   ) : null;
+}
+
+/** Interviews waiting for this person's feedback, or coming up today. */
+function InterviewNotice() {
+  const { has } = useSession();
+  const q = useQuery({ queryKey: ["interviews", "mine"], queryFn: () => api.get<{ id: string; scheduledAt: string; status: string; feedbackDone: boolean; candidate: string }[]>("/ess/interviews"), enabled: has("module.recruitment"), staleTime: 60_000 });
+  const list = (q.data ?? []).filter((i) => i.status !== "cancelled" && !i.feedbackDone);
+  const due = list.filter((i) => new Date(i.scheduledAt) <= new Date());
+  const today = list.filter((i) => new Date(i.scheduledAt) > new Date() && new Date(i.scheduledAt).toDateString() === new Date().toDateString());
+  if (!due.length && !today.length) return null;
+  return (
+    <Notice tone={due.length ? "warn" : "sel"}>
+      {due.length ? `${due.length} interview${due.length === 1 ? "" : "s"} waiting for your feedback. ` : `You're interviewing ${today[0]!.candidate} today. `}
+      <Link to={`/me/interviews?id=${(due[0] ?? today[0])!.id}`} style={{ color: "inherit", textDecoration: "underline" }}>{due.length ? "Add feedback" : "See details"}</Link>
+    </Notice>
+  );
 }

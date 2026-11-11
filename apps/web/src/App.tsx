@@ -42,6 +42,8 @@ const router = createBrowserRouter([
   { path: "/reset-password", element: L(() => import("@/pages/auth/ResetPassword")) },
   { path: "/signup", element: L(() => import("@/pages/auth/Signup")) },
   { path: "/onboarding/:token", element: L(() => import("@/pages/auth/InviteAccept")) },
+  { path: "/careers/:slug", element: L(() => import("@/pages/careers/Careers")) },
+  { path: "/careers/:slug/jobs/:id", element: L(() => import("@/pages/careers/Careers").then((m) => ({ default: m.CareersJob }))) },
   { path: "/invite/admin/:token", element: L(() => import("@/pages/auth/AdminInvite")) },
   {
     element: <RequireAuth />,
@@ -62,6 +64,7 @@ const router = createBrowserRouter([
           { path: "tax", element: L(() => import("@/pages/ess/Tax")) },
           { path: "claims", element: L(() => import("@/pages/ess/Claims")) },
           { path: "reviews", element: L(() => import("@/pages/ess/Reviews")) },
+          { path: "interviews", element: L(() => import("@/pages/ess/Interviews")) },
         ],
       },
       {
@@ -100,6 +103,10 @@ const router = createBrowserRouter([
               { path: "new", element: L(() => import("@/pages/admin/employees/EmployeeForm")) },
             ],
           },
+          { path: "recruitment", element: L(() => import("@/pages/admin/recruitment/Jobs")) },
+          { path: "recruitment/candidates", element: L(() => import("@/pages/admin/recruitment/Candidates")) },
+          { path: "recruitment/candidates/:id", element: L(() => import("@/pages/admin/recruitment/CandidateDetail")) },
+          { path: "recruitment/jobs/:id", element: L(() => import("@/pages/admin/recruitment/JobDetail")) },
           { path: "performance", element: L(() => import("@/pages/admin/performance/Cycles")) },
           { path: "performance/reviews/:id", element: L(() => import("@/pages/admin/performance/ReviewPage")) },
           { path: "performance/:id", element: L(() => import("@/pages/admin/performance/CycleDetail")) },

@@ -36,7 +36,8 @@ export async function linkExistingLogin(db: Database, tenantId: string, employee
 }
 
 /** Create (or refresh) a self-onboarding invite and email it. Returns the raw token (for tests/dev). */
-export async function sendOnboardingInvite(c: Context<AppEnv>, employeeId: string) {
+/** `to` overrides where it goes, e.g. a new hire's personal email before their work mailbox exists. */
+export async function sendOnboardingInvite(c: Context<AppEnv>, employeeId: string, to?: string) {
   const db = c.get("db");
   const tid = c.get("tenant").tenantId;
   const [row] = await db
@@ -47,6 +48,7 @@ export async function sendOnboardingInvite(c: Context<AppEnv>, employeeId: strin
     .leftJoin(designations, eq(designations.id, employees.designationId))
     .where(and(eq(employees.id, employeeId), eq(employees.tenantId, tid)));
   if (!row) throw new Error("employee not found");
+  const email = to ?? row.emp.workEmail;
   const token = randomToken();
   const tokenHash = await sha256Hex(token);
   const expiresAt = new Date(Date.now() + 7 * 86400_000);
@@ -54,10 +56,10 @@ export async function sendOnboardingInvite(c: Context<AppEnv>, employeeId: strin
   if (existing) {
     await db
       .update(onboardingInvites)
-      .set({ tokenHash, expiresAt, sentAt: new Date(), email: row.emp.workEmail, status: existing.status === "expired" ? "invited" : existing.status })
+      .set({ tokenHash, expiresAt, sentAt: new Date(), email, status: existing.status === "expired" ? "invited" : existing.status })
       .where(eq(onboardingInvites.id, existing.id));
   } else {
-    await db.insert(onboardingInvites).values({ tenantId: tid, employeeId, email: row.emp.workEmail, tokenHash, expiresAt });
+    await db.insert(onboardingInvites).values({ tenantId: tid, employeeId, email, tokenHash, expiresAt });
   }
   const url = `${c.env.APP_URL}/onboarding/${token}`;
   const role = row.desig ? ` as ${row.desig}${row.dept ? ` in ${row.dept}` : ""}` : row.dept ? ` in the ${row.dept} team` : "";
@@ -72,6 +74,6 @@ export async function sendOnboardingInvite(c: Context<AppEnv>, employeeId: strin
     cta: { label: "Start onboarding", url },
     footer: `This secure link is only for you and expires on ${fmtDate(expiresAt.toISOString())}. Questions? Reply to this email.`,
   });
-  await c.get("mailer").send({ to: row.emp.workEmail, subject: `Welcome to ${row.tenantName}: complete your joining details`, html, text });
+  await c.get("mailer").send({ to: email, subject: `Welcome to ${row.tenantName}: complete your joining details`, html, text });
   return token;
 }

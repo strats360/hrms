@@ -15,3 +15,4 @@ export * from "./loans";
 export * from "./probation";
 export * from "./privacy";
 export * from "./performance";
+export * from "./recruitment";

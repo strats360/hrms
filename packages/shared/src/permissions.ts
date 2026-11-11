@@ -18,6 +18,9 @@ export const MODULES = [
   "settings",
   "users",
   "billing",
+  "recruitment",
+  "assets",
+  "helpdesk",
 ] as const;
 export type Module = (typeof MODULES)[number];
 
@@ -39,6 +42,9 @@ export const MODULE_LABELS: Record<Module, string> = {
   settings: "Settings",
   users: "Admin users & access",
   billing: "Billing & invoices",
+  recruitment: "Recruitment",
+  assets: "Assets",
+  helpdesk: "Helpdesk",
 };
 
 export const ACTION_LABELS: Record<Action, string> = {
@@ -69,6 +75,9 @@ export const DEFAULT_ROLES: { key: string; name: string; description: string; pe
       reimbursements: ["view", "export"],
       reports: ["view", "export"],
       settings: ["view", "edit"],
+      recruitment: [...ACTIONS],
+      assets: [...ACTIONS],
+      helpdesk: [...ACTIONS],
     },
   },
   {
@@ -101,6 +110,7 @@ export const DEFAULT_ROLES: { key: string; name: string; description: string; pe
       payments: ["view", "edit", "approve", "export"],
       reports: ["view", "export"],
       billing: ["view"],
+      assets: ["view"],
     },
   },
   {
@@ -113,6 +123,7 @@ export const DEFAULT_ROLES: { key: string; name: string; description: string; pe
       leave: ["view", "approve"],
       reimbursements: ["view", "approve"],
       reports: ["view"],
+      recruitment: ["view"],
     },
   },
   {
@@ -127,6 +138,7 @@ export const DEFAULT_ROLES: { key: string; name: string; description: string; pe
       compliance: ["view"],
       reimbursements: ["view"],
       reports: ["view", "export"],
+      assets: ["view"],
     },
   },
 ];

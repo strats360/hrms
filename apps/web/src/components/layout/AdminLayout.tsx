@@ -44,6 +44,7 @@ export function crumbFor(path: string, groups: NavGroup[]) {
   const seg = path.split("/").filter(Boolean);
   const base = items.find((i) => i.to !== "/" && path.startsWith(i.to)) ?? items[0];
   const ID_LABEL: Record<string, string> = { "/employees": "Profile", "/performance": "Cycle" };
+  if (base?.to === "/recruitment" && seg[1]) return `Recruitment / ${seg[1] === "jobs" ? "Job" : seg[2] ? "Candidate" : "Candidates"}`;
   const sub = seg[1] === "reviews" && base?.to === "/performance" ? "Review" : seg[1] && !/^[0-9a-f-]{36}$/.test(seg[1]) ? seg[1].replace(/-/g, " ") : seg[1] ? (ID_LABEL[base?.to ?? ""] ?? "Details") : "";
   return base ? base.label + (sub ? " / " + sub.charAt(0).toUpperCase() + sub.slice(1) : "") : "";
 }

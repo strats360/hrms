@@ -1,3 +1,4 @@
+import { careersRoutes, myInterviewRoutes, recruitmentRoutes } from "./routes/recruitment";
 import { essPerformanceRoutes, performanceRoutes } from "./routes/performance";
 import { essPrivacyRoutes, privacyRoutes } from "./routes/privacy";
 import { Hono } from "hono";
@@ -120,6 +121,7 @@ export function buildApp() {
   api.use("*", loadSession);
   api.route("/public/payments", cashfreeWebhook);
   api.route("/public/attendance", devicePunchRoutes);
+  api.route("/public/careers", careersRoutes);
   api.route("/public", publicRoutes);
 
   api.use("/photo/*", requireAuth);
@@ -142,6 +144,8 @@ export function buildApp() {
   t.use("/ess/tax/*", requireFeature("module.tds"));
   t.use("/ess/reviews/*", requireFeature("module.performance"));
   t.use("/admin/performance/*", requireFeature("module.performance"));
+  t.use("/admin/recruitment/*", requireFeature("module.recruitment"));
+  t.use("/ess/interviews/*", requireFeature("module.recruitment"));
   t.use("/admin/tds/*", requireFeature("module.tds"));
   t.use("/ess/claims/*", requireFeature("module.reimbursements"));
   t.use("/admin/reimbursements/*", requireFeature("module.reimbursements"));
@@ -157,6 +161,7 @@ export function buildApp() {
   t.route("/ess/roster", essRosterRoutes);
   t.route("/ess/privacy", essPrivacyRoutes);
   t.route("/ess/reviews", essPerformanceRoutes);
+  t.route("/ess/interviews", myInterviewRoutes);
   t.route("/ess", essRoutes);
   t.route("/ess", essExitRoutes);
   t.route("/ess", essPayslipFileRoutes);
@@ -168,6 +173,7 @@ export function buildApp() {
   t.route("/admin/probation", probationRoutes);
   t.route("/admin/privacy", privacyRoutes);
   t.route("/admin/performance", performanceRoutes);
+  t.route("/admin/recruitment", recruitmentRoutes);
   t.use("/admin/*", requireAdmin);
   t.route("/admin/dashboard", dashboardRoutes);
   t.route("/admin/org/notifications", orgNotificationRoutes);
