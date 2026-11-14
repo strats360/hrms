@@ -10,6 +10,7 @@ import { Notice } from "@/components/ui/page";
 import { Tag } from "@/components/ui/tag";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
+import { confirmAction } from "@/components/ui/confirm";
 
 interface MyExit {
   id: string;
@@ -106,7 +107,7 @@ export function ResignationCard() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span>Waiting for HR to accept. You can still withdraw it.</span>
             {!readOnly ? (
-              <Button size="sm" loading={withdraw.isPending} onClick={() => confirm("Withdraw your resignation?") && withdraw.mutate()}>
+              <Button size="sm" loading={withdraw.isPending} onClick={() => void confirmAction({ title: "Withdraw your resignation?", body: "Your manager and HR will be told. You can resign again later if you need to.", confirmLabel: "Withdraw" }).then((ok) => ok && withdraw.mutate())}>
                 Withdraw
               </Button>
             ) : null}

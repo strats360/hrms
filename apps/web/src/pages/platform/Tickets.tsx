@@ -39,7 +39,7 @@ export default function Tickets() {
   );
   return (
     <>
-      <PageHeader title="Support tickets" sub="Tenant issues and SLA. Read-only account access needs the customer's consent on the ticket and is logged." />
+      <PageHeader title="Customer tickets" sub="Questions and problems that client companies raise with the Strats360 People team about the product, billing or their account. Employee helpdesk tickets stay inside each company and never show here. You can only view a customer's account if they allow it on the ticket, and every visit is logged." />
       <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(170px, 100%), 1fr))" }}>
         <StatCard label="Open" value={s?.open ?? "—"} meta={s ? `${s.unassigned} unassigned` : undefined} onClick={() => setStatus("open")} />
         <StatCard label="P1 · respond in 1 h" value={s?.p1 ?? "—"} meta={s?.p1 ? <Tag tone="bad">urgent</Tag> : "none"} onClick={() => (setStatus("open"), setPriority("P1"))} />

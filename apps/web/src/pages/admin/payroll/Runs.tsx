@@ -15,6 +15,7 @@ import { Tag, type Tone } from "@/components/ui/tag";
 import { monthLabel } from "@/components/payroll/Payslip";
 import { RUN_STATUS_LABEL, RUN_STEP } from "@/components/payroll/PayrollCard";
 import { usePayrollRuns, useStartCurrentRun } from "./PayrollLayout";
+import { confirmAction } from "@/components/ui/confirm";
 
 export const RUN_TONE: Record<string, Tone> = { draft: "neutral", calculated: "warn", approved: "accent", paid: "ok" };
 
@@ -99,7 +100,7 @@ export default function Runs() {
             <span className="text-muted text-[13px]">A payroll admin hasn't started this month's run yet.</span>
           )}
           {current && (current.status === "draft" || current.status === "calculated") && can("payroll", "edit") ? (
-            <Button variant="danger" loading={discard.isPending} onClick={() => confirm(`Discard the ${monthLabel(current.month)} payroll? Adjustments and overrides will be lost.`) && discard.mutate(current.id)}>
+            <Button variant="danger" loading={discard.isPending} onClick={() => void confirmAction({ title: `Discard the ${monthLabel(current.month)} payroll?`, body: "Adjustments and overrides will be lost.", confirmLabel: "Discard", danger: true }).then((ok) => ok && discard.mutate(current.id))}>
               Discard draft
             </Button>
           ) : null}
@@ -119,7 +120,7 @@ export default function Runs() {
           rowActions={(r) => [
             { label: "Open", onSelect: () => nav(`/payroll/run/${r.id}`) },
             ...((r.status === "draft" || r.status === "calculated") && can("payroll", "edit")
-              ? [{ label: "Discard draft", danger: true, onSelect: () => confirm(`Discard the ${monthLabel(r.month)} payroll?`) && discard.mutate(r.id) }]
+              ? [{ label: "Discard draft", danger: true, onSelect: () => void confirmAction({ title: `Discard the ${monthLabel(r.month)} payroll?`, body: "Adjustments and overrides will be lost.", confirmLabel: "Discard", danger: true }).then((ok) => ok && discard.mutate(r.id)) }]
               : []),
           ]}
         />

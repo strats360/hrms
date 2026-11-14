@@ -13,6 +13,7 @@ import { Field, Input, Segmented, Select } from "@/components/ui/field";
 import { KV, Loading, PageHeader } from "@/components/ui/page";
 import type { Plan } from "@/lib/types";
 import { StatusTag } from "@/components/ui/tag";
+import { confirmAction } from "@/components/ui/confirm";
 
 interface TenantRow {
   id: string;
@@ -87,7 +88,7 @@ export default function Tenants() {
             ...(superAdmin
               ? [
                   { label: "Plan & billing", onSelect: () => setPlan(t) },
-                  t.status === "suspended" ? { label: "Reactivate", onSelect: () => update.mutate({ id: t.id, status: "active" }) } : { label: "Suspend (blocks sign-in)", danger: true, onSelect: () => confirm(`Suspend ${t.name}? Their users won't be able to sign in.`) && update.mutate({ id: t.id, status: "suspended" }) },
+                  t.status === "suspended" ? { label: "Reactivate", onSelect: () => update.mutate({ id: t.id, status: "active" }) } : { label: "Suspend (blocks sign-in)", danger: true, onSelect: () => void confirmAction({ title: `Suspend ${t.name}?`, body: "Their users won't be able to sign in until you reactivate the account.", confirmLabel: "Suspend", danger: true }).then((ok) => ok && update.mutate({ id: t.id, status: "suspended" })) },
                   ...(t.status === "past_due" || t.status === "trial" ? [{ label: "Mark as active (paid)", onSelect: () => update.mutate({ id: t.id, status: "active" }) }] : []),
                 ]
               : []),
@@ -138,7 +139,7 @@ function TenantDialog({ id, onClose }: { id: string | null; onClose: () => void 
               ))}
             </tbody>
           </table>
-          <div className="text-muted text-[12.5px]">Platform staff can't read a tenant's employee data from here. Support access to a tenant account is planned with the support tickets module, and every access will be logged.</div>
+          <div className="text-muted text-[12.5px]">Platform staff can't read a tenant's employee data from here. You can only view a customer's account from a customer ticket where they allowed it. Every visit is logged.</div>
         </>
       )}
     </Dialog>

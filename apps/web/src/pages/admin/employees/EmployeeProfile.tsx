@@ -29,6 +29,7 @@ import { PhotoEditor } from "@/components/account/PhotoEditor";
 import { GenerateLetterDialog } from "@/components/letters/GenerateLetterDialog";
 import { Menu } from "@/components/ui/menu";
 import { DecideDialog, downloadEmployeeData } from "./DataRequests";
+import { confirmAction } from "@/components/ui/confirm";
 
 type Tab = "personal" | "employment" | "bank" | "statutory" | "documents" | "attendance";
 
@@ -326,7 +327,7 @@ export default function EmployeeProfile() {
                         aria-label={`Delete ${d.name}`}
                         title="Delete"
                         onClick={() => {
-                          if (confirm(`Delete ${d.name}? This can't be undone.`)) delDoc.mutate(d.id);
+                          void confirmAction({ title: `Delete ${d.name}?`, body: "This can't be undone.", confirmLabel: "Delete", danger: true }).then((ok) => ok && delDoc.mutate(d.id));
                         }}
                       >
                         <Trash2 size={15} />

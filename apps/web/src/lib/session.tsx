@@ -97,7 +97,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     queryKey: ["me"],
     queryFn: async () => {
       try {
-        const me = await api.get<Me>("/me");
+        // null means signed out
+        const me = await api.get<Me | null>("/me");
         saveMe(me);
         return me;
       } catch (e) {

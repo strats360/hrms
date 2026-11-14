@@ -131,6 +131,8 @@ export function buildApp() {
   api.use("/photo/*", requireAuth);
   api.route("/photo", photoServeRoutes);
 
+  // Signed out is a normal answer here, not an error: the app asks on every load.
+  api.get("/me", async (c, next) => (c.get("session") ? next() : c.json(null)));
   api.use("/me/*", requireAuth);
   api.route("/me", meRoutes);
 

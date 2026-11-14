@@ -14,6 +14,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/field";
 import { ErrorState, Notice, PageHeader } from "@/components/ui/page";
 import { Tag } from "@/components/ui/tag";
+import { confirmAction } from "@/components/ui/confirm";
 
 type Category = "pf" | "esi" | "pt" | "lwf" | "tax" | "minwage";
 interface Rule {
@@ -113,7 +114,7 @@ export default function Statutory() {
             { label: r.status === "draft" ? "Edit draft" : "View", onSelect: () => setEdit(r) },
             ...(superAdmin && r.status === "draft" ? [{ label: "Publish", onSelect: () => publish.mutate([r.id]) }] : []),
             ...(r.status === "draft" ? [{ label: "Delete draft", danger: true, onSelect: () => remove.mutate(r.id) }] : []),
-            ...(superAdmin && r.status === "live" ? [{ label: "Retire this version", danger: true, onSelect: () => confirm(`Retire ${r.label} from ${r.effectiveFrom}? Payroll falls back to the previous version.`) && retire.mutate(r.id) }] : []),
+            ...(superAdmin && r.status === "live" ? [{ label: "Retire this version", danger: true, onSelect: () => void confirmAction({ title: `Retire ${r.label}?`, body: `From ${r.effectiveFrom}, payroll falls back to the previous version.`, confirmLabel: "Retire", danger: true }).then((ok) => ok && retire.mutate(r.id)) }] : []),
           ]}
           toolbar={
             <Select className="!w-[220px]" value={show} onChange={(e) => setShow(e.target.value as "current" | "all")} aria-label="Show">

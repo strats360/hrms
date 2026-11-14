@@ -12,6 +12,7 @@ import { Notice } from "@/components/ui/page";
 import { Tag } from "@/components/ui/tag";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
+import { confirmAction } from "@/components/ui/confirm";
 
 interface Device {
   id: string;
@@ -100,7 +101,7 @@ export function DevicesCard() {
                 <Menu
                   trigger={<Button size="sm" variant="ghost">Manage</Button>}
                   items={[
-                    { label: "Issue a new key", onSelect: () => confirm(`Issue a new key for ${d.name}? The current key stops working straight away.`) && rotate.mutate(d) },
+                    { label: "Issue a new key", onSelect: () => void confirmAction({ title: `Issue a new key for ${d.name}?`, body: "The current key stops working straight away. Update the device with the new key.", confirmLabel: "Issue new key", danger: true }).then((ok) => ok && rotate.mutate(d)) },
                     { label: d.active ? "Turn off" : "Turn on", danger: d.active, onSelect: () => toggle.mutate(d) },
                   ]}
                 />

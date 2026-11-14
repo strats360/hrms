@@ -14,6 +14,7 @@ import { Loading, Notice } from "@/components/ui/page";
 import { StatusTag, Tag } from "@/components/ui/tag";
 import { Menu } from "@/components/ui/menu";
 import { ResetTwoFactorDialog } from "@/components/account/ResetTwoFactorDialog";
+import { confirmAction } from "@/components/ui/confirm";
 
 interface Role {
   id: string;
@@ -282,7 +283,7 @@ function PermissionMatrixCard({ roles, editable, onSaved }: { roles: Role[]; edi
         </span>
         <div className="flex gap-2">
           {editable && role && !role.isSystem ? (
-            <Button variant="danger" loading={del.isPending} onClick={() => confirm(`Delete the ${role.name} role?`) && del.mutate()}>
+            <Button variant="danger" loading={del.isPending} onClick={() => void confirmAction({ title: `Delete the ${role.name} role?`, body: "This can't be undone.", confirmLabel: "Delete", danger: true }).then((ok) => ok && del.mutate())}>
               <Trash2 size={15} /> Delete role
             </Button>
           ) : null}

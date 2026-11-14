@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -10,7 +10,6 @@ import type { EmployeeTax, Form16Data } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
-import { Input, Select } from "@/components/ui/field";
 import { Empty, ErrorState, Loading, Notice } from "@/components/ui/page";
 import { Tag } from "@/components/ui/tag";
 import { Avatar } from "@/components/ui/avatar";
@@ -19,17 +18,15 @@ import { Form16View } from "@/components/tax/Form16View";
 import { monthLabel, printPayslip } from "@/components/payroll/Payslip";
 import { useTdsSummary } from "./Summary";
 import { currentFy, useFy } from "./shared";
+import { confirmAction } from "@/components/ui/confirm";
+import { SearchSelect } from "@/components/ui/search-select";
 
 export default function Computation() {
   const fy = useFy();
   const [params, setParams] = useSearchParams();
   const employeeId = params.get("employee");
   const summary = useTdsSummary(fy);
-  const [search, setSearch] = useState("");
-  const options = useMemo(() => {
-    const s = search.trim().toLowerCase();
-    return (summary.data?.rows ?? []).filter((r) => !s || r.name.toLowerCase().includes(s) || r.code.toLowerCase().includes(s));
-  }, [summary.data, search]);
+  const options = summary.data?.rows ?? [];
   const pick = (id: string) => {
     const p = new URLSearchParams(params);
     p.set("employee", id);
@@ -39,15 +36,15 @@ export default function Computation() {
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
-        <Input className="!w-[220px]" placeholder="Find employee" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Find employee" />
-        <Select className="!w-[300px] max-w-full" value={employeeId ?? ""} onChange={(e) => e.target.value && pick(e.target.value)} aria-label="Employee">
-          <option value="">{summary.isLoading ? "Loading employees…" : `Choose an employee (${options.length})`}</option>
-          {options.map((r) => (
-            <option key={r.employeeId} value={r.employeeId}>
-              {r.name} · {r.code}
-            </option>
-          ))}
-        </Select>
+        <SearchSelect
+          className="w-[320px] max-w-full"
+          aria-label="Employee"
+          value={employeeId ?? ""}
+          onChange={(v) => v && pick(v)}
+          placeholder={summary.isLoading ? "Loading employees…" : `Choose an employee (${options.length})`}
+          searchPlaceholder="Search by name or employee ID"
+          options={options.map((r) => ({ value: r.employeeId, label: r.name, hint: r.code }))}
+        />
       </div>
       {employeeId ? <EmployeeComputation id={employeeId} fy={fy} /> : <Empty title="Pick an employee" sub="See their tax computation statement, monthly deduction and regime comparison." />}
     </>
@@ -91,7 +88,7 @@ function EmployeeComputation({ id, fy }: { id: string; fy: string }) {
               <Button
                 size="sm"
                 loading={switchRegime.isPending}
-                onClick={() => confirm(`Switch ${d.employee.name} to the ${other} regime for FY ${fy}? Only do this on the employee's written request.`) && switchRegime.mutate(other)}
+                onClick={() => void confirmAction({ title: `Switch ${d.employee.name} to the ${other} regime?`, body: `This changes their tax for FY ${fy}. Only do this on the employee's written request.`, confirmLabel: "Switch regime" }).then((ok) => ok && switchRegime.mutate(other))}
               >
                 <Repeat size={14} /> Switch regime
               </Button>

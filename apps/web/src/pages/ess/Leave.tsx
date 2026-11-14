@@ -14,6 +14,7 @@ import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/field"
 import { ErrorState, Loading, Notice } from "@/components/ui/page";
 import { StatusTag } from "@/components/ui/tag";
 import { zodErrors } from "@/components/onboarding/form";
+import { confirmAction } from "@/components/ui/confirm";
 
 interface EssLeave {
   year: number;
@@ -86,7 +87,7 @@ export default function EssLeavePage() {
                 <StatusTag status={r.status} />
                 {r.status === "pending" && r.waitingOn ? <div className="text-muted text-[11.5px]">With {r.waitingOn.label}{r.waitingOn.of > 1 ? ` (${r.waitingOn.at} of ${r.waitingOn.of})` : ""}</div> : null}
                 {cancellable ? (
-                  <Button size="sm" variant="ghost" loading={cancel.isPending && cancel.variables === r.id} onClick={() => { if (confirm(`Cancel ${r.code}?`)) cancel.mutate(r.id); }}>
+                  <Button size="sm" variant="ghost" loading={cancel.isPending && cancel.variables === r.id} onClick={() => { void confirmAction({ title: `Cancel leave request ${r.code}?`, body: "Any days already taken from your balance are given back.", confirmLabel: "Cancel request", danger: true }).then((ok) => ok && cancel.mutate(r.id)); }}>
                     Cancel
                   </Button>
                 ) : null}

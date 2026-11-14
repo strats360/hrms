@@ -8,6 +8,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/field";
 import { useLookups } from "@/components/attendance/shared";
+import { SearchSelect } from "@/components/ui/search-select";
 
 export function ApplyOnBehalfDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const qc = useQueryClient();
@@ -59,14 +60,7 @@ export function ApplyOnBehalfDialog({ open, onOpenChange }: { open: boolean; onO
     >
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Employee" span>
-          <Select value={f.employeeId} onChange={(e) => setF((s) => ({ ...s, employeeId: e.target.value }))}>
-            <option value="">Select an employee</option>
-            {lookups.data?.employees.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.name} ({e.code})
-              </option>
-            ))}
-          </Select>
+          <SearchSelect value={f.employeeId} onChange={(v) => setF((s) => ({ ...s, employeeId: v }))} placeholder="Select an employee" searchPlaceholder="Search by name or employee ID" options={(lookups.data?.employees ?? []).map((e) => ({ value: e.id, label: e.name, hint: e.code }))} />
         </Field>
         <Field label="Leave type" span>
           <Select value={f.leaveTypeId} onChange={(e) => setF((s) => ({ ...s, leaveTypeId: e.target.value, halfDay: false }))}>

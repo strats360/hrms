@@ -12,6 +12,7 @@ import { ErrorState, Loading, Notice, PageHeader } from "@/components/ui/page";
 import { api, ApiError } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { EmployeeDetail, Lookups } from "@/lib/types";
+import { SearchSelect } from "@/components/ui/search-select";
 
 type Form = {
   firstName: string;
@@ -165,6 +166,7 @@ export default function EmployeeForm() {
     invalid: !!errors[k],
     id: `f-${k}`,
   });
+  const pick = (k: keyof Form) => ({ value: form[k] as string, onChange: (v: string) => set(k, v as never), invalid: !!errors[k], id: `f-${k}` });
   const err = (k: keyof Form) => errors[k] || null;
 
   const save = useMutation({
@@ -297,22 +299,13 @@ export default function EmployeeForm() {
             ) : null}
             <Field label="Date of joining *" error={err("dateOfJoining")} htmlFor="f-dateOfJoining"><Input type="date" {...text("dateOfJoining")} /></Field>
             <Field label="Department" error={err("departmentId")} htmlFor="f-departmentId">
-              <Select {...text("departmentId")}>
-                <option value="">Select</option>
-                {L?.departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </Select>
+              <SearchSelect {...pick("departmentId")} placeholder="Select" options={(L?.departments ?? []).map((d) => ({ value: d.id, label: d.name }))} />
             </Field>
             <Field label="Designation" error={err("designationId")} htmlFor="f-designationId">
-              <Select {...text("designationId")}>
-                <option value="">Select</option>
-                {L?.designations.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </Select>
+              <SearchSelect {...pick("designationId")} placeholder="Select" options={(L?.designations ?? []).map((d) => ({ value: d.id, label: d.name }))} />
             </Field>
             <Field label="Reporting manager" error={err("managerId")} htmlFor="f-managerId">
-              <Select {...text("managerId")}>
-                <option value="">None</option>
-                {managers.map((m) => <option key={m.id} value={m.id}>{m.name} ({m.code})</option>)}
-              </Select>
+              <SearchSelect {...pick("managerId")} emptyLabel="None" searchPlaceholder="Search by name or employee ID" options={managers.map((m) => ({ value: m.id, label: m.name, hint: m.code }))} />
             </Field>
             <Field label="Employment type" htmlFor="f-employmentType">
               <Select {...text("employmentType")}>

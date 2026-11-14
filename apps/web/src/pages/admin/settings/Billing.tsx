@@ -15,6 +15,7 @@ import { Field, Input } from "@/components/ui/field";
 import { ErrorState, KV, Loading, Notice } from "@/components/ui/page";
 import { InvoiceDialog, InvoiceStatusTag } from "@/components/billing/InvoiceView";
 import { AutopayCard } from "@/components/billing/AutopayCard";
+import { confirmAction } from "@/components/ui/confirm";
 
 export default function Billing() {
   const { can } = useSession();
@@ -30,7 +31,7 @@ export default function Billing() {
     // an autopay debit already lined up for this invoice is withdrawn once the online payment goes through
     const next = qc.getQueryData<{ nextCharge: { invoice: string; scheduledFor: string } | null }>(["billing", "autopay"])?.nextCharge;
     const number = q.data?.invoices.find((i) => i.id === invoiceId)?.number;
-    if (next && number && next.invoice === number && !confirm(`Autopay will debit this invoice on ${fmtDate(next.scheduledFor.slice(0, 10))}. Pay now instead? We'll cancel the autopay debit, as long as it hasn't reached your bank yet.`)) return;
+    if (next && number && next.invoice === number && !(await confirmAction({ title: "Pay now instead of autopay?", body: `Autopay will debit this invoice on ${fmtDate(next.scheduledFor.slice(0, 10))}. If you pay now, we'll cancel that debit, as long as it hasn't reached your bank yet.`, confirmLabel: "Pay now" }))) return;
     setPaying(invoiceId);
     try {
       const r = await api.post<{ orderId: string; paymentSessionId: string; mode: "sandbox" | "production" }>(`/admin/billing/invoices/${invoiceId}/pay`);

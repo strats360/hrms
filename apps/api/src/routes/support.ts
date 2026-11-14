@@ -107,7 +107,7 @@ async function mail(c: Context<AppEnv>, to: string | null | undefined, subject: 
 }
 
 // ===========================================================================
-// Tenant admins: Help & support
+// Tenant admins: Product support
 // ===========================================================================
 export const tenantSupportRoutes = new Hono<AppEnv>();
 tenantSupportRoutes.use("*", requireAdmin);
@@ -241,7 +241,7 @@ platformSupportRoutes.post("/tickets/:id/messages", async (c) => {
     .where(eq(supportTickets.id, t.id));
   if (!b.internal) {
     const [r] = await db.select({ email: user.email }).from(user).where(eq(user.id, t.raisedBy));
-    await mail(c, r?.email, `Re: #${t.number} ${t.subject}`, `Support replied on #${t.number}`, [`${uname(c)}: ${b.body.slice(0, 800)}`], `${c.env.APP_URL}/support?ticket=${t.id}`);
+    await mail(c, r?.email, `Re: #${t.number} ${t.subject}`, `Strats360 People support replied on #${t.number}`, [`${uname(c)}: ${b.body.slice(0, 800)}`], `${c.env.APP_URL}/support?ticket=${t.id}`);
   }
   if (b.status === "resolved" || b.status === "closed") await db.update(supportAccess).set({ endedAt: now }).where(and(eq(supportAccess.ticketId, t.id), isNull(supportAccess.endedAt)));
   return c.json(m, 201);

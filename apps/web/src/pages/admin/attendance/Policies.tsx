@@ -14,6 +14,7 @@ import { Tag } from "@/components/ui/tag";
 import { DAY_SHORT, minsLabel } from "@/components/attendance/shared";
 import { DevicesCard } from "@/components/attendance/DevicesCard";
 import { PunchPolicyCard } from "@/components/attendance/PunchPolicyCard";
+import { confirmAction } from "@/components/ui/confirm";
 
 interface Shift {
   id: string;
@@ -95,7 +96,7 @@ export default function Policies() {
                     variant="danger"
                     loading={del.isPending && del.variables === s.id}
                     onClick={() => {
-                      if (confirm(`Delete the ${s.name} shift?`)) del.mutate(s.id);
+                      void confirmAction({ title: `Delete the ${s.name} shift?`, body: "This can't be undone.", confirmLabel: "Delete", danger: true }).then((ok) => ok && del.mutate(s.id));
                     }}
                   >
                     Delete

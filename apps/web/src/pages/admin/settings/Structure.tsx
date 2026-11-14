@@ -11,6 +11,7 @@ import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/field"
 import { Dialog } from "@/components/ui/dialog";
 import { Loading } from "@/components/ui/page";
 import { Tag } from "@/components/ui/tag";
+import { confirmAction } from "@/components/ui/confirm";
 
 interface Branch {
   id: string;
@@ -110,7 +111,7 @@ export default function Structure() {
                           <Button icon size="sm" variant="ghost" aria-label={`Edit ${b.name}`} onClick={() => { setErr(null); setEdit(b); }}>
                             <Pencil size={14} />
                           </Button>
-                          <Button icon size="sm" variant="ghost" aria-label={`Delete ${b.name}`} onClick={() => confirm(`Delete ${b.name}?`) && delBranch.mutate(b.id)}>
+                          <Button icon size="sm" variant="ghost" aria-label={`Delete ${b.name}`} onClick={() => void confirmAction({ title: `Delete ${b.name}?`, body: "This can't be undone.", confirmLabel: "Delete", danger: true }).then((ok) => ok && delBranch.mutate(b.id))}>
                             <Trash2 size={14} />
                           </Button>
                         </div>
@@ -275,7 +276,7 @@ function MasterList({ path, title, extra, extraLabel, editable }: { path: "depar
                           <Button icon size="sm" variant="ghost" aria-label={`Edit ${r.name}`} onClick={() => setRenaming(r)}>
                             <Pencil size={14} />
                           </Button>
-                          <Button icon size="sm" variant="ghost" aria-label={`Delete ${r.name}`} onClick={() => confirm(`Delete ${r.name}?`) && del.mutate(r.id)}>
+                          <Button icon size="sm" variant="ghost" aria-label={`Delete ${r.name}`} onClick={() => void confirmAction({ title: `Delete ${r.name}?`, body: "This can't be undone.", confirmLabel: "Delete", danger: true }).then((ok) => ok && del.mutate(r.id))}>
                             <Trash2 size={14} />
                           </Button>
                         </div>

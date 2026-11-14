@@ -74,7 +74,7 @@ describe("Two-factor sign-in", () => {
   it("asks for a code after the password", async () => {
     const { c, body } = await signIn(KUNAL);
     expect(body).toMatchObject({ twoFactorRedirect: true, twoFactorMethods: ["totp"] });
-    expect((await c.get("/me")).status).toBe(401);
+    expect((await c.get("/me")).body).toBeNull();
     expect((await c.post("/auth/two-factor/verify-totp", { code: "123456" })).status).toBe(401);
     expect((await c.post("/auth/two-factor/verify-totp", { code: totp(uri), trustDevice: true })).status).toBe(200);
     expect((await c.get("/me")).status).toBe(200);
@@ -126,7 +126,7 @@ describe("Two-factor sign-in", () => {
 
     expect((await kunal.post(`/admin/access/members/${m!.id}/reset-two-factor`)).status).toBe(200);
     expect(lastEmailTo(AMIT)?.subject).toBe("Two-factor sign-in turned off");
-    expect((await amit.get("/me")).status).toBe(401);
+    expect((await amit.get("/me")).body).toBeNull();
     // signs in with just the password, but the policy still sends them to set it up
     const fresh = await signIn(AMIT);
     expect(fresh.body.twoFactorRedirect).toBeUndefined();

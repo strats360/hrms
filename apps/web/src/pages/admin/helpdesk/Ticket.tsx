@@ -11,6 +11,7 @@ import { Checkbox, Field, Select } from "@/components/ui/field";
 import { ErrorState, KV, Loading, Notice, PageHeader } from "@/components/ui/page";
 import { multipart, ReplyBox, StatusTag, Thread, whenShort, type Message } from "@/components/helpdesk/Thread";
 import { useLookups } from "@/components/recruitment/shared";
+import { SearchSelect } from "@/components/ui/search-select";
 
 interface Detail {
   id: string;
@@ -98,11 +99,7 @@ export default function Ticket() {
             <Field label="Status"><Select disabled={!edit} value={t.status} onChange={(e) => update.mutate({ status: e.target.value })}>{TICKET_STATUSES.map((s) => <option key={s} value={s}>{AGENT_STATUS_LABEL[s]}</option>)}</Select></Field>
             <Field label="Priority"><Select disabled={!edit} value={t.priority} onChange={(e) => update.mutate({ priority: e.target.value })}>{PRIORITIES.map((p) => <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>)}</Select></Field>
             <Field label="Assigned to">
-              <Select disabled={!edit} value={t.assigneeId ?? ""} onChange={(e) => update.mutate({ assigneeId: e.target.value || null })}>
-                <option value="">Nobody yet</option>
-                {team.length ? <optgroup label={t.teamLabel}>{team.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}</optgroup> : null}
-                <optgroup label="Others">{others.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}</optgroup>
-              </Select>
+              <SearchSelect disabled={!edit} value={t.assigneeId ?? ""} onChange={(v) => update.mutate({ assigneeId: v || null })} emptyLabel="Nobody yet" searchPlaceholder="Search people" options={[...team.map((e) => ({ value: e.id, label: e.name, group: t.teamLabel })), ...others.map((e) => ({ value: e.id, label: e.name, group: "Others" }))]} />
             </Field>
             <Field label="Category"><Select disabled={!edit} value={t.categoryKey} onChange={(e) => update.mutate({ categoryKey: e.target.value })}>{t.categories.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}</Select></Field>
             {t.rating ? <KV label="Their rating">{t.rating} / 5{t.ratingComment ? `: ${t.ratingComment}` : ""}</KV> : null}

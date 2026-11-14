@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Segmented } from "@/components/ui/field";
 import { Notice } from "@/components/ui/page";
 import { Tag } from "@/components/ui/tag";
+import { confirmAction } from "@/components/ui/confirm";
 
 interface Autopay {
   available: boolean;
@@ -139,7 +140,7 @@ export function AutopayCard() {
                   type="button"
                   className="text-accent ml-2 text-[12px] underline disabled:opacity-50"
                   disabled={skip.isPending}
-                  onClick={() => confirm(`Skip the debit for ${d.nextCharge!.invoice}? You'll need to pay this invoice yourself. Autopay stays on for later invoices.`) && skip.mutate(d.nextCharge!.orderId)}
+                  onClick={() => void confirmAction({ title: `Skip the debit for ${d.nextCharge!.invoice}?`, body: "You'll need to pay this invoice yourself. Autopay stays on for later invoices.", confirmLabel: "Skip debit" }).then((ok) => ok && skip.mutate(d.nextCharge!.orderId))}
                 >
                   Skip this debit
                 </button>
@@ -147,7 +148,7 @@ export function AutopayCard() {
             </div>
           </div>
           {canEdit ? (
-            <Button variant="danger" size="sm" loading={cancel.isPending} onClick={() => confirm("Cancel autopay? Future invoices will need to be paid by hand.") && cancel.mutate()}>
+            <Button variant="danger" size="sm" loading={cancel.isPending} onClick={() => void confirmAction({ title: "Cancel autopay?", body: "Future invoices will need to be paid by hand.", confirmLabel: "Cancel autopay", danger: true }).then((ok) => ok && cancel.mutate())}>
               Cancel autopay
             </Button>
           ) : null}

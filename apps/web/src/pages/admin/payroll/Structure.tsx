@@ -15,6 +15,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { ErrorState, Loading, Notice } from "@/components/ui/page";
 import { Tag } from "@/components/ui/tag";
 import { EmployeeStructureDialog } from "@/components/payroll/structure/EmployeeStructureDialog";
+import { confirmAction } from "@/components/ui/confirm";
 
 interface StructureRow {
   employeeId: string;
@@ -270,7 +271,7 @@ export default function StructurePage() {
           {configurable ? (
             <div className="flex flex-wrap justify-end gap-2">
               {selected !== null && selected !== NEW ? (
-                <Button variant="danger" className="mr-auto" loading={remove.isPending} disabled={(current?.employees ?? 0) > 0} title={(current?.employees ?? 0) > 0 ? "Move its employees to another template first" : undefined} onClick={() => confirm(`Delete the "${current?.name}" template?`) && remove.mutate()}>
+                <Button variant="danger" className="mr-auto" loading={remove.isPending} disabled={(current?.employees ?? 0) > 0} title={(current?.employees ?? 0) > 0 ? "Move its employees to another template first" : undefined} onClick={() => void confirmAction({ title: `Delete the "${current?.name}" template?`, body: "This can't be undone.", confirmLabel: "Delete", danger: true }).then((ok) => ok && remove.mutate())}>
                   Delete template
                 </Button>
               ) : null}

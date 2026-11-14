@@ -16,6 +16,7 @@ import { ReasonDialog } from "@/components/ui/reason-dialog";
 import { ErrorState, Loading, Notice, PageHeader } from "@/components/ui/page";
 import { Tag } from "@/components/ui/tag";
 import { InvoiceDialog, InvoiceStatusTag } from "@/components/billing/InvoiceView";
+import { confirmAction } from "@/components/ui/confirm";
 
 interface Summary {
   period: string;
@@ -128,7 +129,7 @@ export default function Billing() {
                   { label: "Record payment", onSelect: () => setPaying(i) },
                   { label: "Send reminder", onSelect: () => remind.mutate(i.id) },
                   { label: "Charge via autopay", onSelect: () => api.post<{ scheduledFor: string }>(`/platform/billing/invoices/${i.id}/autopay`).then((r) => toast.success(`Autopay debit scheduled for ${fmtDate(r.scheduledFor.slice(0, 10))}`)).catch((e) => toast.error(errorMessage(e))) },
-                  { label: "Withdraw autopay debit", onSelect: () => confirm(`Withdraw the scheduled autopay debit for ${i.number}?`) && api.post(`/platform/billing/invoices/${i.id}/autopay/cancel`).then(() => toast.success("Autopay debit withdrawn")).catch((e) => toast.error(errorMessage(e))) },
+                  { label: "Withdraw autopay debit", onSelect: () => void confirmAction({ title: `Withdraw the autopay debit for ${i.number}?`, body: "The customer will need to pay this invoice another way.", confirmLabel: "Withdraw", danger: true }).then((ok) => { if (ok) api.post(`/platform/billing/invoices/${i.id}/autopay/cancel`).then(() => toast.success("Autopay debit withdrawn")).catch((e) => toast.error(errorMessage(e))); }) },
                   ...(me?.platformRole === "super_admin" ? [{ label: "Void invoice", danger: true, onSelect: () => setVoiding(i) }] : []),
                 ]
               : []),

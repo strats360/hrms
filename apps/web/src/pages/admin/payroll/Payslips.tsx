@@ -16,6 +16,7 @@ import { Empty, ErrorState, Loading, Notice } from "@/components/ui/page";
 import { Tag } from "@/components/ui/tag";
 import { PayslipDialog } from "@/components/payroll/PayslipDialog";
 import { monthLabel } from "@/components/payroll/Payslip";
+import { confirmAction } from "@/components/ui/confirm";
 
 export default function Payslips() {
   const { can } = useSession();
@@ -167,7 +168,7 @@ export default function Payslips() {
                 </Button>
               ) : null}
               {run.publishedAt && can("payroll", "approve") ? (
-                <Button loading={!!mailing} onClick={() => confirm(`Email each employee their ${monthLabel(run.month)} payslip as a PDF? Anyone already sent one is skipped.`) && emailPdfs(false)}>
+                <Button loading={!!mailing} onClick={() => void confirmAction({ title: `Email ${monthLabel(run.month)} payslips?`, body: "Each employee gets their payslip as a PDF. Anyone already sent one is skipped.", confirmLabel: "Send emails" }).then((ok) => { if (ok) void emailPdfs(false); })}>
                   <Mail size={15} /> {mailing ? `Sent ${mailing.sent}…` : "Email PDFs"}
                 </Button>
               ) : null}

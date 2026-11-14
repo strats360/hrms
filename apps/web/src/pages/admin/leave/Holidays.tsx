@@ -15,6 +15,7 @@ import { Tag, type Tone } from "@/components/ui/tag";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useLookups, DAY_SHORT, weekdayOf } from "@/components/attendance/shared";
+import { confirmAction } from "@/components/ui/confirm";
 
 const TYPE: Record<string, { label: string; tone: Tone }> = {
   national: { label: "National", tone: "accent" },
@@ -99,7 +100,7 @@ export default function Holidays() {
                     label: "Remove holiday",
                     danger: true,
                     onSelect: () => {
-                      if (confirm(`Remove ${h.name} on ${fmtDate(h.date)}?`)) del.mutate(h.id);
+                      void confirmAction({ title: `Remove ${h.name}?`, body: `It will no longer be a holiday on ${fmtDate(h.date)}.`, confirmLabel: "Remove", danger: true }).then((ok) => ok && del.mutate(h.id));
                     },
                   },
                 ]

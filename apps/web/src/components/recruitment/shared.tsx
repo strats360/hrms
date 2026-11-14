@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/field";
 import { Tag, type Tone } from "@/components/ui/tag";
+import { SearchSelect } from "@/components/ui/search-select";
 
 export interface Lookups {
   departments: { id: string; name: string }[];
@@ -121,7 +122,7 @@ export function JobDialog({ job, onClose, onSaved }: { job?: Job; onClose: () =>
           <div className="flex items-center gap-2"><Input type="number" min={0} aria-label="Minimum CTC" value={f.minCtc} onChange={set("minCtc")} placeholder="From" /><span className="text-muted">to</span><Input type="number" min={0} aria-label="Maximum CTC" value={f.maxCtc} onChange={set("maxCtc")} placeholder="To" /></div>
         </Field>
         <Field label="Hiring manager" hint="They see this job's candidates and can move them along">
-          <Select value={f.hiringManagerId} onChange={set("hiringManagerId")}><option value="">—</option>{L.data?.employees.map((e) => <option key={e.id} value={e.id}>{e.name} ({e.code})</option>)}</Select>
+          <SearchSelect value={f.hiringManagerId} onChange={(v) => set("hiringManagerId")({ target: { value: v } })} emptyLabel="Nobody" searchPlaceholder="Search by name or employee ID" options={(L.data?.employees ?? []).map((e) => ({ value: e.id, label: e.name, hint: e.code }))} />
         </Field>
         <Field label="Status"><Select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value as JobStatus })}>{JOB_STATUSES.map((s) => <option key={s} value={s}>{JOB_STATUS_LABEL[s]}</option>)}</Select></Field>
         <Field label="Description" span hint="What the role does and who you're looking for. Shown on the careers page.">
@@ -177,7 +178,7 @@ export function AddCandidateDialog({ jobId, onClose }: { jobId: string; onClose:
         <Field label="Location"><Input value={f.location} onChange={set("location")} /></Field>
         <Field label="Source"><Select value={f.source} onChange={set("source")}>{SOURCES.map((s) => <option key={s} value={s}>{SOURCE_LABEL[s]}</option>)}</Select></Field>
         {f.source === "referral" ? (
-          <Field label="Referred by"><Select value={f.referredById} onChange={set("referredById")}><option value="">—</option>{L.data?.employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}</Select></Field>
+          <Field label="Referred by"><SearchSelect value={f.referredById} onChange={(v) => set("referredById")({ target: { value: v } })} emptyLabel="Nobody" searchPlaceholder="Search by name or employee ID" options={(L.data?.employees ?? []).map((e) => ({ value: e.id, label: e.name, hint: e.code }))} /></Field>
         ) : null}
         <Field label="Resume" hint="PDF or Word, up to 5 MB" span>
           <input type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="text-[13px]" />

@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/field";
 import { PageHeader } from "@/components/ui/page";
 import { RouteTabs } from "@/components/ui/tabs";
 import { currentFy, fyOptions, useFy } from "./shared";
+import { confirmAction } from "@/components/ui/confirm";
 
 export default function TdsLayout() {
   const { can } = useSession();
@@ -44,7 +45,7 @@ export default function TdsLayout() {
               ))}
             </Select>
             {can("tds", "edit") ? (
-              <Button loading={remind.isPending} onClick={() => confirm(`Email a reminder to every employee who hasn't submitted a declaration for FY ${fy}?`) && remind.mutate()}>
+              <Button loading={remind.isPending} onClick={() => void confirmAction({ title: "Send declaration reminders?", body: `Everyone who hasn't submitted a declaration for FY ${fy} gets an email.`, confirmLabel: "Send reminders" }).then((ok) => ok && remind.mutate())}>
                 <Send size={15} /> Send declaration reminders
               </Button>
             ) : null}

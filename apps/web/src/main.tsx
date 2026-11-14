@@ -6,6 +6,7 @@ import "./styles/app.css";
 import { SessionProvider } from "@/lib/session";
 import { ApiError, errorMessage } from "@/lib/api";
 import { App } from "./App";
+import { ConfirmHost } from "@/components/ui/confirm";
 import { setupPwa } from "@/lib/pwa";
 
 setupPwa();
@@ -31,6 +32,7 @@ createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={queryClient}>
       <SessionProvider>
         <App />
+        <ConfirmHost />
         <Toaster
           position="bottom-center"
           toastOptions={{

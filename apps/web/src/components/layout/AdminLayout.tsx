@@ -38,14 +38,15 @@ function useCollapsed(key: string) {
   ] as const;
 }
 
-/** Breadcrumb from the first two path segments. */
+/** Breadcrumb: the nav item that matches best, then the next path segment. */
 export function crumbFor(path: string, groups: NavGroup[]) {
   const items = groups.flatMap((g) => g.items);
-  const seg = path.split("/").filter(Boolean);
-  const base = items.find((i) => i.to !== "/" && path.startsWith(i.to)) ?? items[0];
-  const ID_LABEL: Record<string, string> = { "/employees": "Profile", "/performance": "Cycle", "/assets": "Asset", "/helpdesk": "Ticket" };
-  if (base?.to === "/recruitment" && seg[1]) return `Recruitment / ${seg[1] === "jobs" ? "Job" : seg[2] ? "Candidate" : "Candidates"}`;
-  const sub = seg[1] === "reviews" && base?.to === "/performance" ? "Review" : seg[1] && !/^[0-9a-f-]{36}$/.test(seg[1]) ? seg[1].replace(/-/g, " ") : seg[1] ? (ID_LABEL[base?.to ?? ""] ?? "Details") : "";
+  const base = items.filter((i) => path === i.to || (i.to !== "/" && path.startsWith(i.to + "/"))).sort((x, y) => y.to.length - x.to.length)[0] ?? items[0];
+  const rest = base ? path.slice(base.to.length).split("/").filter(Boolean) : [];
+  const ID_LABEL: Record<string, string> = { "/employees": "Profile", "/performance": "Cycle", "/assets": "Asset", "/helpdesk": "Ticket", "/platform/tickets": "Ticket", "/platform/tenants": "Tenant" };
+  if (base?.to === "/recruitment" && rest[0]) return `Recruitment / ${rest[0] === "jobs" ? "Job" : rest[1] ? "Candidate" : "Candidates"}`;
+  const first = rest[0];
+  const sub = first === "reviews" && base?.to === "/performance" ? "Review" : first && !/^[0-9a-f-]{36}$/.test(first) ? first.replace(/-/g, " ") : first ? (ID_LABEL[base?.to ?? ""] ?? "Details") : "";
   return base ? base.label + (sub ? " / " + sub.charAt(0).toUpperCase() + sub.slice(1) : "") : "";
 }
 
