@@ -71,6 +71,20 @@ describe("Recruitment", () => {
     expect(res.status).toBe(200);
     expect(await res.raw.text()).toBe("%PDF-1.4 resume");
   });
+  it("never replaces a resume on file from the public form", async () => {
+    // anyone can type someone else's email, so a second application keeps the first resume
+    const other = await nisha.post("/admin/recruitment/jobs", { title: "Payroll Associate", employmentType: "full_time", openings: 1, description: "Help run monthly payroll.", status: "open", published: true });
+    expect(other.status).toBe(201);
+    const f = new FormData();
+    for (const [k, v] of Object.entries({ name: "Not Riya", email: "riya.joshi@example.com", phone: "+91 98250 22222", website: "", consent: "yes" })) f.append(k, v);
+    f.append("resume", new Blob([new TextEncoder().encode("%PDF-1.4 someone else")], { type: "application/pdf" }), "other.pdf");
+    expect((await new Client().req("POST", `/public/careers/strats360/jobs/${other.body.id}/apply`, f, { "x-forwarded-for": "203.0.113.8" })).status).toBe(201);
+    const res = await nisha.file(`/admin/recruitment/candidates/${candId}/resume`);
+    expect(await res.raw.text()).toBe("%PDF-1.4 resume");
+    const [ev] = await sql`select e.note from application_events e join applications a on a.id = e.application_id where a.job_id = ${other.body.id}`;
+    expect(ev!.note).toMatch(/one already on file was kept/);
+    await sql`delete from job_openings where id = ${other.body.id}`;
+  });
 
   it("lets recruiters add candidates and moves them through the stages", async () => {
     const add = await nisha.post("/admin/recruitment/candidates", { jobId, name: "Karan Shah", email: "Karan.Shah@example.com", phone: "9825022222", source: "referral", referredById: priyaId });

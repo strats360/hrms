@@ -30,6 +30,7 @@ import { v, vPatch } from "../lib/validate";
 import { badRequest, notFound } from "../lib/errors";
 import { audit } from "../lib/audit";
 import { ALLOWED_TYPES, deleteFile, MAX_UPLOAD_BYTES, putFile, safeName } from "../lib/storage";
+import { canSeePrivate } from "../services/scope";
 import { bankFields, linkExistingLogin, nextEmployeeCode, sendOnboardingInvite } from "../services/employees";
 import { toCsv, parseCsv } from "../lib/csv";
 
@@ -141,6 +142,13 @@ employeeRoutes.get("/export.csv", requirePerm("employees", "export"), async (c) 
   return c.body(csv, 200, { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": 'attachment; filename="employee-master.csv"' });
 });
 
+/** Fields blanked out when the viewer only gets the directory card (see canSeePrivate). */
+const PRIVATE_BLANK = {
+  personalEmail: null, dateOfBirth: null, maritalStatus: null, bloodGroup: null, currentAddress: null, permanentAddress: null,
+  emergencyContactName: null, emergencyContactRelation: null, emergencyContactPhone: null,
+  accountHolderName: null, bankName: null, accountLast4: null, ifsc: null, pan: null, aadhaarLast4: null, uan: null, esicIpNumber: null,
+};
+
 employeeRoutes.get("/:id", requirePerm("employees", "view"), async (c) => {
   const db = c.get("db");
   const t = c.get("tenant");
@@ -154,7 +162,8 @@ employeeRoutes.get("/:id", requirePerm("employees", "view"), async (c) => {
     .leftJoin(shifts, eq(shifts.id, employees.shiftId))
     .where(and(eq(employees.id, c.req.param("id")), eq(employees.tenantId, t.tenantId)));
   if (!row) throw notFound("Employee");
-  const docs = await db.select().from(employeeDocuments).where(and(eq(employeeDocuments.tenantId, t.tenantId), eq(employeeDocuments.employeeId, row.e.id))).orderBy(asc(employeeDocuments.createdAt));
+  const full = await canSeePrivate(c, row.e.id);
+  const docs = !full ? [] : await db.select().from(employeeDocuments).where(and(eq(employeeDocuments.tenantId, t.tenantId), eq(employeeDocuments.employeeId, row.e.id))).orderBy(asc(employeeDocuments.createdAt));
   const [invite] = await db.select().from(onboardingInvites).where(and(eq(onboardingInvites.tenantId, t.tenantId), eq(onboardingInvites.employeeId, row.e.id)));
   const [membership] = await db
     .select({ id: memberships.id, twoFactor: user.twoFactorEnabled })
@@ -172,6 +181,8 @@ employeeRoutes.get("/:id", requirePerm("employees", "view"), async (c) => {
   }
   return c.json({
     ...e,
+    ...(full ? {} : PRIVATE_BLANK),
+    limited: !full,
     annualCtc: sensitive ? e.annualCtc : null,
     accountNumber,
     department: row.department,

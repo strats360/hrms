@@ -110,7 +110,7 @@ export async function verifyWebhook(secret: string, timestamp: string | undefine
   if (!timestamp || !signature) return false;
   // reject replays: Cashfree sends the timestamp in milliseconds
   const ts = Number(timestamp);
-  if (Number.isFinite(ts) && Math.abs(Date.now() - (ts > 1e12 ? ts : ts * 1000)) > maxAgeSeconds * 1000) return false;
+  if (!Number.isFinite(ts) || Math.abs(Date.now() - (ts > 1e12 ? ts : ts * 1000)) > maxAgeSeconds * 1000) return false;
   const expected = await webhookSignature(secret, timestamp, rawBody);
   if (expected.length !== signature.length) return false;
   let diff = 0;

@@ -35,6 +35,8 @@ export interface EmployeeDocument {
 
 export interface EmployeeDetail {
   id: string;
+  /** True when you only get the directory card: private details and documents are left out. */
+  limited?: boolean;
   login?: { membershipId: string; twoFactorEnabled: boolean } | null;
   employeeCode: string;
   firstName: string;

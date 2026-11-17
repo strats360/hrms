@@ -63,8 +63,9 @@ export function SearchSelect({
 
   const openWith = (text = "") => {
     setQ(text);
-    const at = shown.findIndex((o) => o.value === value);
-    setActive(text ? 0 : Math.max(0, at));
+    // Work out the row from the list that's about to show, not `shown`, which still holds the last search.
+    const fresh = [...(emptyLabel ? [""] : []), ...options.slice(0, LIMIT).map((o) => o.value)];
+    setActive(text ? 0 : Math.max(0, fresh.indexOf(value)));
     setOpen(true);
   };
   const pick = (v: string) => {

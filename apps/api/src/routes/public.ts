@@ -15,7 +15,7 @@ import { companySignupSchema, onboardingAcceptSchema, sha256Hex } from "@hrms/sh
 import type { AppEnv } from "../env";
 import { v } from "../lib/validate";
 import { badRequest, conflict, notFound } from "../lib/errors";
-import { findUserByEmail, upsertLogin } from "../services/users";
+import { claimLogin, findUserByEmail, upsertLogin } from "../services/users";
 import { provisionTenant } from "../services/provisioning";
 import { signInAndRespond } from "../lib/signin";
 import { audit } from "../lib/audit";
@@ -79,6 +79,7 @@ publicRoutes.get("/onboarding/:token", async (c) => {
     expiresAt: row.inv.expiresAt,
     expired,
     status: row.inv.status,
+    hasAccount: !!(await findUserByEmail(db, row.inv.email)),
   });
 });
 
@@ -90,7 +91,7 @@ publicRoutes.post("/onboarding/accept", v("json", onboardingAcceptSchema), async
   if (row.inv.expiresAt < new Date()) throw badRequest("This invite has expired. Ask HR to resend it.");
   if (row.inv.status === "verified") throw badRequest("You've already completed onboarding. Sign in instead.");
   const db = c.get("db");
-  const userId = await upsertLogin(db, { email: row.inv.email, name: row.emp.fullName, password, verified: true });
+  const userId = await claimLogin(db, { email: row.inv.email, name: row.emp.fullName, password, verified: true });
   await db.update(employees).set({ userId }).where(eq(employees.id, row.emp.id));
   const [existing] = await db
     .select()
@@ -138,7 +139,7 @@ publicRoutes.post("/admin-invite/accept", v("json", onboardingAcceptSchema), asy
     .from(adminInvites)
     .where(and(eq(adminInvites.tokenHash, hash), isNull(adminInvites.acceptedAt), gt(adminInvites.expiresAt, new Date())));
   if (!inv) throw notFound("Invite");
-  const userId = await upsertLogin(db, { email: inv.email, name: inv.name, password, verified: true });
+  const userId = await claimLogin(db, { email: inv.email, name: inv.name, password, verified: true });
   const [m] = await db.select().from(memberships).where(and(eq(memberships.tenantId, inv.tenantId), eq(memberships.userId, userId)));
   if (m) {
     await db.update(memberships).set({ roleId: inv.roleId, status: "active", scope: inv.scope }).where(eq(memberships.id, m.id));

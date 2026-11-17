@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import postgres from "postgres";
 import { Client, env, lastEmailTo, login } from "./helpers";
-import { webhookSignature } from "../src/services/cashfree";
+import { verifyWebhook, webhookSignature } from "../src/services/cashfree";
 
 let kunal: Client, platform: Client;
 const SECRET = "cf_test_secret_key";
@@ -121,5 +121,15 @@ describe("Cashfree payments", () => {
     const st = await kunal.get(`/admin/billing/payments/${r2.body.orderId}`);
     expect(st.body.status).toBe("failed");
     expect(st.body.failureReason).toBe("Insufficient funds");
+  });
+});
+
+describe("webhook timestamp", () => {
+  it("rejects a signed webhook whose timestamp isn't a number", async () => {
+    const raw = "{}";
+    const sig = await webhookSignature("k", "soon", raw);
+    expect(await verifyWebhook("k", "soon", sig, raw)).toBe(false);
+    const now = String(Date.now());
+    expect(await verifyWebhook("k", now, await webhookSignature("k", now, raw), raw)).toBe(true);
   });
 });

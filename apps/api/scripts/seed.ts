@@ -308,6 +308,15 @@ async function main() {
   const hol = new Set((await db.select({ d: holidays.date }).from(holidays).where(eq(holidays.tenantId, tid))).map((h) => h.d));
   const active = all.filter((e) => !["onboarding", "inactive"].includes(e.status));
   const recs: (typeof attendanceRecords.$inferInsert)[] = [];
+  const addDays = (iso: string, nDays: number) => {
+    const dt = new Date(iso + "T00:00:00Z");
+    dt.setUTCDate(dt.getUTCDate() + nDays);
+    return dt.toISOString().slice(0, 10);
+  };
+  // Days with a seeded correction below are fixed, so tests get the same result on any date:
+  // "Biometric failed" has no punch at all, and the other two are office days.
+  const noPunch = `STL-0078|${addDays(today, -2)}`;
+  const officeDay = new Set([`STL-0104|${addDays(today, -1)}`, `STL-0057|${addDays(today, -3)}`]);
   const at = (d: string, mins: number) => new Date(`${d}T${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}:00+05:30`);
   for (const d of dateRange(prev, today)) {
     if ([0, 6].includes(weekday(d)) || hol.has(d)) continue;
@@ -315,9 +324,9 @@ async function main() {
       if (d < e.doj) continue;
       if (e.status === "exited" && d > `${year}-07-15`) continue;
       const r = rnd();
-      if (r < 0.03) continue; // absent
+      if (r < 0.03 || `${e.code}|${d}` === noPunch) continue; // absent
       const isToday = d === today;
-      const wfh = r > 0.94;
+      const wfh = r > 0.94 && !officeDay.has(`${e.code}|${d}`);
       const inM = 9 * 60 + (r < 0.1 ? 20 + Math.floor(rnd() * 70) : Math.floor(rnd() * 14));
       const outM = r > 0.9 && r <= 0.94 ? 13 * 60 + 30 : 18 * 60 + Math.floor(rnd() * 75);
       const ci = at(d, inM);
@@ -334,11 +343,6 @@ async function main() {
   const types = await db.select().from(leaveTypes).where(eq(leaveTypes.tenantId, tid));
   const lt = (code: string) => types.find((t) => t.code === code)!.id;
   for (const e of active) await ensureBalances(db, tid, codeToId.get(e.code)!, year);
-  const addDays = (iso: string, nDays: number) => {
-    const dt = new Date(iso + "T00:00:00Z");
-    dt.setUTCDate(dt.getUTCDate() + nDays);
-    return dt.toISOString().slice(0, 10);
-  };
   const leaves: [string, string, number, number, string, string][] = [
     ["STL-0042", "EL", 12, 16, "Family function in Surat", "pending"],
     ["STL-0057", "SL", 1, 1, "Fever", "pending"],

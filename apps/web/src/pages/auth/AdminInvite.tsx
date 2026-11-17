@@ -64,6 +64,7 @@ export default function AdminInvite() {
           onSubmit={(e) => {
             e.preventDefault();
             setErr(null);
+            if (d.hasAccount) return pw ? accept.mutate() : setErr("Enter your current password");
             if (pw.length < 10) return setErr("Use at least 10 characters");
             if (pw !== pw2) return setErr("The two passwords don't match");
             accept.mutate();
@@ -72,12 +73,20 @@ export default function AdminInvite() {
           <Field label="Work email">
             <Input value={d.email} readOnly />
           </Field>
-          <Field label={d.hasAccount ? "Set a new password" : "Create a password"} hint={d.hasAccount ? "You already have a login. This replaces your current password." : "At least 10 characters"}>
-            <Input type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus />
-          </Field>
-          <Field label="Confirm password">
-            <Input type="password" autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
-          </Field>
+          {d.hasAccount ? (
+            <Field label="Current password" hint={<>You already have a login with this email. Forgot it? <Link to="/forgot-password">Reset it</Link> and open this link again.</>}>
+              <Input type="password" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus />
+            </Field>
+          ) : (
+            <>
+              <Field label="Create a password" hint="At least 10 characters">
+                <Input type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus />
+              </Field>
+              <Field label="Confirm password">
+                <Input type="password" autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
+              </Field>
+            </>
+          )}
           {err ? <Notice tone="bad">{err}</Notice> : null}
           <Button type="submit" variant="primary" block loading={accept.isPending}>
             Accept invite

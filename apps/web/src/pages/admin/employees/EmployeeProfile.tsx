@@ -105,7 +105,7 @@ export default function EmployeeProfile() {
   if (q.error || !q.data) return <ErrorState error={q.error ?? new Error("Employee not found")} retry={() => q.refetch()} />;
   const e = q.data;
 
-  const tabs: { value: Tab; label: string }[] = [
+  const allTabs: { value: Tab; label: string }[] = [
     { value: "personal", label: "Personal" },
     { value: "employment", label: "Employment" },
     { value: "bank", label: "Bank" },
@@ -113,6 +113,9 @@ export default function EmployeeProfile() {
     { value: "documents", label: `Documents${e.documents.length ? ` (${e.documents.length})` : ""}` },
     ...(can("attendance") ? [{ value: "attendance" as Tab, label: "Attendance" }] : []),
   ];
+  // Outside your team you only get the directory card, so the private tabs are hidden.
+  const tabs = e.limited ? allTabs.filter((x) => x.value === "employment" || x.value === "attendance") : allTabs;
+  const shownTab = tabs.some((x) => x.value === tab) ? tab : tabs[0]!.value;
   const grid = "grid grid-cols-[repeat(auto-fill,minmax(min(220px,100%),1fr))] gap-x-6 gap-y-4 text-[14px] min-w-0";
   const inviteOpen = e.invite && e.invite.status !== "verified";
 
@@ -224,9 +227,10 @@ export default function EmployeeProfile() {
         </Card>
 
         <Card className="!gap-[18px] min-w-0 bg-[var(--color-surface)]">
-          <PillTabs value={tab} onChange={setTab} tabs={tabs} />
+          <PillTabs value={shownTab} onChange={setTab} tabs={tabs} />
+          {e.limited ? <p className="text-muted -mt-1 text-[13px]">You can see personal details, bank, ID numbers and documents only for people who report to you.</p> : null}
 
-          {tab === "personal" ? (
+          {shownTab === "personal" ? (
             <div className={grid}>
               <KV label="Full name"><b className="font-semibold">{e.fullName}</b></KV>
               <KV label="Date of birth">{fmtDate(e.dateOfBirth)}</KV>
@@ -244,7 +248,7 @@ export default function EmployeeProfile() {
             </div>
           ) : null}
 
-          {tab === "employment" ? (
+          {shownTab === "employment" ? (
             <div className={grid}>
               <KV label="Date of joining">{fmtDate(e.dateOfJoining)}</KV>
               <KV label="Department">{e.department}</KV>
@@ -261,7 +265,7 @@ export default function EmployeeProfile() {
             </div>
           ) : null}
 
-          {tab === "bank" ? (
+          {shownTab === "bank" ? (
             <div className={grid}>
               <KV label="Account holder">{e.accountHolderName}</KV>
               <KV label="Bank">{e.bankName}</KV>
@@ -283,7 +287,7 @@ export default function EmployeeProfile() {
             </div>
           ) : null}
 
-          {tab === "statutory" ? (
+          {shownTab === "statutory" ? (
             <div className={grid}>
               <KV label="PAN">{e.pan}</KV>
               <KV label="Aadhaar (reference)">{e.aadhaarLast4 ? `XXXX XXXX ${e.aadhaarLast4}` : null}</KV>
@@ -296,7 +300,7 @@ export default function EmployeeProfile() {
             </div>
           ) : null}
 
-          {tab === "documents" ? (
+          {shownTab === "documents" ? (
             <div className="flex flex-col gap-2">
               {e.documents.length === 0 ? <div className="text-muted py-2 text-[13px]">No documents yet.</div> : null}
               {e.documents.map((d) => (
@@ -355,7 +359,7 @@ export default function EmployeeProfile() {
             </div>
           ) : null}
 
-          {tab === "attendance" ? <AttendanceMonth employeeId={id} /> : null}
+          {shownTab === "attendance" ? <AttendanceMonth employeeId={id} /> : null}
         </Card>
       </div>
     </>

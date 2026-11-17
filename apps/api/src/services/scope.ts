@@ -24,3 +24,16 @@ export async function teamScope(c: Context<AppEnv>, module: Module): Promise<str
 export function inScope(scope: string[] | null, employeeId: string) {
   return scope === null || scope.includes(employeeId);
 }
+
+/**
+ * Who can see an employee's private details (ID numbers, date of birth, address, bank, documents):
+ * the employee, HR (employees edit or configure), payroll viewers, and their direct manager.
+ * Everyone else with employees.view only gets the directory card.
+ */
+export async function canSeePrivate(c: Context<AppEnv>, employeeId: string) {
+  const t = c.get("tenant");
+  if (t.employeeId === employeeId) return true;
+  const p = t.permissions;
+  if (can(p, "employees", "edit") || can(p, "employees", "configure") || can(p, "payroll", "view")) return true;
+  return inScope(await teamScope(c, "employees"), employeeId);
+}

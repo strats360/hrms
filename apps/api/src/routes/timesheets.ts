@@ -236,8 +236,31 @@ timesheetRoutes.post("/approve-all", requirePerm("attendance", "approve"), v("js
   const me = c.get("tenant").employeeId;
   const list = await c.get("db").select().from(timesheets).where(and(eq(timesheets.tenantId, tid(c)), eq(timesheets.weekStart, week), eq(timesheets.status, "submitted"), scope ? inArray(timesheets.employeeId, scope.length ? scope : [""]) : undefined));
   const todo = list.filter((s) => s.employeeId !== me);
-  for (const s of todo) await decide(c, s, true, null);
-  return c.json({ approved: todo.length });
+  if (!todo.length) return c.json({ approved: 0 });
+  // One update, one lookup and one audit line for the whole team, then the emails.
+  // Doing decide() per sheet costs several queries each and runs into Worker subrequest limits on big teams.
+  const db = c.get("db");
+  const by = c.get("session")!.name;
+  const done = await db
+    .update(timesheets)
+    .set({ status: "approved", decidedBy: by, decidedAt: new Date(), rejectReason: null, updatedAt: new Date() })
+    .where(and(inArray(timesheets.id, todo.map((s) => s.id)), eq(timesheets.status, "submitted")))
+    .returning({ id: timesheets.id, employeeId: timesheets.employeeId, totalMinutes: timesheets.totalMinutes });
+  const people = done.length ? await db.select({ id: employees.id, email: employees.workEmail, first: employees.firstName }).from(employees).where(inArray(employees.id, done.map((d) => d.employeeId))) : [];
+  await audit(c, { action: "timesheet.approve", entity: "timesheet", summary: `Approved ${done.length} timesheets for the week of ${fmtDate(week)}` });
+  const allowed = await allowedRecipients(db, tid(c), "timesheet_decision", people.map((p) => p.email)).catch(() => new Set<string>());
+  const [t] = await db.select({ name: tenants.name }).from(tenants).where(eq(tenants.id, tid(c)));
+  const mins = new Map(done.map((d) => [d.employeeId, d.totalMinutes]));
+  await Promise.allSettled(
+    people
+      .filter((p) => allowed.has(p.email))
+      .map((p) => {
+        const subject = `Timesheet approved: week of ${fmtDate(week)}`;
+        const { html, text } = layout({ company: t?.name ?? "Strats360 People", heading: subject, paragraphs: [`Hi ${p.first},`, `${by} approved your timesheet for the week of ${fmtDate(week)} (${hoursLabel(mins.get(p.id) ?? 0)}).`], cta: { label: "Open timesheets", url: `${c.env.APP_URL}/me/timesheets?week=${week}` } });
+        return c.get("mailer").send({ to: p.email, subject, html, text });
+      }),
+  );
+  return c.json({ approved: done.length });
 });
 
 timesheetRoutes.post("/remind", requirePerm("attendance", "approve"), v("json", z.object({ week: z.string().regex(isoDate) })), async (c) => {

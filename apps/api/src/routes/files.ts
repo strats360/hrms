@@ -5,10 +5,11 @@ import { can } from "@hrms/shared";
 import type { AppEnv } from "../env";
 import { forbidden, notFound } from "../lib/errors";
 import { getFile } from "../lib/storage";
+import { canSeePrivate } from "../services/scope";
 
 export const fileRoutes = new Hono<AppEnv>();
 
-/** Download a document: admins with employees.view, or the employee it belongs to. */
+/** Download a document: the employee it belongs to, their manager, HR or payroll. */
 fileRoutes.get("/documents/:id", async (c) => {
   const t = c.get("tenant");
   const [doc] = await c
@@ -17,7 +18,8 @@ fileRoutes.get("/documents/:id", async (c) => {
     .from(employeeDocuments)
     .where(and(eq(employeeDocuments.id, c.req.param("id")), eq(employeeDocuments.tenantId, t.tenantId)));
   if (!doc) throw notFound("Document");
-  if (!can(t.permissions, "employees", "view") && doc.employeeId !== t.employeeId) throw forbidden();
+  const own = doc.employeeId === t.employeeId;
+  if (!own && !(can(t.permissions, "employees", "view") && (await canSeePrivate(c, doc.employeeId)))) throw forbidden();
   const file = await getFile(c.env, doc.fileKey);
   if (!file) throw notFound("File");
   const name = encodeURIComponent(doc.name);

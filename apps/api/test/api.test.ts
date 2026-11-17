@@ -229,8 +229,7 @@ describe("attendance", () => {
     const month = await hr.get(`/admin/attendance/monthly?month=${corr.date.slice(0, 7)}`);
     const emp = month.body.rows.find((x: any) => x.employeeId === corr.employeeId);
     const idx = month.body.days.indexOf(corr.date);
-    // the seed picks some days as work from home at random, and a correction keeps that
-    expect(["present", "wfh"]).toContain(emp.days[idx]);
+    expect(emp.days[idx]).toBe("present");
   });
   it("exports the register as CSV", async () => {
     const r = await hr.get("/admin/attendance/monthly.csv");

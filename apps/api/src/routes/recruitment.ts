@@ -579,9 +579,13 @@ careersRoutes.post("/:slug/jobs/:id/apply", async (c) => {
   const [dup] = await db.select({ id: applications.id }).from(applications).where(and(eq(applications.jobId, r.j.id), eq(applications.candidateId, candidate.id)));
   // applying twice is fine: same answer, nothing new to see
   if (!dup) {
-    await storeResume(c, t.id, candidate.id, resume, candidate.resumeKey);
+    // Anyone can type any email here, so never replace a resume that's already on file.
+    // The recruiter can upload the newer one after checking it's really the same person.
+    const kept = !!candidate.resumeKey;
+    if (!kept) await storeResume(c, t.id, candidate.id, resume, null);
     const [a] = await db.insert(applications).values({ tenantId: t.id, jobId: r.j.id, candidateId: candidate.id, ip }).returning();
-    await logEvent(db, t.id, a!.id, { kind: "created", toStage: "applied", note: b.note ? `Applied on the careers page: ${b.note}` : "Applied on the careers page", byName: b.name });
+    const note = [b.note ? `Applied on the careers page: ${b.note}` : "Applied on the careers page", kept ? "They sent a resume too, but the one already on file was kept." : ""].filter(Boolean).join(" ");
+    await logEvent(db, t.id, a!.id, { kind: "created", toStage: "applied", note, byName: b.name });
     try {
       const { html, text } = layout({ company: t.name, heading: `Thanks for applying, ${b.name.split(" ")[0]}`, paragraphs: [`We've received your application for ${r.j.title} at ${t.name}.`, "Our team reviews every application. If your profile is a good fit, we'll be in touch about next steps.", "We keep your details only to consider you for roles with us. Reply to this email if you'd like them removed."] });
       await c.get("mailer").send({ to: b.email, subject: `Your application for ${r.j.title}`, html, text });

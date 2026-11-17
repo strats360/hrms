@@ -22,6 +22,8 @@ interface InviteInfo {
   expiresAt: string;
   expired: boolean;
   status: string;
+  /** This email already has a login, so you confirm that password instead of making a new one. */
+  hasAccount?: boolean;
 }
 
 /** Landing page for the employee self-onboarding email link. */
@@ -49,6 +51,10 @@ export default function InviteAccept() {
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     setErr(null);
+    if (q.data?.hasAccount) {
+      if (!pw) return setErr("Enter your current password");
+      return accept.mutate();
+    }
     if (pw.length < 10) return setErr("Use at least 10 characters");
     if (pw !== pw2) return setErr("The two passwords don't match");
     accept.mutate();
@@ -107,16 +113,28 @@ export default function InviteAccept() {
             </Button>
           ) : (
             <form onSubmit={submit} className="flex flex-col gap-3 rounded-[var(--radius-md)] p-4" style={{ background: "var(--color-surface)" }}>
-              <div className="font-medium">Create your password</div>
-              <div className="text-muted text-[13px]">You'll sign in with {d.email}.</div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Password" hint="At least 10 characters">
-                  <Input type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus />
-                </Field>
-                <Field label="Confirm password">
-                  <Input type="password" autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
-                </Field>
-              </div>
+              {d.hasAccount ? (
+                <>
+                  <div className="font-medium">Sign in to continue</div>
+                  <div className="text-muted text-[13px]">You already have a login with {d.email}. Enter your current password. Forgot it? <Link to="/forgot-password">Reset it here</Link> and then open this link again.</div>
+                  <Field label="Current password">
+                    <Input type="password" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus />
+                  </Field>
+                </>
+              ) : (
+                <>
+                  <div className="font-medium">Create your password</div>
+                  <div className="text-muted text-[13px]">You'll sign in with {d.email}.</div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Password" hint="At least 10 characters">
+                      <Input type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus />
+                    </Field>
+                    <Field label="Confirm password">
+                      <Input type="password" autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
+                    </Field>
+                  </div>
+                </>
+              )}
               {err ? <Notice tone="bad">{err}</Notice> : null}
               <Button type="submit" variant="primary" className="self-start" loading={accept.isPending}>
                 Continue

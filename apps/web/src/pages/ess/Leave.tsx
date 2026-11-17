@@ -87,7 +87,7 @@ export default function EssLeavePage() {
                 <StatusTag status={r.status} />
                 {r.status === "pending" && r.waitingOn ? <div className="text-muted text-[11.5px]">With {r.waitingOn.label}{r.waitingOn.of > 1 ? ` (${r.waitingOn.at} of ${r.waitingOn.of})` : ""}</div> : null}
                 {cancellable ? (
-                  <Button size="sm" variant="ghost" loading={cancel.isPending && cancel.variables === r.id} onClick={() => { void confirmAction({ title: `Cancel leave request ${r.code}?`, body: "Any days already taken from your balance are given back.", confirmLabel: "Cancel request", danger: true }).then((ok) => ok && cancel.mutate(r.id)); }}>
+                  <Button size="sm" variant="ghost" loading={cancel.isPending && cancel.variables === r.id} onClick={() => { void confirmAction({ title: `Cancel leave request ${r.code}?`, body: r.status === "pending" ? "Your approver won't see it anymore. Nothing has come off your balance yet." : "The days go back to your leave balance.", confirmLabel: "Cancel request", danger: true }).then((ok) => ok && cancel.mutate(r.id)); }}>
                     Cancel
                   </Button>
                 ) : null}

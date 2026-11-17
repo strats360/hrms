@@ -67,8 +67,10 @@ describe("payroll run lifecycle", () => {
     const prev = runs.find((x: any) => x.month < month && x.status === "paid");
     const prevItem = (await krupa.get(`/admin/payroll/runs/${prev.id}/items?q=STL-0042`)).body[0];
     expect(p.tds).toBeGreaterThan(0);
-    // seeded loss of pay days differ month to month, so allow a small swing
-    expect(Math.abs(p.tds - prevItem.tds)).toBeLessThanOrEqual(prevItem.tds * 0.05);
+    // Seeded loss of pay days differ month to month, so gross differs a little. With TDS spread
+    // over the year, a change in gross moves TDS by at most the top slab rate with cess (31.2%).
+    const grossGap = Math.abs(Number(p.gross) - Number(prevItem.gross));
+    expect(Math.abs(p.tds - prevItem.tds)).toBeLessThanOrEqual(grossGap * 0.312 + 50);
   });
   it("pays approved claims with salary, outside gross and TDS", async () => {
     const k = (await krupa.get(`/admin/payroll/runs/${runId}/items?q=STL-0091`)).body[0];

@@ -22,7 +22,8 @@ let show: ((p: Pending) => void) | null = null;
  */
 export function confirmAction(opts: ConfirmOptions): Promise<boolean> {
   return new Promise((resolve) => {
-    if (!show) return resolve(false);
+    // Without the host (a test or an isolated render), fall back to the browser box rather than doing nothing.
+    if (!show) return resolve(window.confirm(opts.body ? `${opts.title}\n\n${opts.body}` : opts.title));
     show({ ...opts, resolve });
   });
 }
