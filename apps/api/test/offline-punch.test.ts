@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import postgres from "postgres";
 import { todayLocal } from "@hrms/shared";
 import { Client, env, login } from "./helpers";
@@ -11,6 +11,8 @@ const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
 const ist = (iso: string) => new Date(iso).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Kolkata" });
 
 beforeAll(async () => {
+  // run at midday India time, so "a few hours ago" is always still today
+  vi.useFakeTimers({ toFake: ["Date"], now: new Date(`${todayLocal()}T12:00:00+05:30`) });
   priya = await login("priya.vaghela@strats360.com");
   [{ id: priyaId }] = (await sql`select id from employees where work_email = 'priya.vaghela@strats360.com'`) as any;
   [{ s: saved }] = (await sql`select settings->'punchPolicy' as s from tenants where code = 'TN-0142'`) as any;
@@ -18,6 +20,7 @@ beforeAll(async () => {
   await sql`delete from attendance_records where employee_id = ${priyaId} and date = ${todayLocal()}`;
 });
 afterAll(async () => {
+  vi.useRealTimers();
   await sql`delete from attendance_records where employee_id = ${priyaId} and date = ${todayLocal()}`;
   if (saved) await sql`update tenants set settings = jsonb_set(settings, '{punchPolicy}', ${sql.json(saved as any)}) where code = 'TN-0142'`;
   await sql.end();
@@ -32,7 +35,6 @@ describe("Punches saved offline", () => {
   });
 
   it("keeps the time it was made, and flags it for HR", async () => {
-    // midnight-safe: a few minutes ago is still today in IST for this run
     const at = ago(5);
     const r = await priya.post("/ess/attendance/punch", { source: "gps", lat: 21.7645, lng: 72.1519, capturedAt: at });
     expect(r.status).toBe(200);
