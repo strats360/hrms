@@ -28,6 +28,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Check the list of sites
+        run: node deploy/instances.mjs check
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build

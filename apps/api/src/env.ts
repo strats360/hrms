@@ -24,6 +24,10 @@ export interface Env {
   /** The site's default IANA time zone and currency (default Asia/Kolkata and INR). */
   DEFAULT_TIME_ZONE?: string;
   DEFAULT_CURRENCY?: string;
+  /** Which site this is (deploy/instances.json): key, display name and where its data lives. */
+  INSTANCE_KEY?: string;
+  INSTANCE_NAME?: string;
+  INSTANCE_REGION?: string;
   /** Cashfree Payment Gateway (subscription invoices). App ID and secret are Worker secrets. */
   CASHFREE_APP_ID?: string;
   CASHFREE_SECRET_KEY?: string;

@@ -44,6 +44,8 @@ export interface SupportSession {
 export interface Me {
   user: { id: string; name: string; email: string; twoFactorEnabled?: boolean };
   platformRole: string | null;
+  /** The site this is (platform staff only), e.g. Saralix India. */
+  instance?: { key: string; name: string; region: string | null };
   memberships: Membership[];
   supportSessions?: SupportSession[];
 }

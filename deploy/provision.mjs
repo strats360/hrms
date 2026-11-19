@@ -6,9 +6,10 @@
  *
  *   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID   Cloudflare credentials
  *   DATABASE_URL                                  Postgres 14+ *direct* connection string with sslmode=require (Neon, or any provider)
- *   DEPLOY_ENV                                    production | staging (default production)
- *   WORKER_NAME                                   default saralix, or saralix-staging
- *   CUSTOM_DOMAIN                                 optional, e.g. hrms.strats360.com (zone must be on this account)
+ *   DEPLOY_ENV                                    the GitHub environment, e.g. production, staging, gulf (default production).
+ *                                                 The site's settings come from deploy/instances.json for that environment.
+ *   WORKER_NAME                                   overrides the site's worker (default saralix, or saralix-staging)
+ *   CUSTOM_DOMAIN                                 overrides the site's domain (zone must be on this account)
  *   APP_URL                                       optional; defaults to https://CUSTOM_DOMAIN or the workers.dev URL
  *   EMAIL_FROM                                    optional, e.g. "Saralix <people@strats360.com>"
  *   CASHFREE_ENV                                  sandbox | production (default sandbox)
@@ -21,14 +22,18 @@
  * app_url, worker_name and hyperdrive_id.
  */
 import { appendFileSync, writeFileSync } from "node:fs";
+import { instanceFor, loadInstances } from "./instances.mjs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const dry = process.argv.includes("--dry-run");
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const env = process.env;
-const deployEnv = env.DEPLOY_ENV === "staging" ? "staging" : "production";
-const worker = env.WORKER_NAME || (deployEnv === "staging" ? "saralix-staging" : "saralix");
+const target = env.DEPLOY_ENV || "production";
+/** This site's settings (deploy/instances.json). GitHub environment variables override them. */
+const site = instanceFor(loadInstances(), target);
+const deployEnv = site?.stage ?? (target === "staging" ? "staging" : "production");
+const worker = env.WORKER_NAME || site?.worker || (deployEnv === "staging" ? "saralix-staging" : "saralix");
 const bucket = env.R2_BUCKET || `${worker}-files`;
 const hyperdriveName = `${worker}-db`;
 const account = env.CLOUDFLARE_ACCOUNT_ID;
@@ -94,8 +99,9 @@ async function ensureBucket() {
     log(`R2 bucket ${bucket} exists`);
   } catch (e) {
     if (e.status !== 404) throw e;
-    await cf("POST", `/accounts/${account}/r2/buckets`, { name: bucket, locationHint: "apac" });
-    log(`Created R2 bucket ${bucket} (Asia-Pacific)`);
+    const locationHint = site?.bucketLocation ?? "apac";
+    await cf("POST", `/accounts/${account}/r2/buckets`, { name: bucket, locationHint });
+    log(`Created R2 bucket ${bucket} (${locationHint})`);
   }
 }
 
@@ -139,14 +145,21 @@ export function workerConfig({ hyperdriveId, appUrl, emailFrom, customDomain }) 
     triggers: { crons: ["30 4 * * *", "0 * * * *"] },
     workers_dev: !customDomain,
     ...(customDomain ? { routes: [{ pattern: customDomain, custom_domain: true }] } : {}),
-    vars: { APP_URL: appUrl, EMAIL_FROM: emailFrom ?? "", ENVIRONMENT: deployEnv, CASHFREE_ENV: env.CASHFREE_ENV === "production" ? "production" : "sandbox", ALLOWED_COUNTRIES: env.ALLOWED_COUNTRIES || "IN", DEFAULT_TIME_ZONE: env.DEFAULT_TIME_ZONE || "Asia/Kolkata", DEFAULT_CURRENCY: env.DEFAULT_CURRENCY || "INR" },
+    vars: { APP_URL: appUrl, EMAIL_FROM: emailFrom ?? "", ENVIRONMENT: deployEnv, CASHFREE_ENV: env.CASHFREE_ENV === "production" ? "production" : "sandbox", ALLOWED_COUNTRIES: env.ALLOWED_COUNTRIES || site?.countries.join(",") || "IN",
+      DEFAULT_TIME_ZONE: env.DEFAULT_TIME_ZONE || site?.timeZone || "Asia/Kolkata",
+      DEFAULT_CURRENCY: env.DEFAULT_CURRENCY || site?.currency || "INR",
+      INSTANCE_KEY: site?.key ?? target,
+      INSTANCE_NAME: site?.name ?? `Saralix (${target})`,
+      INSTANCE_REGION: site?.region ?? "",
+    },
     hyperdrive: [{ binding: "HYPERDRIVE", id: hyperdriveId }],
     r2_buckets: [{ binding: "FILES", bucket_name: bucket }],
   };
 }
 
 async function main() {
-  console.log(`Provisioning ${deployEnv} (${worker})${dry ? " · dry run" : ""}`);
+  if (!site) console.warn(`! No site in deploy/instances.json uses the "${target}" environment. Using defaults; add it to the file.`);
+  console.log(`Provisioning ${site?.name ?? target} (${worker}, ${deployEnv})${dry ? " · dry run" : ""}`);
   let db;
   try {
     db = parseDatabaseUrl(env.DATABASE_URL);
@@ -158,7 +171,7 @@ async function main() {
     if (!token || !account) fail("CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are required");
     await verifyToken().catch((e) => fail(`The Cloudflare API token didn't verify: ${e.message}`));
   }
-  const customDomain = (env.CUSTOM_DOMAIN || "").trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "") || null;
+  const customDomain = (env.CUSTOM_DOMAIN || site?.domain || "").trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "") || null;
   let hyperdriveId = "dry-run-hyperdrive-id";
   let devUrl = `https://${worker}.example.workers.dev`;
   if (!dry) {
@@ -173,7 +186,7 @@ async function main() {
   writeFileSync(out, JSON.stringify(config, null, 2) + "\n");
   log(`Wrote ${out}`);
   log(`App URL: ${appUrl}`);
-  if (env.GITHUB_OUTPUT) appendFileSync(env.GITHUB_OUTPUT, `app_url=${appUrl}\nworker_name=${worker}\nhyperdrive_id=${hyperdriveId}\n`);
+  if (env.GITHUB_OUTPUT) appendFileSync(env.GITHUB_OUTPUT, `app_url=${appUrl}\nworker_name=${worker}\nhyperdrive_id=${hyperdriveId}\nsite_name=${site?.name ?? target}\n`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

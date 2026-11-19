@@ -85,7 +85,7 @@ export function buildApp() {
     if (!c.res.headers.has("Cache-Control")) c.header("Cache-Control", "no-store");
   });
   api.get("/health", async (c) => {
-    const base = { ok: true, version: RELEASE.version, environment: c.env.ENVIRONMENT ?? "development" };
+    const base = { ok: true, version: RELEASE.version, environment: c.env.ENVIRONMENT ?? "development", instance: c.env.INSTANCE_KEY ?? "local", instanceName: c.env.INSTANCE_NAME ?? "Saralix (local)", region: c.env.INSTANCE_REGION ?? null, countries: (c.env.ALLOWED_COUNTRIES ?? "IN").split(",") };
     if (!c.req.query("deep")) return c.json(base);
     // deep check for the deploy smoke test: database, storage and configuration
     const checks: Record<string, boolean> = {

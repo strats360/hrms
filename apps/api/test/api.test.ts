@@ -291,6 +291,9 @@ describe("health", () => {
     expect(r.status).toBe(200);
     expect(r.body.checks.database).toBe(true);
     expect(r.body.migrations).toBeGreaterThanOrEqual(9);
-    expect((await c.get("/health")).body.version).toBeTruthy();
+    const h = (await c.get("/health")).body;
+    expect(h.version).toBeTruthy();
+    // which site this is (deploy/instances.json), for monitoring
+    expect(h).toMatchObject({ instance: "local", countries: ["IN"] });
   });
 });

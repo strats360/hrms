@@ -58,6 +58,8 @@ meRoutes.get("/", async (c) => {
       return { tenantId: t.id, tenantName: t.name, tenantCode: t.code, tenantStatus: t.status, plan: t.plan, features: evaluateFlags(flags, { id: t.id, plan: t.plan }), ticketId: a.access.ticketId, ticketNumber: a.number, accessId: a.access.id, expiresAt: a.access.expiresAt };
     }),
     platformRole: staff?.status === "active" ? staff.role : null,
+    // which site this is, so platform staff know whose customers they're looking at
+    instance: staff?.status === "active" ? { key: c.env.INSTANCE_KEY ?? "local", name: c.env.INSTANCE_NAME ?? "Saralix (local)", region: c.env.INSTANCE_REGION ?? null } : undefined,
     memberships: rows
       .filter((r) => r.status === "active")
       .map((r) => ({
