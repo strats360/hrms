@@ -120,6 +120,8 @@ Every site is listed in `deploy/instances.json`: its name, where its data lives,
 
 **Undo on one site:** **Rollback** with that site's environment.
 
+**Monitoring:** the **Monitor** workflow checks every live site every 10 minutes: the deep health check (database, storage, secrets) and the login page, with a few retries so a blip doesn't count. A site that stays down gets a GitHub issue labelled `outage` and `site:<key>`, and GitHub emails everyone watching the repo (Watch › All activity, or Custom › Issues). When the site is back, the issue gets a comment and closes. To also get a message in Slack or Teams, add an incoming webhook URL as the repository secret `ALERT_WEBHOOK_URL`. The run summary shows each site's version, and warns when sites are on different versions.
+
 ## Customer demo account
 
 Use this to show Saralix to prospects on the live site. It loads the sample company, Strats360 Technolabs LLP, with 250 employees, payroll history, attendance, leave, claims and payments.

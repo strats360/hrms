@@ -1,0 +1,34 @@
+name: Monitor
+
+# Every 10 minutes: check each live site in deploy/instances.json (health check with the
+# database, and the login page). A site that stays down after a few tries gets an issue
+# labelled "outage", which emails everyone watching the repo; recovery closes it.
+# Optional repository secret ALERT_WEBHOOK_URL also gets a message (Slack or Teams).
+# See docs/MULTI_COUNTRY.md.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: monitor
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check every live site
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+        run: node deploy/monitor.mjs
