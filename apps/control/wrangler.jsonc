@@ -1,0 +1,11 @@
+{
+  // Local development only. Deploys write wrangler.deploy.json (see .github/workflows/deploy-control.yml).
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "saralix-control-dev",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "vars": {
+    "ENVIRONMENT": "development",
+    "SITES": "[{\"key\":\"local\",\"name\":\"Saralix (local)\",\"url\":\"http://localhost:8787\",\"region\":\"This computer\"}]"
+  }
+}

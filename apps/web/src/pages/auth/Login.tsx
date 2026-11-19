@@ -10,7 +10,17 @@ import { Notice } from "@/components/ui/page";
 import { AuthShell } from "./AuthShell";
 
 export default function Login() {
-  const [email, setEmail] = useState("");
+  // the Saralix sign in page (control plane) passes the email in the fragment, which never reaches a server
+  const [email, setEmail] = useState(() => {
+    const m = /(?:^#|&)email=([^&]*)/.exec(window.location.hash);
+    if (!m) return "";
+    history.replaceState(null, "", window.location.pathname + window.location.search);
+    try {
+      return decodeURIComponent(m[1]!).slice(0, 254);
+    } catch {
+      return "";
+    }
+  });
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -133,10 +143,10 @@ export default function Login() {
         ) : null}
         {error ? <Notice tone="bad">{error}</Notice> : null}
         <Field label="Work email" htmlFor="email">
-          <Input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoFocus />
+          <Input id="email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoFocus={!email} />
         </Field>
         <Field label="Password" htmlFor="password">
-          <Input id="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+          <Input id="password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} autoFocus={!!email} />
         </Field>
         <div className="flex items-center justify-end text-[13px]">
           <Link to="/forgot-password" className="no-underline">

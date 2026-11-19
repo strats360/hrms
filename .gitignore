@@ -9,3 +9,4 @@ dist
 .DS_Store
 coverage
 apps/api/wrangler.deploy.json
+apps/control/wrangler.deploy.json

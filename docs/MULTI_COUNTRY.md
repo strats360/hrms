@@ -40,7 +40,7 @@ Rules for instances:
 
 ## Control plane
 
-A small central app at `app.saralix.com`:
+A small central app, `apps/control`, at `login.saralix.com` for now (it moves to `app.saralix.com` when India moves to `in.saralix.com`):
 - **Company directory:** which customer lives on which instance, their plan and status. Nothing about their employees.
 - **Login routing:** one sign in page that sends people to their instance.
 - **Platform console:** our staff see every customer across instances.
@@ -149,9 +149,9 @@ Cloudflare is one account for all instances. Neon is roughly $19 a month per pro
 5. Golden payroll tests for every pack in CI ✅ `packages/shared/golden/<COUNTRY>.json`: at least five real payslip cases per pack with every line written out, checked on every change and before every deploy. India has 11 cases, waiting for a payroll consultant's sign off.
 
 **Phase 3. Control plane**
-1. Company directory
-2. Login routing
-3. Platform console across instances
+1. Company directory ✅ Each site's `/api/control` (company level data only), token derived from one shared key.
+2. Login routing ✅ `apps/control` at `login.saralix.com`: asks each site live, nothing stored, unknown emails see the site list.
+3. Platform console across instances ✅ `/console` behind Cloudflare Access (token verified by the app): sites, versions, companies, revenue, CSV.
 4. Central billing with GST, VAT and ZATCA
 
 **Phase 4 onward. Country packs**, each with a pilot customer

@@ -1,0 +1,81 @@
+name: Deploy control plane
+
+# The Saralix control plane: one sign in page that sends people to their site, and the staff
+# console across every site (docs/MULTI_COUNTRY.md, phase 3). It keeps no employee data.
+#
+# GitHub environment "control":
+#   Secrets   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
+#   Variables CONTROL_DOMAIN (default login.saralix.com), ACCESS_TEAM_DOMAIN, ACCESS_AUD
+# Repository secret CONTROL_PLANE_KEY (the same one every site's deploy uses).
+# Sites come from deploy/instances.json. Deploy the sites first so they have their control token.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-control
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: control
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CONTROL_DOMAIN: ${{ vars.CONTROL_DOMAIN }}
+      ACCESS_TEAM_DOMAIN: ${{ vars.ACCESS_TEAM_DOMAIN }}
+      ACCESS_AUD: ${{ vars.ACCESS_AUD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Check configuration
+        env:
+          CONTROL_PLANE_KEY: ${{ secrets.CONTROL_PLANE_KEY }}
+        run: |
+          missing=""
+          for v in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID CONTROL_PLANE_KEY; do [ -n "${!v}" ] || missing="$missing $v"; done
+          if [ -n "$missing" ]; then echo "::error::Missing:$missing. See docs/DEPLOY.md (Control plane)."; exit 1; fi
+          [ ${#CONTROL_PLANE_KEY} -ge 32 ] || { echo "::error::CONTROL_PLANE_KEY must be at least 32 characters (openssl rand -base64 32)"; exit 1; }
+          if [ -z "$ACCESS_TEAM_DOMAIN" ] || [ -z "$ACCESS_AUD" ]; then echo "::warning::ACCESS_TEAM_DOMAIN and ACCESS_AUD aren't set, so the console stays closed. Sign in routing works without them."; fi
+
+      - name: Test
+        run: |
+          pnpm --filter @hrms/control typecheck
+          pnpm --filter @hrms/control test
+
+      - name: Write the Worker config
+        id: config
+        run: node deploy/control-config.mjs
+
+      - name: Deploy
+        working-directory: apps/control
+        run: npx wrangler deploy -c wrangler.deploy.json
+
+      - name: Set the secret
+        working-directory: apps/control
+        env:
+          CONTROL_PLANE_KEY: ${{ secrets.CONTROL_PLANE_KEY }}
+        run: |
+          umask 077
+          node -e 'require("fs").writeFileSync(process.env.RUNNER_TEMP + "/secrets.json", JSON.stringify({ CONTROL_PLANE_KEY: process.env.CONTROL_PLANE_KEY }))'
+          npx wrangler secret bulk "$RUNNER_TEMP/secrets.json" -c wrangler.deploy.json
+          rm -f "$RUNNER_TEMP/secrets.json"
+
+      - name: Smoke test
+        env:
+          URL: ${{ steps.config.outputs.url }}
+        run: |
+          for i in $(seq 1 20); do
+            if curl -fsS "$URL/healthz" -o health.json; then break; fi
+            echo "waiting for $URL ($i)"; sleep 6
+          done
+          cat health.json; echo
+          node -e 'const h=require("./health.json"); if(!h.ok||!h.configured||!h.sites) process.exit(1)'
+          curl -fsS "$URL/" | grep -q 'name="email"'
+          echo "### Control plane deployed: $URL" >> "$GITHUB_STEP_SUMMARY"

@@ -133,6 +133,24 @@ For a site whose database isn't on Neon (for example a provider inside Saudi Ara
 
 **Monitoring:** the **Monitor** workflow checks every live site every 10 minutes: the deep health check (database, storage, secrets) and the login page, with a few retries so a blip doesn't count. A site that stays down gets a GitHub issue labelled `outage` and `site:<key>`, and GitHub emails everyone watching the repo (Watch › All activity, or Custom › Issues). When the site is back, the issue gets a comment and closes. To also get a message in Slack or Teams, add an incoming webhook URL as the repository secret `ALERT_WEBHOOK_URL`. The run summary shows each site's version, and warns when sites are on different versions.
 
+## Control plane (login.saralix.com)
+
+One sign in page for every site, and a staff console across all of them. It keeps no employee data: it asks each site live.
+
+- **Sign in:** someone enters their email, the control plane asks each site whether that email signs in there, and sends them to their site's login page with the email filled in. Someone on two sites picks one. An unknown email gets the list of sites, so the page doesn't reveal who has an account.
+- **Console** (`/console`): every company on every site with plan, status, country and employee count, each site's health and version, and revenue by site. Each company links to its site's platform console. It sits behind Cloudflare Access.
+
+**Set it up once**
+1. Make a key: `openssl rand -base64 32`. Add it as a **repository** secret named `CONTROL_PLANE_KEY` (Settings › Secrets and variables › Actions › Repository secrets). Every site's deploy derives its own control token from it.
+2. Run **Rollout**, so every site gets its token.
+3. Create a GitHub environment named `control` with the secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` (the same values as production).
+4. In Cloudflare Zero Trust › Access › Applications, add a self hosted application for `login.saralix.com/console`, with a policy that allows only your staff's emails (one time code by email, or your Google or Microsoft login). Copy the application's **Audience tag**, and your team domain (for example `saralix.cloudflareaccess.com`).
+5. On the `control` environment, add the variables `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD`. Add `CONTROL_DOMAIN` only if you want a domain other than `login.saralix.com`.
+6. Run **Deploy control plane**.
+7. In Cloudflare › your domain › Security › WAF › Rate limiting, limit `POST login.saralix.com/continue` to about 10 requests a minute per IP.
+
+When you add a site to `deploy/instances.json`, run **Deploy control plane** again so it knows about it.
+
 ## Customer demo account
 
 Use this to show Saralix to prospects on the live site. It loads the sample company, Strats360 Technolabs LLP, with 250 employees, payroll history, attendance, leave, claims and payments.
