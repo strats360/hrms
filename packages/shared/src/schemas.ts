@@ -41,6 +41,19 @@ export const tanSchema = z.string().trim().toUpperCase().regex(/^[A-Z]{4}\d{5}[A
 export const uanSchema = z.string().trim().regex(/^\d{12}$/, "UAN is 12 digits");
 export const aadhaarLast4Schema = z.string().trim().regex(/^\d{4}$/, "Enter the last 4 digits only");
 export const accountNumberSchema = z.string().trim().regex(/^\d{9,18}$/, "Account number is 9 to 18 digits");
+/** An Indian account number, or an IBAN (UAE and most of the Gulf, the UK). */
+export const payAccountSchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .transform((v) => (/^[A-Z]{2}/.test(v) ? v.replace(/\s/g, "") : v))
+  .refine((v) => /^\d{9,18}$/.test(v) || /^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(v), "Enter a 9 to 18 digit account number or an IBAN");
+/** The bank's code for salary transfers: an IFSC in India, a 9 digit routing code for UAE WPS. */
+export const bankCodeSchema = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .refine((v) => /^[A-Z]{4}0[A-Z0-9]{6}$/.test(v) || /^\d{9}$/.test(v), "Enter an IFSC like HDFC0001234 or a 9 digit routing code");
 export const phoneSchema = z
   .string()
   .trim()
@@ -59,6 +72,7 @@ export const employeePersonalSchema = z.object({
   phone: nullable(phoneSchema),
   dateOfBirth: nullable(isoDate),
   gender: nullable(z.enum(GENDERS)),
+  nationality: nullable(z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/, "Pick a country")),
   maritalStatus: nullable(trimmed(30)),
   bloodGroup: nullable(trimmed(5)),
   currentAddress: nullable(trimmed(500)),
@@ -93,8 +107,8 @@ export const employeeEmploymentSchema = z.object({
 export const employeeBankSchema = z.object({
   accountHolderName: nullable(trimmed(120)),
   bankName: nullable(trimmed(120)),
-  accountNumber: nullable(accountNumberSchema),
-  ifsc: nullable(ifscSchema),
+  accountNumber: nullable(payAccountSchema),
+  ifsc: nullable(bankCodeSchema),
   paymentMethod: z.enum(PAYMENT_METHODS).default("bank_transfer"),
 });
 
@@ -395,7 +409,7 @@ export const structureRevisionSchema = z.object({
   components: salaryComponentsSchema.nullable().optional(),
   reason: nullable(trimmed(200)),
 });
-export const payrollRunCreateSchema = z.object({ month: monthSchema, payDate: nullable(isoDate) });
+export const payrollRunCreateSchema = z.object({ month: monthSchema, payDate: nullable(isoDate), entityId: nullable(z.string().min(1)) });
 export const payrollAdjustmentSchema = z.object({
   employeeId: z.string().min(1),
   kind: z.enum(["earning", "deduction"]),

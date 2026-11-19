@@ -566,6 +566,17 @@ export function StepPayout({ run }: { run: PayrollRun }) {
       setExporting(false);
     }
   };
+  const exportWps = async () => {
+    setExporting(true);
+    try {
+      await download(`/admin/payroll/runs/${run.id}/wps.sif`, `wps-${run.month}.SIF`);
+      toast.success("WPS file downloaded");
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setExporting(false);
+    }
+  };
   const t = run.totals;
   const when = (d: string | null) => (d ? new Date(d).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }) : "");
   return (
@@ -601,6 +612,11 @@ export function StepPayout({ run }: { run: PayrollRun }) {
                 <Button disabled={!locked || !can("payroll", "export")} loading={exporting} onClick={exportBank}>
                   <Download size={15} /> Quick CSV
                 </Button>
+                {run.country === "AE" ? (
+                  <Button disabled={!locked || !can("payroll", "export")} loading={exporting} onClick={exportWps} title="Salary information file for the UAE Wage Protection System">
+                    <Download size={15} /> WPS file
+                  </Button>
+                ) : null}
               </div>
             </>
           ) : (

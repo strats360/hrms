@@ -51,6 +51,7 @@ export interface EmployeeDetail {
   phone: string | null;
   dateOfBirth: string | null;
   gender: string | null;
+  nationality: string | null;
   maritalStatus: string | null;
   bloodGroup: string | null;
   currentAddress: string | null;
@@ -194,6 +195,11 @@ export interface RunTotals {
 export type RunStatus = "draft" | "calculated" | "approved" | "paid";
 export interface PayrollRun {
   id: string;
+  entityId: string;
+  entityName?: string | null;
+  entityCode?: string | null;
+  country?: string | null;
+  currency?: string | null;
   month: string;
   periodStart: string;
   periodEnd: string;

@@ -1,4 +1,6 @@
-import { WAGE_CATEGORIES, WAGE_CATEGORY_LABELS } from "@hrms/shared";
+import { countryName, ISO_COUNTRIES, WAGE_CATEGORIES, WAGE_CATEGORY_LABELS } from "@hrms/shared";
+
+const NATIONALITY_OPTIONS = ISO_COUNTRIES.map((code) => ({ code, name: countryName(code)! })).sort((a, b) => a.name.localeCompare(b.name));
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -22,6 +24,7 @@ type Form = {
   phone: string;
   dateOfBirth: string;
   gender: string;
+  nationality: string;
   maritalStatus: string;
   bloodGroup: string;
   currentAddress: string;
@@ -64,7 +67,7 @@ type Form = {
 };
 
 const EMPTY: Form = {
-  firstName: "", lastName: "", workEmail: "", personalEmail: "", phone: "", dateOfBirth: "", gender: "", maritalStatus: "", bloodGroup: "",
+  firstName: "", lastName: "", workEmail: "", personalEmail: "", phone: "", dateOfBirth: "", gender: "", nationality: "", maritalStatus: "", bloodGroup: "",
   currentAddress: "", permanentAddress: "", emergencyContactName: "", emergencyContactRelation: "", emergencyContactPhone: "",
   employeeCode: "", dateOfJoining: todayLocal(), entityId: "", departmentId: "", designationId: "", managerId: "", branchId: "", shiftId: "", biometricId: "", wageCategory: "",
   employmentType: "full_time", workLocation: "", status: "probation", probationMonths: "6", confirmationDate: "", resignationDate: "", lastWorkingDay: "",
@@ -77,7 +80,7 @@ function fromDetail(e: EmployeeDetail): Form {
   return {
     ...EMPTY,
     firstName: e.firstName, lastName: s(e.lastName), workEmail: e.workEmail, personalEmail: s(e.personalEmail), phone: s(e.phone), dateOfBirth: s(e.dateOfBirth),
-    gender: s(e.gender), maritalStatus: s(e.maritalStatus), bloodGroup: s(e.bloodGroup), currentAddress: s(e.currentAddress), permanentAddress: s(e.permanentAddress),
+    gender: s(e.gender), nationality: s(e.nationality), maritalStatus: s(e.maritalStatus), bloodGroup: s(e.bloodGroup), currentAddress: s(e.currentAddress), permanentAddress: s(e.permanentAddress),
     emergencyContactName: s(e.emergencyContactName), emergencyContactRelation: s(e.emergencyContactRelation), emergencyContactPhone: s(e.emergencyContactPhone),
     employeeCode: e.employeeCode, dateOfJoining: e.dateOfJoining, entityId: s(e.entityId), departmentId: s(e.departmentId), designationId: s(e.designationId), managerId: s(e.managerId),
     branchId: s(e.branchId), shiftId: s(e.shiftId), biometricId: s(e.biometricId), wageCategory: s(e.wageCategory), employmentType: e.employmentType, workLocation: s(e.workLocation), status: e.status,
@@ -275,6 +278,14 @@ export default function EmployeeForm() {
                 <option value="male">Male</option>
                 <option value="other">Other</option>
                 <option value="undisclosed">Prefer not to say</option>
+              </Select>
+            </Field>
+            <Field label="Nationality" error={err("nationality")} htmlFor="f-nationality" hint="Some schemes are for nationals only, like UAE pension">
+              <Select {...text("nationality")}>
+                <option value="">Select</option>
+                {NATIONALITY_OPTIONS.map((o) => (
+                  <option key={o.code} value={o.code}>{o.name}</option>
+                ))}
               </Select>
             </Field>
             <Field label="Marital status" htmlFor="f-maritalStatus">

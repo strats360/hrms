@@ -38,7 +38,7 @@ import {
 import { DEMO_EMAIL_DOMAIN, randomToken, countLeaveDays, dateRange, encryptField, evaluateAttendance, sha256Hex, todayLocal, weekday, DEFAULT_SHIFT } from "@hrms/shared";
 import { upsertLogin } from "../src/services/users";
 import { provisionTenant } from "../src/services/provisioning";
-import { syncDefaultEntity } from "../src/services/entities";
+import { defaultEntity, syncDefaultEntity } from "../src/services/entities";
 import { applyUsage, ensureBalances } from "../src/services/leave";
 import { calculateRun, defaultPayDate, monthBounds } from "../src/services/payroll";
 import { payrollItems, payrollRuns, statutoryChallans, taxDeclarations, tdsReturns, user } from "@hrms/db";
@@ -459,10 +459,11 @@ async function seedPayroll(tid: string) {
   const fyStartYear = tm >= 4 ? ty : ty - 1;
   const months: string[] = [];
   for (let d = new Date(Date.UTC(fyStartYear, 3, 1)); d < new Date(Date.UTC(ty, tm - 1, 1)); d.setUTCMonth(d.getUTCMonth() + 1)) months.push(d.toISOString().slice(0, 7));
+  const entityId = (await defaultEntity(db, tid)).id;
   const attendanceFrom = (tm === 1 ? `${ty - 1}-12` : `${ty}-${String(tm - 1).padStart(2, "0")}`);
   for (const month of months) {
     const { start, end } = monthBounds(month);
-    const [run] = await db.insert(payrollRuns).values({ tenantId: tid, month, periodStart: start, periodEnd: end, payDate: defaultPayDate(month), preparedBy: krupa?.id }).returning();
+    const [run] = await db.insert(payrollRuns).values({ tenantId: tid, entityId, month, periodStart: start, periodEnd: end, payDate: defaultPayDate(month), preparedBy: krupa?.id }).returning();
     await calculateRun(db, tid, run!.id, krupa?.id ?? null, { assumePresent: month < attendanceFrom });
     const paidAt = new Date(defaultPayDate(month) + "T12:00:00+05:30");
     await db

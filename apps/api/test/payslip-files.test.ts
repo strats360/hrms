@@ -34,7 +34,7 @@ describe("Payslip PDFs", () => {
     const mine = await raw(priya, `/ess/payslips/${run.id}/pdf`);
     expect(mine.status).toBe(200);
     expect(mine.headers.get("content-type")).toBe("application/pdf");
-    const [{ id: draft }] = (await sql`insert into payroll_runs (id, tenant_id, month, period_start, period_end, status) select gen_random_uuid()::text, tenant_id, '2019-01', '2019-01-01', '2019-01-31', 'calculated' from employees where id = ${priyaId} returning id`) as any;
+    const [{ id: draft }] = (await sql`insert into payroll_runs (id, tenant_id, entity_id, month, period_start, period_end, status) select gen_random_uuid()::text, e.tenant_id, l.id, '2019-01', '2019-01-01', '2019-01-31', 'calculated' from employees e join legal_entities l on l.tenant_id = e.tenant_id and l.is_default where e.id = ${priyaId} returning id`) as any;
     expect((await raw(priya, `/ess/payslips/${draft}/pdf`)).status).toBe(404); // not published
     await sql`delete from payroll_runs where id = ${draft}`;
   });

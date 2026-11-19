@@ -35,9 +35,10 @@ export async function mySalary(db: Database, tenantId: string, employeeId: strin
     .orderBy(asc(salaryStructures.effectiveFrom));
   const current = history[history.length - 1];
   const book = await getTemplate(db, tenantId);
-  const structure = resolveStructure(e, current, book);
+  const india = ent.country === "IN";
+  const structure = resolveStructure(india ? e : { ...e, pfApplicable: false, esiApplicable: false }, current, book);
 
-  const [rules, ytd, decls] = await Promise.all([rulesFor(db, month), yearToDate(db, tenantId, month), declarationsFor(db, tenantId, fyOfMonth(month), [employeeId])]);
+  const [rules, ytd, decls] = await Promise.all([rulesFor(db, month, ent.country), yearToDate(db, tenantId, month), declarationsFor(db, tenantId, fyOfMonth(month), [employeeId])]);
   const decl = decls.get(employeeId);
   const y = ytd.byEmployee.get(employeeId);
   const regime = ((decl?.regime ?? e.taxRegime) as Regime) ?? "new";
@@ -54,6 +55,7 @@ export async function mySalary(db: Database, tenantId: string, employeeId: strin
     ptApplicable: e.ptApplicable && statOn("pt"),
     state: row.state ?? ent.state ?? tenant?.state ?? null,
     gender: e.gender,
+    profile: { nationality: e.nationality, region: ent.state },
     regime,
     taxProfile: decl ? { declaration: decl.data, verified: decl.verified } : undefined,
     ytd: y ? { taxableGross: y.taxableGross, tds: y.tds, employeePf: y.employeePf, professionalTax: y.professionalTax } : ytd.hasHistory ? { taxableGross: 0, tds: 0, employeePf: 0, professionalTax: 0 } : undefined,

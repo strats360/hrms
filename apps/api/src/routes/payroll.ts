@@ -12,9 +12,10 @@ import {
   salaryStructures,
   tenants,
   branches,
+  employeeIdentities,
   user,
 } from "@hrms/db";
-import { can, decryptField, markPaidSchema, payrollAdjustmentSchema, payrollItemPatchSchema, payrollRunCreateSchema, reopenSchema, structureFromComponents, templateFor, minimumWageShortfall, structureFromCtc, structureRevisionSchema, tenantPayrollSettingsSchema, todayLocal, fmtDate, fmtMoney, zonedDateTime } from "@hrms/shared";
+import { buildWpsSif, checkWps, can, decryptField, markPaidSchema, payrollAdjustmentSchema, payrollItemPatchSchema, payrollRunCreateSchema, reopenSchema, structureFromComponents, templateFor, minimumWageShortfall, structureFromCtc, structureRevisionSchema, tenantPayrollSettingsSchema, todayLocal, fmtDate, fmtMoney, zonedDateTime } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
 import { requirePerm } from "../lib/context";
@@ -27,6 +28,7 @@ import { settleClaims } from "../services/reimbursements";
 import { rulesFor } from "../services/statutory";
 import { releaseEncashment } from "../services/pay-extras";
 import { activeBatchForRun } from "../services/payments";
+import { entityOf, listEntities } from "../services/entities";
 import { calculateRun, defaultPayDate, getTemplate, monthBounds, payableEmployees, refreshTotals, resolveStructure, structuresAsOf } from "../services/payroll";
 
 export const payrollRoutes = new Hono<AppEnv>();
@@ -227,24 +229,43 @@ const names = async (c: Context<AppEnv>, ids: (string | null)[]) => {
 };
 
 payrollRoutes.get("/runs", requirePerm("payroll", "view"), async (c) => {
-  const rows = await c.get("db").select().from(payrollRuns).where(eq(payrollRuns.tenantId, tid(c))).orderBy(desc(payrollRuns.month));
+  const db = c.get("db");
+  const [rows, entities] = await Promise.all([db.select().from(payrollRuns).where(eq(payrollRuns.tenantId, tid(c))).orderBy(desc(payrollRuns.month)), listEntities(db, tid(c))]);
+  const ent = new Map(entities.map((e) => [e.id, e]));
   const n = await names(c, rows.flatMap((r) => [r.calculatedBy, r.approvedBy, r.paidBy]));
-  return c.json(rows.map((r) => ({ ...r, calculatedByName: n.get(r.calculatedBy ?? "") ?? null, approvedByName: n.get(r.approvedBy ?? "") ?? null, paidByName: n.get(r.paidBy ?? "") ?? null })));
+  return c.json(
+    rows.map((r) => ({
+      ...r,
+      entityName: ent.get(r.entityId)?.name ?? null,
+      entityCode: ent.get(r.entityId)?.code ?? null,
+      country: ent.get(r.entityId)?.country ?? null,
+      currency: ent.get(r.entityId)?.currency ?? null,
+      calculatedByName: n.get(r.calculatedBy ?? "") ?? null,
+      approvedByName: n.get(r.approvedBy ?? "") ?? null,
+      paidByName: n.get(r.paidBy ?? "") ?? null,
+    })),
+  );
 });
 
 payrollRoutes.post("/runs", requirePerm("payroll", "edit"), v("json", payrollRunCreateSchema), async (c) => {
   const b = c.req.valid("json");
   const db = c.get("db");
   const { start, end } = monthBounds(b.month);
-  const [exists] = await db.select({ id: payrollRuns.id }).from(payrollRuns).where(and(eq(payrollRuns.tenantId, tid(c)), eq(payrollRuns.month, b.month)));
-  if (exists) throw conflict(`A payroll run for ${b.month} already exists`);
-  const [open] = await db.select({ month: payrollRuns.month }).from(payrollRuns).where(and(eq(payrollRuns.tenantId, tid(c)), inArray(payrollRuns.status, ["draft", "calculated"]), sql`${payrollRuns.month} < ${b.month}`));
-  if (open) throw badRequest(`Finish the ${open.month} payroll first (approve and lock it)`);
+  // each legal entity runs its own payroll; without one, the default entity
+  const entities = await listEntities(db, tid(c));
+  const ent = b.entityId ? entities.find((e) => e.id === b.entityId) : entities.find((e) => e.isDefault);
+  if (!ent) throw badRequest("Pick one of your legal entities");
+  const label = entities.length > 1 ? ` for ${ent.name}` : "";
+  const scope = and(eq(payrollRuns.tenantId, tid(c)), eq(payrollRuns.entityId, ent.id));
+  const [exists] = await db.select({ id: payrollRuns.id }).from(payrollRuns).where(and(scope, eq(payrollRuns.month, b.month)));
+  if (exists) throw conflict(`A payroll run${label} for ${b.month} already exists`);
+  const [open] = await db.select({ month: payrollRuns.month }).from(payrollRuns).where(and(scope, inArray(payrollRuns.status, ["draft", "calculated"]), sql`${payrollRuns.month} < ${b.month}`));
+  if (open) throw badRequest(`Finish the ${open.month} payroll${label} first (approve and lock it)`);
   const [run] = await db
     .insert(payrollRuns)
-    .values({ tenantId: tid(c), month: b.month, periodStart: start, periodEnd: end, payDate: b.payDate ?? defaultPayDate(b.month), preparedBy: uid(c) })
+    .values({ tenantId: tid(c), entityId: ent.id, month: b.month, periodStart: start, periodEnd: end, payDate: b.payDate ?? defaultPayDate(b.month), preparedBy: uid(c) })
     .returning();
-  await audit(c, { action: "payroll.run_create", entity: "payroll_run", entityId: run!.id, summary: `Started payroll for ${b.month}` });
+  await audit(c, { action: "payroll.run_create", entity: "payroll_run", entityId: run!.id, summary: `Started payroll${label} for ${b.month}` });
   return c.json(run, 201);
 });
 
@@ -267,9 +288,14 @@ payrollRoutes.get("/runs/:id", requirePerm("payroll", "view"), async (c) => {
   const run = await loadRun(c, c.req.param("id"));
   const db = c.get("db");
   const n = await names(c, [run.calculatedBy, run.approvedBy, run.paidBy, run.preparedBy]);
-  const [prev] = await db.select().from(payrollRuns).where(and(eq(payrollRuns.tenantId, tid(c)), sql`${payrollRuns.month} < ${run.month}`)).orderBy(desc(payrollRuns.month)).limit(1);
+  const [prev] = await db.select().from(payrollRuns).where(and(eq(payrollRuns.tenantId, tid(c)), eq(payrollRuns.entityId, run.entityId), sql`${payrollRuns.month} < ${run.month}`)).orderBy(desc(payrollRuns.month)).limit(1);
+  const ent = await entityOf(db, tid(c), run.entityId);
   return c.json({
     ...run,
+    entityName: ent.name,
+    entityCode: ent.code,
+    country: ent.country,
+    currency: ent.currency,
     preparedByName: n.get(run.preparedBy ?? "") ?? null,
     calculatedByName: n.get(run.calculatedBy ?? "") ?? null,
     approvedByName: n.get(run.approvedBy ?? "") ?? null,
@@ -283,7 +309,7 @@ payrollRoutes.get("/runs/:id", requirePerm("payroll", "view"), async (c) => {
 payrollRoutes.get("/runs/:id/inputs", requirePerm("payroll", "view"), async (c) => {
   const run = await loadRun(c, c.req.param("id"));
   const db = c.get("db");
-  const emps = await payableEmployees(db, tid(c), run.periodStart, run.periodEnd);
+  const emps = await payableEmployees(db, tid(c), run.periodStart, run.periodEnd, await entityOf(db, tid(c), run.entityId));
   const ids = emps.map((x) => x.e.id);
   const [revised, corr, pendingLeave, adj] = await Promise.all([
     db.select({ n: sql<number>`count(*)::int` }).from(salaryStructures).where(and(eq(salaryStructures.tenantId, tid(c)), gte(salaryStructures.effectiveFrom, run.periodStart), lte(salaryStructures.effectiveFrom, run.periodEnd))),
@@ -325,7 +351,7 @@ payrollRoutes.get("/runs/:id/items", requirePerm("payroll", "view"), v("query", 
   if (q.filter === "lop") conds.push(sql`coalesce(${payrollItems.lopOverride}, ${payrollItems.lopDays}) > 0`);
   if (q.filter === "hold") conds.push(eq(payrollItems.onHold, true));
   const rows = await c.get("db").select().from(payrollItems).where(and(...conds)).orderBy(asc(sql`${payrollItems.snapshot}->>'name'`));
-  const prevRun = (await c.get("db").select({ id: payrollRuns.id }).from(payrollRuns).where(and(eq(payrollRuns.tenantId, tid(c)), sql`${payrollRuns.month} < ${run.month}`)).orderBy(desc(payrollRuns.month)).limit(1))[0];
+  const prevRun = (await c.get("db").select({ id: payrollRuns.id }).from(payrollRuns).where(and(eq(payrollRuns.tenantId, tid(c)), eq(payrollRuns.entityId, run.entityId), sql`${payrollRuns.month} < ${run.month}`)).orderBy(desc(payrollRuns.month)).limit(1))[0];
   const prevNet = prevRun
     ? new Map((await c.get("db").select({ e: payrollItems.employeeId, net: payrollItems.net }).from(payrollItems).where(eq(payrollItems.runId, prevRun.id))).map((r) => [r.e, Number(r.net)]))
     : new Map<string, number>();
@@ -405,7 +431,7 @@ payrollRoutes.post("/runs/:id/reopen", requirePerm("payroll", "configure"), v("j
   if (run.bankFileExportedAt) throw badRequest("The bank file was already exported. Cancel the bank upload before reopening, then try again.");
   const batch = await activeBatchForRun(c.get("db"), run.id);
   if (batch) throw badRequest(`Payment batch ${batch.code} pays this payroll. Cancel it in Payments first.`);
-  const [later] = await c.get("db").select({ month: payrollRuns.month }).from(payrollRuns).where(and(eq(payrollRuns.tenantId, tid(c)), sql`${payrollRuns.month} > ${run.month}`)).limit(1);
+  const [later] = await c.get("db").select({ month: payrollRuns.month }).from(payrollRuns).where(and(eq(payrollRuns.tenantId, tid(c)), eq(payrollRuns.entityId, run.entityId), sql`${payrollRuns.month} > ${run.month}`)).limit(1);
   if (later) throw badRequest(`Payroll for ${later.month} already exists. Discard it first.`);
   const [row] = await c.get("db").update(payrollRuns).set({ status: "calculated", approvedBy: null, approvedAt: null, publishedAt: null }).where(eq(payrollRuns.id, run.id)).returning();
   await audit(c, { action: "payroll.reopen", entity: "payroll_run", entityId: run.id, summary: `Reopened ${run.month} payroll`, data: c.req.valid("json") });
@@ -486,6 +512,56 @@ payrollRoutes.get("/runs/:id/bank-file.csv", requirePerm("payroll", "export"), a
   await audit(c, { action: "payroll.bank_file", entity: "payroll_run", entityId: run.id, summary: `Exported bank file for ${run.month}: ${out.length} payments, ${skipped} skipped` });
   const csv = toCsv(["Employee ID", "Beneficiary name", "Account number", "IFSC", "Amount", "Narration", "Email"], out);
   return c.body(csv, 200, { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="salary-${run.month}-bank.csv"` });
+});
+
+/**
+ * UAE Wage Protection System salary file (SIF) for a run of a UAE entity. It pays the same people
+ * as the bank file: held salaries and zero net pay are left out.
+ */
+payrollRoutes.get("/runs/:id/wps.sif", requirePerm("payroll", "export"), async (c) => {
+  const run = await loadRun(c, c.req.param("id"));
+  if (run.status !== "approved" && run.status !== "paid") throw badRequest("Approve and lock the payroll first");
+  const db = c.get("db");
+  const ent = await entityOf(db, tid(c), run.entityId);
+  if (ent.country !== "AE") throw badRequest("The WPS file is for UAE entities only");
+  const rows = await db
+    .select({ item: payrollItems, enc: employees.accountNumberEnc, routing: employees.ifsc })
+    .from(payrollItems)
+    .innerJoin(employees, eq(employees.id, payrollItems.employeeId))
+    .where(eq(payrollItems.runId, run.id))
+    .orderBy(asc(sql`${payrollItems.snapshot}->>'code'`));
+  const ids = rows.map((r) => r.item.employeeId);
+  const personIds = new Map(
+    ids.length
+      ? (await db.select({ e: employeeIdentities.employeeId, n: employeeIdentities.number }).from(employeeIdentities).where(and(eq(employeeIdentities.tenantId, tid(c)), eq(employeeIdentities.type, "mohre_person_id"), inArray(employeeIdentities.employeeId, ids)))).map((r) => [r.e, r.n.replace(/\s/g, "")])
+      : [],
+  );
+  const reg = (ent.registrations ?? {}) as Record<string, string | null>;
+  const people = [];
+  for (const r of rows) {
+    const net = Number(r.item.net);
+    if (r.item.onHold || net <= 0) continue;
+    // one-off earnings (overtime, bonus) are variable pay; the rest of the net is fixed
+    const variable = Math.min(net, r.item.earnings.filter((l) => l.code.startsWith("adj_e")).reduce((sum, l) => sum + l.amount, 0));
+    people.push({
+      name: r.item.snapshot.name,
+      personId: personIds.get(r.item.employeeId) ?? "",
+      routingCode: r.routing ?? "",
+      iban: (await decryptField(r.enc, c.env.ENCRYPTION_KEY)) ?? "",
+      payStart: run.periodStart,
+      payEnd: run.periodEnd,
+      daysInPeriod: r.item.daysInMonth,
+      fixed: Math.round((net - variable) * 100) / 100,
+      variable,
+      leaveDays: Number(r.item.lopOverride ?? r.item.lopDays),
+    });
+  }
+  const file = { employerId: reg.mohreId ?? "", employerRoutingCode: reg.wpsRoutingCode ?? "", month: run.month, createdAt: new Date(), employees: people, reference: `SALARY ${run.month}` };
+  const errors = checkWps(file);
+  if (errors.length) throw badRequest(errors.length === 1 ? errors[0]! : `${errors.length} things need fixing before the WPS file can go: ${errors.slice(0, 5).join(" ")}${errors.length > 5 ? " ..." : ""}`);
+  const sif = buildWpsSif(file);
+  await audit(c, { action: "payroll.wps_file", entity: "payroll_run", entityId: run.id, summary: `Exported the WPS file for ${run.month}: ${people.length} payments` });
+  return c.body(sif.content, 200, { "Content-Type": "text/plain; charset=utf-8", "Content-Disposition": `attachment; filename="${sif.fileName}"` });
 });
 
 payrollRoutes.get("/runs/:id/register.csv", requirePerm("payroll", "export"), async (c) => {

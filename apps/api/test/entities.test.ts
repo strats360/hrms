@@ -43,9 +43,12 @@ describe("legal entities", () => {
   });
 
   it("only allows countries this site supports", async () => {
+    // the UAE has a pack, but this site only allows India
     const ae = await kunal.post("/admin/org/entities", { name: "Strats360 FZ LLC", country: "AE" });
     expect(ae.status).toBe(400);
-    expect(ae.body.error.message).toMatch(/isn't supported yet/);
+    expect(ae.body.error.message).toMatch(/isn't available on this site/);
+    const sa = await kunal.post("/admin/org/entities", { name: "Strats360 KSA", country: "SA" });
+    expect(sa.body.error.message).toMatch(/isn't supported yet/);
     expect((await kunal.post("/admin/org/entities", { name: "Wrong zone", country: "IN", timeZone: "Asia/Dubai" })).status).toBe(400);
     expect((await hardik.post("/admin/org/entities", { name: "Nope", country: "IN" })).status).toBe(403);
     const r = await kunal.post("/admin/org/entities", { name: "Strats360 Labs Pvt Ltd", country: "IN", registrations: { pan: "AAICS1111A" } });

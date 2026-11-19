@@ -47,18 +47,22 @@ export default function Runs() {
     },
   });
 
+  // groups with several legal entities run payroll per entity, each in its own currency
+  const multi = new Set((runs.data ?? []).map((r) => r.entityId)).size > 1;
+  const money = (r: PayrollRun, n: number) => fmtMoney(n, { currency: r.currency ?? undefined });
   const columns = useMemo<ColumnDef<PayrollRun>[]>(
     () => [
       { id: "month", header: "Month", accessorKey: "month", cell: ({ row }) => <span className="font-medium">{monthLabel(row.original.month)}</span> },
+      ...(multi ? [{ id: "entity", header: "Entity", accessorFn: (r: PayrollRun) => r.entityName ?? "" } satisfies ColumnDef<PayrollRun>] : []),
       { id: "employees", header: "Employees", accessorFn: (r) => r.totals?.employees ?? 0, meta: { align: "right" } },
-      { id: "gross", header: "Gross", accessorFn: (r) => r.totals?.gross ?? 0, cell: ({ getValue }) => fmtMoney(getValue<number>()), meta: { align: "right" } },
-      { id: "net", header: "Net pay", accessorFn: (r) => r.totals?.net ?? 0, cell: ({ getValue }) => <span className="font-semibold">{fmtMoney(getValue<number>())}</span>, meta: { align: "right" } },
-      { id: "tds", header: "TDS", accessorFn: (r) => r.totals?.tds ?? 0, cell: ({ getValue }) => fmtMoney(getValue<number>()), meta: { align: "right" } },
+      { id: "gross", header: "Gross", accessorFn: (r) => r.totals?.gross ?? 0, cell: ({ row, getValue }) => money(row.original, getValue<number>()), meta: { align: "right" } },
+      { id: "net", header: "Net pay", accessorFn: (r) => r.totals?.net ?? 0, cell: ({ row, getValue }) => <span className="font-semibold">{money(row.original, getValue<number>())}</span>, meta: { align: "right" } },
+      { id: "tds", header: "Tax", accessorFn: (r) => r.totals?.tds ?? 0, cell: ({ row, getValue }) => money(row.original, getValue<number>()), meta: { align: "right" } },
       { id: "status", header: "Status", accessorKey: "status", cell: ({ row }) => <Tag tone={RUN_TONE[row.original.status]}>{RUN_STATUS_LABEL[row.original.status]}</Tag> },
       { id: "approved", header: "Approved by", accessorFn: (r) => r.approvedByName ?? "", cell: ({ row }) => row.original.approvedByName ?? "—" },
       { id: "paid", header: "Paid on", accessorFn: (r) => r.paidAt ?? "", cell: ({ row }) => (row.original.paidAt ? fmtDate(row.original.paidAt.slice(0, 10)) : "—") },
     ],
-    [],
+    [multi],
   );
 
   if (runs.isLoading) return <Loading />;

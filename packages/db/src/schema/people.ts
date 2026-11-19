@@ -30,6 +30,8 @@ export const employees = pgTable(
     phone: text("phone"),
     dateOfBirth: date("date_of_birth", { mode: "string" }),
     gender: text("gender"),
+    /** ISO country code. Decides schemes only nationals join, such as GPSSA pension in the UAE. */
+    nationality: text("nationality"),
     maritalStatus: text("marital_status"),
     bloodGroup: text("blood_group"),
     currentAddress: text("current_address"),

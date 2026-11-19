@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ChevronLeft, Database, Download, LogOut, Eye, FileText, Pencil, Trash2, Upload } from "lucide-react";
 import {
   DOCUMENT_TYPE_LABELS,
+  countryName,
   DOCUMENT_TYPES,
   EMPLOYEE_STATUS_LABELS,
   EMPLOYMENT_TYPE_LABELS,
@@ -237,6 +238,7 @@ export default function EmployeeProfile() {
               <KV label="Full name"><b className="font-semibold">{e.fullName}</b></KV>
               <KV label="Date of birth">{fmtDate(e.dateOfBirth)}</KV>
               <KV label="Gender">{gender(e.gender)}</KV>
+              <KV label="Nationality">{countryName(e.nationality)}</KV>
               <KV label="Work email">{e.workEmail}</KV>
               <KV label="Personal email">{e.personalEmail}</KV>
               <KV label="Phone">{e.phone}</KV>

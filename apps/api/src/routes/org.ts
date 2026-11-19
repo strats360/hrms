@@ -7,6 +7,7 @@ import {
   APPROVAL_STEP_LABELS,
   approvalPolicySchema,
   allowedCountries,
+  emiratisationStatus,
   branchSchema,
   companySetupSchema,
   COUNTRIES,
@@ -122,8 +123,18 @@ orgRoutes.get("/entities", async (c) => {
   const counts = await db.select({ e: employees.entityId, n: sql<number>`count(*)::int` }).from(employees).where(and(eq(employees.tenantId, tid), sql`${employees.status} not in ('exited','inactive')`)).groupBy(employees.entityId);
   const n = new Map(counts.map((r) => [r.e, r.n]));
   const defaultId = rows.find((r) => r.isDefault)?.id;
+  const count = (m: Map<string | null, number>, id: string) => (m.get(id) ?? 0) + (id === defaultId ? (m.get(null) ?? 0) : 0);
+  // UAE entities: where they stand against the Emiratisation target
+  const uae = rows.some((e) => e.country === "AE")
+    ? new Map((await db.select({ e: employees.entityId, n: sql<number>`count(*)::int` }).from(employees).where(and(eq(employees.tenantId, tid), eq(employees.nationality, "AE"), sql`${employees.status} not in ('exited','inactive')`)).groupBy(employees.entityId)).map((r) => [r.e, r.n]))
+    : null;
   return c.json({
-    entities: rows.map((e) => ({ ...e, countryName: COUNTRIES[e.country as keyof typeof COUNTRIES]?.name ?? e.country, employees: (n.get(e.id) ?? 0) + (e.id === defaultId ? (n.get(null) ?? 0) : 0) })),
+    entities: rows.map((e) => ({
+      ...e,
+      countryName: COUNTRIES[e.country as keyof typeof COUNTRIES]?.name ?? e.country,
+      employees: count(n, e.id),
+      emiratisation: uae && e.country === "AE" ? { nationals: count(uae, e.id), ...emiratisationStatus({ employees: count(n, e.id), nationals: count(uae, e.id), on: todayLocal() }) } : null,
+    })),
     countries: allowedCountries(c.env.ALLOWED_COUNTRIES).map((k) => COUNTRIES[k]),
   });
 });

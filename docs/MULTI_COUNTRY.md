@@ -156,7 +156,15 @@ Cloudflare is one account for all instances. Neon is roughly $19 a month per pro
 4. Central billing with GST, VAT and ZATCA ✅ for tax: each site's invoicing entity has a country, currency and tax number. India keeps GST (CGST and SGST, or IGST); the UAE and Oman charge 5% VAT, Saudi Arabia 15%, the UK 20%; Qatar, Kuwait and the USA add none; customers in another country are zero rated as an export of services. Saudi invoices carry ZATCA's QR code (e-invoicing phase 1). Still to do: ZATCA phase 2 (clearing invoices through Fatoora), a payment provider for currencies other than rupees (Cashfree is INR only), and confirming every rate and the export treatment with a tax advisor. Invoices stay on each site; the console adds them up by site and currency.
 
 **Phase 4 onward. Country packs**, each with a pilot customer
-1. UAE pack, then the Gulf instance
+1. UAE pack, then the Gulf instance ✅ for the pack, waiting on expert sign off. What's in it:
+   - **Per entity payroll.** Each legal entity runs its own payroll every month, in its own currency. Pick the entity next to Run payroll. Runs before this change belong to the default entity.
+   - **Pension.** GPSSA for UAE nationals (11% employee, 12.5% employer, on a contribution salary between AED 1,000 and 70,000). Abu Dhabi entities use ADPF instead (5% and 15%). Other GCC nationals get a warning to set up their home country's scheme. Set nationality on the employee record.
+   - **No Indian rules.** PF, ESI, PT, TDS, PAN and minimum wage checks are off for UAE entities, and PF no longer comes out of the CTC.
+   - **Gratuity** in the final settlement: 21 days of basic pay a year for the first five years, 30 after that, pro rata, capped at two years' pay.
+   - **WPS file.** A locked UAE payroll downloads a salary information file (SIF) for the bank. It needs the MOHRE establishment ID and the bank routing code on the entity, plus each employee's MOHRE person code (IDs & visas), IBAN and routing code. If something is missing, you see exactly what.
+   - **Emiratisation.** The Legal entities page shows each UAE entity's share of nationals against the current and next target.
+   - **IDs.** Emirates ID, MOHRE person code, health insurance and ILOE, with expiry reminders.
+   - Still to do: golden cases signed off by a UAE payroll expert (`packages/shared/golden/AE.json`), the rates in the statutory master UI (they live in code with notes to confirm), and the Gulf site itself (see `deploy/instances.json`).
 2. Saudi pack and the Saudi instance
 3. Qatar, Kuwait, Oman and Bahrain packs
 4. UK pack, then HMRC recognition

@@ -288,6 +288,13 @@
       "when": 1795111124967,
       "tag": "0040_invoice_currency_tax_lines",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1795112871682,
+      "tag": "0041_payroll_run_entity",
+      "breakpoints": true
     }
   ]
 }

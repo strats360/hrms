@@ -45,12 +45,14 @@ export interface RunTotals {
   withLop: number;
 }
 
-/** One payroll run per tenant per month. draft -> calculated -> approved (locked) -> paid. */
+/** One payroll run per legal entity per month. draft -> calculated -> approved (locked) -> paid. */
 export const payrollRuns = pgTable(
   "payroll_runs",
   {
     id: id(),
     tenantId: tenantId(),
+    /** The legal entity this run pays. Each entity runs its own payroll in its own currency. */
+    entityId: text("entity_id").notNull(),
     month: text("month").notNull(), // YYYY-MM
     periodStart: date("period_start", { mode: "string" }).notNull(),
     periodEnd: date("period_end", { mode: "string" }).notNull(),
@@ -69,7 +71,7 @@ export const payrollRuns = pgTable(
     bankFileExportedAt: timestamp("bank_file_exported_at", { withTimezone: true }),
     ...timestamps,
   },
-  (t) => [uniqueIndex("payroll_runs_tenant_month_uq").on(t.tenantId, t.month)],
+  (t) => [uniqueIndex("payroll_runs_tenant_entity_month_uq").on(t.tenantId, t.entityId, t.month)],
 );
 
 export interface ItemSnapshot {

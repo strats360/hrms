@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { COUNTRIES, hasPackFor, INDIAN_STATES, legalEntitySchema, packFor, type CountryCode, type CountryInfo } from "@hrms/shared";
+import { COUNTRIES, fmtDate, hasPackFor, INDIAN_STATES, legalEntitySchema, packFor, type CountryCode, type CountryInfo } from "@hrms/shared";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,13 @@ interface Entity {
   registrations: Record<string, string | null>;
   isDefault: boolean;
   employees: number;
+  emiratisation: {
+    nationals: number;
+    applies: boolean;
+    share: number;
+    current: { by: string; share: number; shortfall: number } | null;
+    next: { by: string; share: number; shortfall: number };
+  } | null;
 }
 type Draft = Partial<Entity> & { country: CountryCode };
 
@@ -71,7 +78,10 @@ export default function Entities() {
   };
   const info = edit ? COUNTRIES[edit.country] : null;
   // the country pack says which registration numbers the entity needs
-  const fields = edit && hasPackFor(edit.country) ? packFor(edit.country).entityRegistrations : [];
+  const pack = edit && hasPackFor(edit.country) ? packFor(edit.country) : null;
+  const fields = pack?.entityRegistrations ?? [];
+  const uae = (q.data?.entities ?? []).filter((e) => e.emiratisation);
+  const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
 
   return (
     <>
@@ -131,8 +141,23 @@ export default function Entities() {
           </div>
         )}
       </TableCard>
+      {uae.map((e) => {
+        const m = e.emiratisation!;
+        return (
+          <Notice key={e.id} tone={m.applies && (m.current?.shortfall ?? 0) > 0 ? "bad" : "sel"}>
+            <strong>Emiratisation at {e.name}:</strong> {m.nationals} UAE national{m.nationals === 1 ? "" : "s"} out of {e.employees} ({pct(m.share)}).{" "}
+            {!m.applies
+              ? "The target applies once you have 50 employees."
+              : m.current && m.current.shortfall > 0
+                ? `You're ${m.current.shortfall} short of the ${pct(m.current.share)} target that was due by ${fmtDate(m.current.by)}. `
+                : ""}
+            {m.applies ? (m.next.shortfall > 0 ? `To reach ${pct(m.next.share)} by ${fmtDate(m.next.by)}, you need ${m.next.shortfall} more.` : `You already meet the ${pct(m.next.share)} target due by ${fmtDate(m.next.by)}.`) : null}{" "}
+            Mark nationals with their nationality on the employee record.
+          </Notice>
+        );
+      })}
       <Notice tone="sel">
-        India is available now. The UAE, Saudi Arabia, Qatar, Kuwait, Oman, Bahrain, the UK, the USA and Canada will show up here as their payroll and compliance rules are ready.
+        {countries.length > 1 ? `This site supports ${countries.map((c) => c.name).join(", ")}.` : `This site supports ${countries[0]?.name ?? "India"}.`} Saudi Arabia, Qatar, Kuwait, Oman, Bahrain, the UK, the USA and Canada will show up as their payroll and compliance rules are ready.
       </Notice>
 
       <Dialog
@@ -151,6 +176,7 @@ export default function Entities() {
         }
       >
         {err ? <Notice tone="bad">{err}</Notice> : null}
+        {pack?.review?.status === "pending" ? <Notice tone="sel">{pack.review.note}</Notice> : null}
         {edit && info ? (
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Name">
@@ -178,6 +204,15 @@ export default function Entities() {
                 <Select value={edit.state ?? ""} onChange={(e) => setEdit({ ...edit, state: e.target.value })}>
                   <option value="">Select</option>
                   {INDIAN_STATES.map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
+                </Select>
+              </Field>
+            ) : pack?.regions ? (
+              <Field label={pack.regions.label}>
+                <Select value={edit.state ?? ""} onChange={(e) => setEdit({ ...edit, state: e.target.value })}>
+                  <option value="">Select</option>
+                  {pack.regions.list.map((s) => (
                     <option key={s}>{s}</option>
                   ))}
                 </Select>

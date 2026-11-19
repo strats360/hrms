@@ -1,4 +1,4 @@
-import { listEntities } from "./entities";
+import { entityOf } from "./entities";
 import { and, desc, eq, gte, inArray, lt, lte, or, isNull, sql } from "drizzle-orm";
 import {
   branches,
@@ -94,7 +94,7 @@ export function resolveStructure(
 }
 
 /** Employees payable in a period: joined by the end, not left before the start, not still onboarding. */
-export async function payableEmployees(db: Database, tenantId: string, start: string, end: string) {
+export async function payableEmployees(db: Database, tenantId: string, start: string, end: string, entity?: { id: string; isDefault: boolean }) {
   return db
     .select({
       e: employees,
@@ -110,6 +110,8 @@ export async function payableEmployees(db: Database, tenantId: string, start: st
     .where(
       and(
         eq(employees.tenantId, tenantId),
+        // employees without an entity belong to the default one
+        entity ? (entity.isDefault ? or(eq(employees.entityId, entity.id), isNull(employees.entityId)) : eq(employees.entityId, entity.id)) : undefined,
         lte(employees.dateOfJoining, end),
         sql`${employees.status} <> 'onboarding'`,
         or(gte(employees.lastWorkingDay, start), and(isNull(employees.lastWorkingDay), sql`${employees.status} not in ('exited','inactive')`)),
@@ -199,7 +201,9 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
   const [tenant] = await db.select().from(tenants).where(eq(tenants.id, tenantId));
   const template = await getTemplate(db, tenantId);
   const statutory = tenant?.statutory ?? {};
-  const emps = await payableEmployees(db, tenantId, start, end);
+  // a run pays one legal entity: its country pack, currency and schemes apply to everyone in it
+  const ent = await entityOf(db, tenantId, run.entityId);
+  const emps = await payableEmployees(db, tenantId, start, end, ent);
   const ids = emps.map((x) => x.e.id);
   // this month's loan and advance instalments, as deduction lines
   await syncLoanRecoveries(db, { id: run.id, tenantId, month: run.month }, ids);
@@ -214,17 +218,8 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
   const claims = await claimsForRun(db, tenantId, runId, end, ids);
   const prev = new Map(existing.map((i) => [i.employeeId, i]));
   const cal = opts.assumePresent ? null : await buildCalendar(db, tenantId, emps.map((x) => ({ id: x.e.id, shiftId: x.e.shiftId, branchId: x.e.branchId, dateOfJoining: x.e.dateOfJoining, lastWorkingDay: x.e.lastWorkingDay })), start, end);
-  // Each employee's legal entity decides the country pack and which schemes apply.
-  // Until payroll runs are per entity, a run can't mix currencies (see docs/MULTI_COUNTRY.md).
-  const entities = await listEntities(db, tenantId);
-  const fallback = entities.find((x) => x.isDefault)!;
-  const entityById = new Map(entities.map((x) => [x.id, x]));
-  const entityFor = (id: string | null) => (id && entityById.get(id)) || fallback;
-  const currencies = new Set(emps.map((x) => entityFor(x.e.entityId).currency));
-  if (currencies.size > 1) throw badRequest(`This payroll has employees paid in ${[...currencies].join(" and ")}. Payroll for each legal entity separately is coming with the next country.`);
-  const countries = new Set(emps.map((x) => entityFor(x.e.entityId).country));
-  if (countries.size > 1) throw badRequest("This payroll has employees in more than one country. Payroll for each legal entity separately is coming with the next country.");
-  const rules = await rulesFor(db, run.month, [...countries][0] ?? fallback.country);
+  const rules = await rulesFor(db, run.month, ent.country);
+  const india = ent.country === "IN";
   const statOn = (entity: { statutory: Record<string, { enabled?: boolean }> }, k: string) => entity.statutory?.[k]?.enabled ?? statutory[k as keyof typeof statutory]?.enabled ?? true;
 
   const rows: (typeof payrollItems.$inferInsert)[] = [];
@@ -243,9 +238,9 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
     const before = prev.get(e.id);
     const lopUsed = before?.lopOverride ?? lop;
     const paidDays = Math.max(0, employed.length - Number(lopUsed));
-    const structure = resolveStructure(e, structs.get(e.id), template);
+    // PF and ESI are Indian schemes: outside India they don't come out of the CTC
+    const structure = resolveStructure(india ? e : { ...e, pfApplicable: false, esiApplicable: false }, structs.get(e.id), template);
     const y = ytd.byEmployee.get(e.id);
-    const ent = entityFor(e.entityId);
     const slip = computePayslip({
       country: ent.country as CountryCode,
       rules,
@@ -262,18 +257,19 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
       ptApplicable: e.ptApplicable && statOn(ent, "pt"),
       state: branchState ?? ent.state ?? tenant?.state ?? null,
       gender: e.gender,
+      profile: { nationality: e.nationality, region: ent.state },
       regime: ((decls.get(e.id)?.regime ?? e.taxRegime) as Regime) ?? "new",
       reimbursement: claims.get(e.id) ?? 0,
       taxProfile: decls.get(e.id) ? { declaration: decls.get(e.id)!.data, verified: decls.get(e.id)!.verified } : undefined,
       ytd: y ? { taxableGross: y.taxableGross, tds: y.tds, employeePf: y.employeePf, professionalTax: y.professionalTax } : ytd.hasHistory ? { taxableGross: 0, tds: 0, employeePf: 0, professionalTax: 0 } : undefined,
     });
     const warnings = [...slip.warnings];
-    if (!e.accountLast4 || !e.ifsc) warnings.push("No bank account on file");
-    if (!e.pan) warnings.push("PAN missing: TDS should be at least 20% (s.206AA)");
+    if (!e.accountLast4 || (india && !e.ifsc)) warnings.push("No bank account on file");
+    if (india && !e.pan) warnings.push("PAN missing: TDS should be at least 20% (s.206AA)");
     if (e.lastWorkingDay && e.lastWorkingDay <= end) warnings.push("Leaving this month: settle full and final separately");
     if (e.dateOfJoining >= start) warnings.push("Joined this month: pay prorated from joining date");
     // minimum wage, on the full month's pay (LOP doesn't make a salary non-compliant)
-    const mwState = branchState ?? tenant?.state ?? null;
+    const mwState = india ? (branchState ?? tenant?.state ?? null) : null;
     const mw = mwState ? minimumWageShortfall(rules.minWage[mwState], { basic: structure.components.basic, gross: structure.gross }, { category: e.wageCategory, basis: (tenant?.settings as { minWageBasis?: "basic" | "gross" } | null)?.minWageBasis }) : null;
     if (mw) warnings.push(`Below the ${mwState} minimum wage${mw.label ? ` (${mw.label})` : ""}: ${mw.basis} ${inrPlain(mw.paid)} against ${inrPlain(mw.required)}`);
     // non-taxable one-time pay and non-taxable allowances
