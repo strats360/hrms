@@ -1,6 +1,7 @@
 import { and, asc, eq, lte } from "drizzle-orm";
 import { branches, employees, salaryStructures, tenants, type Database } from "@hrms/db";
-import { computePayslip, fyOfMonth, templateFor, todayIST, type Regime } from "@hrms/shared";
+import { computePayslip, fyOfMonth, templateFor, todayIST, type CountryCode, type Regime } from "@hrms/shared";
+import { entityOf } from "./entities";
 import { getTemplate, resolveStructure, yearToDate } from "./payroll";
 import { declarationsFor } from "./tax";
 import { rulesFor } from "./statutory";
@@ -24,7 +25,8 @@ export async function mySalary(db: Database, tenantId: string, employeeId: strin
   if (!row) return null;
   const e = row.e;
   const [tenant] = await db.select({ state: tenants.state, statutory: tenants.statutory }).from(tenants).where(eq(tenants.id, tenantId));
-  const statOn = (k: string) => (tenant?.statutory as Record<string, { enabled?: boolean }> | null)?.[k]?.enabled ?? true;
+  const ent = await entityOf(db, tenantId, e.entityId);
+  const statOn = (k: string) => (ent.statutory as Record<string, { enabled?: boolean }> | null)?.[k]?.enabled ?? (tenant?.statutory as Record<string, { enabled?: boolean }> | null)?.[k]?.enabled ?? true;
 
   const history = await db
     .select({ effectiveFrom: salaryStructures.effectiveFrom, annualCtc: salaryStructures.annualCtc, components: salaryStructures.components })
@@ -40,6 +42,7 @@ export async function mySalary(db: Database, tenantId: string, employeeId: strin
   const y = ytd.byEmployee.get(employeeId);
   const regime = ((decl?.regime ?? e.taxRegime) as Regime) ?? "new";
   const slip = computePayslip({
+    country: ent.country as CountryCode,
     rules,
     month,
     structure,
@@ -49,7 +52,7 @@ export async function mySalary(db: Database, tenantId: string, employeeId: strin
     pfApplicable: e.pfApplicable && statOn("epf"),
     esiApplicable: e.esiApplicable && statOn("esi"),
     ptApplicable: e.ptApplicable && statOn("pt"),
-    state: row.state ?? tenant?.state ?? null,
+    state: row.state ?? ent.state ?? tenant?.state ?? null,
     gender: e.gender,
     regime,
     taxProfile: decl ? { declaration: decl.data, verified: decl.verified } : undefined,

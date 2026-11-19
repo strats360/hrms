@@ -90,7 +90,7 @@ Each employee belongs to one entity. Payroll runs are per entity and month, beca
 
 ### Country packs
 
-A pack is a module under `packages/shared/src/countries/<code>/` that exports one object. The payroll engine and the rest of the core only talk to this object, never to country rules directly.
+A pack is a module under `packages/shared/src/packs/<code>/` that exports one object, registered in `packs/index.ts`. The payroll engine and the rest of the core only talk to this object, never to country rules directly.
 
 | Part | What it provides |
 | --- | --- |
@@ -134,8 +134,8 @@ Cloudflare is one account for all instances. Neon is roughly $19 a month per pro
 4. Country driven ID and document types, with visa and permit expiry reminders
 5. Holiday calendars per country
 6. Translation support, ready for Arabic and right to left layout
-7. The country pack interface
-8. India rules moved into the India pack, with every current test still passing
+7. The country pack interface ✅ `packages/shared/src/packs/types.ts`
+8. India rules moved into the India pack, with every current test still passing ✅ Payroll statutory lines (EPF, ESI, PT, LWF, TDS), final settlement and entity registrations go through `packFor(country)`. Payroll reads each employee's entity. Still to move as each part is touched: filings and returns (ECR, ESI, 24Q, Form 16), bank file formats, tax declarations and the onboarding ID fields.
 9. Database layer that works with any Postgres provider
 10. Statutory rule table per country
 

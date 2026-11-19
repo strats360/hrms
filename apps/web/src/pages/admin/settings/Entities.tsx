@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { COUNTRIES, INDIAN_STATES, legalEntitySchema, type CountryCode, type CountryInfo } from "@hrms/shared";
+import { COUNTRIES, hasPackFor, INDIAN_STATES, legalEntitySchema, packFor, type CountryCode, type CountryInfo } from "@hrms/shared";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
@@ -29,16 +29,6 @@ interface Entity {
   employees: number;
 }
 type Draft = Partial<Entity> & { country: CountryCode };
-
-/** Registration numbers each country's entity form asks for. More arrive with each country pack. */
-const REGISTRATION_FIELDS: Partial<Record<CountryCode, { key: string; label: string }[]>> = {
-  IN: [
-    { key: "gstin", label: "GSTIN" },
-    { key: "pan", label: "PAN" },
-    { key: "tan", label: "TAN" },
-    { key: "cin", label: "CIN or LLPIN" },
-  ],
-};
 
 export default function Entities() {
   const { can } = useSession();
@@ -80,7 +70,8 @@ export default function Entities() {
     setEdit(d);
   };
   const info = edit ? COUNTRIES[edit.country] : null;
-  const fields = edit ? (REGISTRATION_FIELDS[edit.country] ?? []) : [];
+  // the country pack says which registration numbers the entity needs
+  const fields = edit && hasPackFor(edit.country) ? packFor(edit.country).entityRegistrations : [];
 
   return (
     <>

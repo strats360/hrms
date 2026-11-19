@@ -1,8 +1,9 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { loansToRecover, settleLoansInFnf } from "./loans";
 import { employeeExits, employees, leaveBalances, leaveTypes, payments, payrollItems, payrollRuns, reimbursementClaims, tenants, type Database } from "@hrms/db";
-import { computeSettlement, DEFAULT_CLEARANCE, type ExitType, type FnfResult, type ManualLine } from "@hrms/shared";
+import { packFor, DEFAULT_CLEARANCE, type ExitType, type FnfResult, type ManualLine } from "@hrms/shared";
 import { balanceSummary } from "./leave";
+import { entityOf } from "./entities";
 import { getTemplate, resolveStructure, structuresAsOf } from "./payroll";
 import { monthLabel } from "../lib/months";
 
@@ -47,7 +48,8 @@ export async function settlementFor(db: Database, exit: Exit, emp: Employee) {
     const override = inputs.encashDays?.[b.leaveTypeId];
     return { leaveTypeId: b.leaveTypeId, name: b.name, days: override === undefined ? available : Math.min(override, available), available };
   });
-  const result = computeSettlement({
+  const entity = await entityOf(db, tenantId, emp.entityId);
+  const result = packFor(entity.country).settlement({
     type: exit.type as ExitType,
     dateOfJoining: emp.dateOfJoining,
     resignationDate: exit.resignationDate,

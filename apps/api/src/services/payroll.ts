@@ -1,3 +1,4 @@
+import { listEntities } from "./entities";
 import { and, desc, eq, gte, inArray, lt, lte, or, isNull, sql } from "drizzle-orm";
 import {
   branches,
@@ -32,6 +33,7 @@ import {
   templateFor,
   minimumWageShortfall,
   type Structure,
+  type CountryCode,
 } from "@hrms/shared";
 import { badRequest, notFound } from "../lib/errors";
 import { buildCalendar } from "./attendance";
@@ -213,7 +215,15 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
   const rules = await rulesFor(db, run.month);
   const prev = new Map(existing.map((i) => [i.employeeId, i]));
   const cal = opts.assumePresent ? null : await buildCalendar(db, tenantId, emps.map((x) => ({ id: x.e.id, shiftId: x.e.shiftId, branchId: x.e.branchId, dateOfJoining: x.e.dateOfJoining, lastWorkingDay: x.e.lastWorkingDay })), start, end);
-  const statOn = (k: string) => statutory[k as keyof typeof statutory]?.enabled ?? true;
+  // Each employee's legal entity decides the country pack and which schemes apply.
+  // Until payroll runs are per entity, a run can't mix currencies (see docs/MULTI_COUNTRY.md).
+  const entities = await listEntities(db, tenantId);
+  const fallback = entities.find((x) => x.isDefault)!;
+  const entityById = new Map(entities.map((x) => [x.id, x]));
+  const entityFor = (id: string | null) => (id && entityById.get(id)) || fallback;
+  const currencies = new Set(emps.map((x) => entityFor(x.e.entityId).currency));
+  if (currencies.size > 1) throw badRequest(`This payroll has employees paid in ${[...currencies].join(" and ")}. Payroll for each legal entity separately is coming with the next country.`);
+  const statOn = (entity: { statutory: Record<string, { enabled?: boolean }> }, k: string) => entity.statutory?.[k]?.enabled ?? statutory[k as keyof typeof statutory]?.enabled ?? true;
 
   const rows: (typeof payrollItems.$inferInsert)[] = [];
   for (const { e, department, designation, branch, branchState } of emps) {
@@ -233,7 +243,9 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
     const paidDays = Math.max(0, employed.length - Number(lopUsed));
     const structure = resolveStructure(e, structs.get(e.id), template);
     const y = ytd.byEmployee.get(e.id);
+    const ent = entityFor(e.entityId);
     const slip = computePayslip({
+      country: ent.country as CountryCode,
       rules,
       month: run.month,
       structure,
@@ -243,10 +255,10 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
       adjustments: adjustments
         .filter((a) => a.employeeId === e.id)
         .map((a) => ({ label: a.label, kind: a.kind as "earning" | "deduction", amount: Number(a.amount), taxable: a.taxable, esiWage: a.esiWage })),
-      pfApplicable: e.pfApplicable && statOn("epf"),
-      esiApplicable: e.esiApplicable && statOn("esi"),
-      ptApplicable: e.ptApplicable && statOn("pt"),
-      state: branchState ?? tenant?.state ?? null,
+      pfApplicable: e.pfApplicable && statOn(ent, "epf"),
+      esiApplicable: e.esiApplicable && statOn(ent, "esi"),
+      ptApplicable: e.ptApplicable && statOn(ent, "pt"),
+      state: branchState ?? ent.state ?? tenant?.state ?? null,
       gender: e.gender,
       regime: ((decls.get(e.id)?.regime ?? e.taxRegime) as Regime) ?? "new",
       reimbursement: claims.get(e.id) ?? 0,
