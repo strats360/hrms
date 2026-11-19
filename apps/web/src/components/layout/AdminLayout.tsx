@@ -1,3 +1,4 @@
+import { t, useLocale } from "@/lib/i18n";
 import { useEffect, useState } from "react";
 import { Link, Navigate, Outlet, useLocation } from "react-router";
 import { useQuery } from "@tanstack/react-query";
@@ -45,13 +46,14 @@ export function crumbFor(path: string, groups: NavGroup[]) {
   const base = items.filter((i) => path === i.to || (i.to !== "/" && path.startsWith(i.to + "/"))).sort((x, y) => y.to.length - x.to.length)[0] ?? items[0];
   const rest = base ? path.slice(base.to.length).split("/").filter(Boolean) : [];
   const ID_LABEL: Record<string, string> = { "/employees": "Profile", "/performance": "Cycle", "/assets": "Asset", "/helpdesk": "Ticket", "/platform/tickets": "Ticket", "/platform/tenants": "Tenant" };
-  if (base?.to === "/recruitment" && rest[0]) return `Recruitment / ${rest[0] === "jobs" ? "Job" : rest[1] ? "Candidate" : "Candidates"}`;
+  if (base?.to === "/recruitment" && rest[0]) return `${t("Recruitment")} / ${t(rest[0] === "jobs" ? "Job" : rest[1] ? "Candidate" : "Candidates")}`;
   const first = rest[0];
   const sub = first === "reviews" && base?.to === "/performance" ? "Review" : first && !/^[0-9a-f-]{36}$/.test(first) ? first.replace(/-/g, " ") : first ? (ID_LABEL[base?.to ?? ""] ?? "Details") : "";
-  return base ? base.label + (sub ? " / " + sub.charAt(0).toUpperCase() + sub.slice(1) : "") : "";
+  return base ? t(base.label) + (sub ? " / " + t(sub.charAt(0).toUpperCase() + sub.slice(1)) : "") : "";
 }
 
 export function AdminLayout() {
+  useLocale();
   const { tenant, can, has, isEmployee } = useSession();
   const loc = useLocation();
   const [collapsed, toggle] = useCollapsed("sidebarCollapsed");
@@ -84,7 +86,7 @@ export function AdminLayout() {
       <D.Root open={drawer} onOpenChange={setDrawer}>
         <D.Portal>
           <D.Overlay className="dialog-backdrop lg:hidden" style={{ zIndex: 40 }} />
-          <D.Content className="fixed inset-y-0 left-0 lg:hidden" style={{ zIndex: 41 }}>
+          <D.Content className="fixed inset-y-0 start-0 lg:hidden" style={{ zIndex: 41 }}>
             <D.Title className="sr-only">Navigation</D.Title>
             <D.Description className="sr-only">Main navigation</D.Description>
             <Sidebar {...sidebarProps} collapsed={false} onNavigate={() => setDrawer(false)} />
@@ -95,7 +97,7 @@ export function AdminLayout() {
         <Header
           crumb={crumbFor(loc.pathname, ADMIN_NAV)}
           org={tenant.tenantName}
-          searchPlaceholder="Search employees, pages…"
+          searchPlaceholder={t("Search employees, pages…")}
           onMenu={() => setDrawer(true)}
           roleLabel={tenant.roleName}
           alerts={[

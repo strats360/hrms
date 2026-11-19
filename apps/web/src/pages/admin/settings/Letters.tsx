@@ -101,7 +101,7 @@ export default function LetterTemplates() {
               key={t.id}
               type="button"
               onClick={() => setSel(t.id)}
-              className={cn("flex cursor-pointer items-center justify-between gap-2 rounded-[var(--radius-md)] border-0 px-3 py-2 text-left text-[13.5px] text-[var(--color-text)] hover:bg-[var(--tint-1)]", sel === t.id ? "bg-[var(--sel-bg)] font-semibold text-[var(--sel-fg)]" : "bg-transparent")}
+              className={cn("flex cursor-pointer items-center justify-between gap-2 rounded-[var(--radius-md)] border-0 px-3 py-2 text-start text-[13.5px] text-[var(--color-text)] hover:bg-[var(--tint-1)]", sel === t.id ? "bg-[var(--sel-bg)] font-semibold text-[var(--sel-fg)]" : "bg-transparent")}
             >
               <span className="min-w-0 truncate">{t.name}</span>
               {t.edited ? <Tag tone="accent">Edited</Tag> : !t.builtIn ? <Tag tone="neutral">Yours</Tag> : null}

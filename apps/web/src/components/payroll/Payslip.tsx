@@ -39,7 +39,7 @@ export function Payslip({ slip }: { slip: PayslipView }) {
           <div className="text-[22px] font-medium">{slip.company.legalName ?? slip.company.name}</div>
           <div className="text-muted text-[12.5px]">{[slip.company.address, slip.company.pan && `PAN ${slip.company.pan}`, slip.company.tan && `TAN ${slip.company.tan}`].filter(Boolean).join(" · ")}</div>
         </div>
-        <div className="text-right">
+        <div className="text-end">
           <div className="card-kicker">Payslip</div>
           <div className="font-semibold">{monthLabel(slip.run.month)}</div>
           {slip.onHold ? <Tag tone="warn">Salary on hold</Tag> : null}
@@ -66,7 +66,7 @@ export function Payslip({ slip }: { slip: PayslipView }) {
           <div className="text-[12px]">{rupeesInWords(slip.net)}</div>
           {slip.reimbursement ? <div className="mt-1 text-[12px]">Includes reimbursements of {fmtMoney(slip.reimbursement)} (not taxable)</div> : null}
         </div>
-        <div className="text-right text-[12.5px]">
+        <div className="text-end text-[12.5px]">
           <div>
             Employer PF {fmtMoney(erPf)}
             {erEsi ? ` · Employer ESI ${fmtMoney(erEsi)}` : ""}

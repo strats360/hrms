@@ -119,8 +119,8 @@ export default function Directory() {
     <div className="flex flex-col gap-3.5">
       <div className="flex flex-wrap items-center gap-2.5">
         <div className="relative w-full sm:w-[280px]">
-          <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "var(--muted)" }} />
-          <Input className="!pl-9" placeholder="Search name, ID, email or designation" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search employees" />
+          <Search size={15} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2" style={{ color: "var(--muted)" }} />
+          <Input className="!ps-9" placeholder="Search name, ID, email or designation" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search employees" />
         </div>
         <Select className="w-full sm:!w-[200px]" value={dept} onChange={(e) => update({ dept: e.target.value || null, page: null })} aria-label="Department">
           <option value="">All departments</option>
@@ -137,7 +137,7 @@ export default function Directory() {
             options={(Object.keys(STATUS_FILTERS) as StatusKey[]).map((k) => ({ value: k, label: STATUS_FILTERS[k].label }))}
           />
         </div>
-        <div className="text-muted ml-auto text-[13px]">
+        <div className="text-muted ms-auto text-[13px]">
           Showing {list.data?.total ?? "…"}
           {branchText ? ` · ${branchText}` : ""}
         </div>

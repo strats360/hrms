@@ -25,7 +25,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
         </div>
       </div>
       <div className="relative grid place-items-center p-6 sm:p-12">
-        <div className="absolute right-5 top-5">
+        <div className="absolute end-5 top-5">
           <ThemeToggle />
         </div>
         {children}

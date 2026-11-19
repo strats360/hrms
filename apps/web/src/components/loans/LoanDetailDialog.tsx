@@ -177,9 +177,9 @@ export function LoanDetailDialog({ id, onClose }: { id: string; onClose: () => v
                 <tr>
                   <th>#</th>
                   <th>Month</th>
-                  <th className="text-right">Instalment</th>
-                  {l.interestPct ? <th className="text-right">Interest</th> : null}
-                  <th className="text-right">Balance after</th>
+                  <th className="text-end">Instalment</th>
+                  {l.interestPct ? <th className="text-end">Interest</th> : null}
+                  <th className="text-end">Balance after</th>
                   <th>Status</th>
                   <th />
                 </tr>
@@ -191,11 +191,11 @@ export function LoanDetailDialog({ id, onClose }: { id: string; onClose: () => v
                     <tr key={s.month}>
                       <td>{s.n}</td>
                       <td>{monthLabel(s.month)}</td>
-                      <td className="num text-right">{fmtMoney(s.emi)}</td>
-                      {l.interestPct ? <td className="num text-right">{fmtMoney(s.interest)}</td> : null}
-                      <td className="num text-right">{fmtMoney(s.balance)}</td>
+                      <td className="num text-end">{fmtMoney(s.emi)}</td>
+                      {l.interestPct ? <td className="num text-end">{fmtMoney(s.interest)}</td> : null}
+                      <td className="num text-end">{fmtMoney(s.balance)}</td>
                       <td>{s.recovered ? <Tag tone={s.recovered.locked ? "ok" : "warn"}>{s.recovered.locked ? "Recovered" : "In payroll"}</Tag> : <span className="text-muted">Upcoming</span>}</td>
-                      <td className="text-right">{canPause ? <Button size="sm" variant="ghost" onClick={() => act.mutate({ path: "pause", body: { month: s.month, paused: true } })}>Skip month</Button> : null}</td>
+                      <td className="text-end">{canPause ? <Button size="sm" variant="ghost" onClick={() => act.mutate({ path: "pause", body: { month: s.month, paused: true } })}>Skip month</Button> : null}</td>
                     </tr>
                   );
                 })}

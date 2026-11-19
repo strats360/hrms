@@ -26,7 +26,7 @@ function CandidateCard({ a, onOpen }: { a: App; onOpen: () => void }) {
   const c = a.candidate;
   const days = daysSince(a.stageChangedAt);
   return (
-    <button type="button" onClick={onOpen} className="flex w-full flex-col gap-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-left hover:border-[var(--color-accent)]">
+    <button type="button" onClick={onOpen} className="flex w-full flex-col gap-1 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 text-start hover:border-[var(--color-accent)]">
       <div className="flex items-start justify-between gap-2">
         <span className="text-[13.5px] font-medium">{c.name}</span>
         {c.hasResume ? <FileText size={14} className="text-muted flex-none" aria-label="Has resume" /> : null}
@@ -101,8 +101,8 @@ export default function JobDetail() {
           <CardHeader title={`Hired and closed (${closed.length})`} actions={<Button size="sm" onClick={() => setShowClosed(!showClosed)}>{showClosed ? "Hide" : "Show"}</Button>} />
           {showClosed
             ? closed.map((a) => (
-                <button key={a.id} type="button" onClick={() => open(a)} className="flex items-center justify-between gap-2 border-b border-[var(--color-divider)] py-2 text-left last:border-b-0">
-                  <span className="text-[13.5px]">{a.candidate.name}<span className="text-muted ml-2 text-[12px]">{a.rejectReason ?? ""}</span></span>
+                <button key={a.id} type="button" onClick={() => open(a)} className="flex items-center justify-between gap-2 border-b border-[var(--color-divider)] py-2 text-start last:border-b-0">
+                  <span className="text-[13.5px]">{a.candidate.name}<span className="text-muted ms-2 text-[12px]">{a.rejectReason ?? ""}</span></span>
                   <StageTag s={a.stage} />
                 </button>
               ))

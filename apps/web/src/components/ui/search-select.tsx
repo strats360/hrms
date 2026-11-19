@@ -102,7 +102,7 @@ export function SearchSelect({
             aria-haspopup="listbox"
             aria-label={ariaLabel}
             aria-invalid={invalid || undefined}
-            className={cn("input flex w-full items-center gap-2 text-left", emptyLabel && selected && !disabled && "pr-14", disabled && "cursor-not-allowed opacity-60")}
+            className={cn("input flex w-full items-center gap-2 text-start", emptyLabel && selected && !disabled && "pe-14", disabled && "cursor-not-allowed opacity-60")}
             onKeyDown={(e) => {
               if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey && e.key !== " ") {
                 e.preventDefault();
@@ -127,7 +127,7 @@ export function SearchSelect({
           </button>
         </P.Trigger>
         {emptyLabel && selected && !disabled ? (
-          <button type="button" aria-label="Clear" className="text-muted absolute right-8 top-1/2 -translate-y-1/2 rounded p-0.5 hover:text-[var(--color-text)]" onClick={() => onChange("")}>
+          <button type="button" aria-label="Clear" className="text-muted absolute end-8 top-1/2 -translate-y-1/2 rounded p-0.5 hover:text-[var(--color-text)]" onClick={() => onChange("")}>
             <X size={14} />
           </button>
         ) : null}

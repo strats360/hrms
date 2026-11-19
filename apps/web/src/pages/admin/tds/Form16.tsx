@@ -148,7 +148,7 @@ export default function Form16Page() {
                   ) : null
                 }
               />
-              <Input className="ml-auto !w-[220px]" placeholder="Search name, ID or PAN" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search" />
+              <Input className="ms-auto !w-[220px]" placeholder="Search name, ID or PAN" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search" />
             </div>
             <DataTable
               data={rows}

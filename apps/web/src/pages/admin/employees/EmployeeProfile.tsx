@@ -197,7 +197,7 @@ export default function EmployeeProfile() {
               <StatusTag status={e.status} label={EMPLOYEE_STATUS_LABELS[e.status as EmployeeStatus]} />
             </div>
           </div>
-          <div className="flex w-full flex-col gap-2 border-t border-[var(--color-divider)] pt-2 text-left text-[13px]">
+          <div className="flex w-full flex-col gap-2 border-t border-[var(--color-divider)] pt-2 text-start text-[13px]">
             {[
               ["Employee ID", <b key="id" className="font-semibold">{e.employeeCode}</b>],
               ["Branch", e.branch ?? "—"],
@@ -211,7 +211,7 @@ export default function EmployeeProfile() {
                   <span key="login">
                     Active{e.login.twoFactorEnabled ? " · two-factor on" : ""}
                     {e.login.twoFactorEnabled && can("users", "configure") ? (
-                      <button type="button" className="ml-1.5 cursor-pointer border-0 bg-transparent p-0 text-[12.5px] text-[var(--bad)]" onClick={() => setResetting(true)}>
+                      <button type="button" className="ms-1.5 cursor-pointer border-0 bg-transparent p-0 text-[12.5px] text-[var(--bad)]" onClick={() => setResetting(true)}>
                         Reset
                       </button>
                     ) : null}
@@ -222,7 +222,7 @@ export default function EmployeeProfile() {
             ].map(([k, v]) => (
               <div key={String(k)} className="flex justify-between gap-3">
                 <span className="text-muted">{k}</span>
-                <span className="min-w-0 truncate text-right">{v}</span>
+                <span className="min-w-0 truncate text-end">{v}</span>
               </div>
             ))}
           </div>

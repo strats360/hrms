@@ -26,7 +26,7 @@ export function StatCard({ label, value, meta, onClick, className }: { label: Re
   return (
     <Comp
       onClick={onClick}
-      className={cn("card min-w-0 border-0 text-left text-[var(--color-text)]", onClick && "cursor-pointer hover:shadow-[var(--shadow-sm)]", className)}
+      className={cn("card min-w-0 border-0 text-start text-[var(--color-text)]", onClick && "cursor-pointer hover:shadow-[var(--shadow-sm)]", className)}
       style={{ padding: "14px 16px", font: "inherit" }}
     >
       <div className="card-kicker">{label}</div>

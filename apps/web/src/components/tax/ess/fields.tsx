@@ -11,12 +11,12 @@ export function MoneyInput({ value, onChange, disabled, id, placeholder = "0" }:
   }, [value]);
   return (
     <div className="relative">
-      <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[13px]" style={{ color: "var(--muted)" }}>
+      <span className="pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2 text-[13px]" style={{ color: "var(--muted)" }}>
         ₹
       </span>
       <input
         id={id}
-        className="input !pl-6 num"
+        className="input !ps-6 num"
         inputMode="numeric"
         disabled={disabled}
         placeholder={placeholder}

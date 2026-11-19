@@ -24,7 +24,7 @@ export default function Soon() {
           <Tag tone="accent">Planned for phase 2</Tag>
         </div>
         <div className="text-[14px]">This module is designed and will be built in the next phase. What it will include:</div>
-        <ul className="!m-0 flex flex-col gap-1.5 pl-5 text-[14px]">
+        <ul className="!m-0 flex flex-col gap-1.5 ps-5 text-[14px]">
           {items.map((i) => (
             <li key={i}>{i}</li>
           ))}

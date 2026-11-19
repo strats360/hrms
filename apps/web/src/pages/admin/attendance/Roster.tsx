@@ -116,7 +116,7 @@ export default function Roster() {
           <div className="text-[13.5px] font-medium">
             {label(d.days[0]!).day} to {label(d.days.at(-1)!).day}
           </div>
-          <Input className="!w-[220px] ml-auto" placeholder="Find a person" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Find a person" />
+          <Input className="!w-[220px] ms-auto" placeholder="Find a person" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Find a person" />
         </div>
         <div className="flex flex-wrap gap-2 text-[12px]">
           {d.shifts.map((s) => (
@@ -134,7 +134,7 @@ export default function Roster() {
           <table className="w-full min-w-[760px] border-separate border-spacing-0 text-[12.5px]">
             <thead>
               <tr>
-                <th className="sticky left-0 z-[1] bg-[var(--color-surface)] px-2 py-2 text-left font-semibold">Employee</th>
+                <th className="sticky start-0 z-[1] bg-[var(--color-surface)] px-2 py-2 text-start font-semibold">Employee</th>
                 {d.days.map((day) => {
                   const l = label(day);
                   return (
@@ -149,7 +149,7 @@ export default function Roster() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.employeeId}>
-                  <td className="sticky left-0 z-[1] border-t border-[var(--color-divider)] bg-[var(--color-surface)] px-2 py-1.5">
+                  <td className="sticky start-0 z-[1] border-t border-[var(--color-divider)] bg-[var(--color-surface)] px-2 py-1.5">
                     <div className="flex min-w-[170px] items-center gap-2">
                       <Avatar employeeId={r.employeeId} name={r.name} size={26} />
                       <div className="min-w-0">

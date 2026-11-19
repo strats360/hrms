@@ -98,7 +98,7 @@ export default function Structure() {
                 {branches.data?.map((b) => (
                   <tr key={b.id}>
                     <td className="whitespace-nowrap font-semibold">
-                      {b.name} {b.isHeadOffice ? <Tag tone="accent" className="ml-1">Head office</Tag> : null}
+                      {b.name} {b.isHeadOffice ? <Tag tone="accent" className="ms-1">Head office</Tag> : null}
                     </td>
                     <td className="min-w-[220px]">{[b.address, b.city].filter(Boolean).join(", ") || "—"}</td>
                     <td>{b.state}</td>

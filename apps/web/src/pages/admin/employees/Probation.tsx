@@ -53,7 +53,7 @@ export default function Probation() {
       { id: "employee", header: "Employee", accessorFn: (r) => r.name, cell: ({ row: { original: r } }) => <PersonCell employeeId={r.employeeId} name={r.name} sub={[r.code, r.designation].filter(Boolean).join(" · ")} /> },
       { id: "manager", header: "Manager", accessorFn: (r) => r.manager ?? "", cell: ({ getValue }) => getValue<string>() || "—" },
       { id: "joined", header: "Joined", accessorKey: "dateOfJoining", cell: ({ getValue }) => fmtDate(getValue<string>()) },
-      { id: "end", header: "Probation ends", accessorKey: "endDate", cell: ({ row: { original: r } }) => <div>{fmtDate(r.endDate)}<div>{when(r)}{r.extensions ? <span className="text-muted ml-1.5 text-[12px]">extended {r.extensions === 1 ? "once" : `${r.extensions} times`}</span> : null}</div></div> },
+      { id: "end", header: "Probation ends", accessorKey: "endDate", cell: ({ row: { original: r } }) => <div>{fmtDate(r.endDate)}<div>{when(r)}{r.extensions ? <span className="text-muted ms-1.5 text-[12px]">extended {r.extensions === 1 ? "once" : `${r.extensions} times`}</span> : null}</div></div> },
       { id: "review", header: "Manager's view", enableSorting: false, cell: ({ row: { original: r } }) => (r.review ? <div className="max-w-[260px] whitespace-normal"><Tag tone={REC_TONE[r.review.recommendation]}>{PROBATION_RECOMMENDATION_LABEL[r.review.recommendation]}</Tag><div className="text-muted line-clamp-2 text-[12px]">{r.review.note} · {r.review.by}</div></div> : <span className="text-muted text-[12.5px]">Not reviewed</span>) },
       {
         id: "actions",

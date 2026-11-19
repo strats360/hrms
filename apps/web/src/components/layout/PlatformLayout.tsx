@@ -23,7 +23,7 @@ export function PlatformLayout() {
       <D.Root open={drawer} onOpenChange={setDrawer}>
         <D.Portal>
           <D.Overlay className="dialog-backdrop lg:hidden" style={{ zIndex: 40 }} />
-          <D.Content className="fixed inset-y-0 left-0 lg:hidden" style={{ zIndex: 41 }}>
+          <D.Content className="fixed inset-y-0 start-0 lg:hidden" style={{ zIndex: 41 }}>
             <D.Title className="sr-only">Navigation</D.Title>
             <D.Description className="sr-only">Platform navigation</D.Description>
             <Sidebar {...props} collapsed={false} onNavigate={() => setDrawer(false)} />

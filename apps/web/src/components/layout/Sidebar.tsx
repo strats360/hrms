@@ -1,3 +1,4 @@
+import { t, useLocale } from "@/lib/i18n";
 import { useState } from "react";
 import { NavLink } from "react-router";
 import { ChevronDown, PanelLeftClose, PanelLeftOpen, Smartphone, LayoutDashboard } from "lucide-react";
@@ -45,6 +46,7 @@ export function Sidebar({
   subtitle?: string;
   onNavigate?: () => void;
 }) {
+  useLocale(); // re-render labels when the language changes
   const [open, setOpen] = useState<Record<string, boolean>>(loadGroups);
   const toggle = (k: string) =>
     setOpen((s) => {
@@ -59,7 +61,7 @@ export function Sidebar({
 
   return (
     <aside
-      className="scroll-thin sticky top-0 flex h-screen flex-none flex-col overflow-y-auto overflow-x-hidden border-r border-[var(--color-divider)] px-3 py-[18px] transition-[width] duration-200"
+      className="scroll-thin sticky top-0 flex h-screen flex-none flex-col overflow-y-auto overflow-x-hidden border-e border-[var(--color-divider)] px-3 py-[18px] transition-[width] duration-200"
       style={{ width: collapsed ? 72 : 244, background: "var(--color-bg)" }}
       aria-label="Main navigation"
     >
@@ -75,7 +77,7 @@ export function Sidebar({
                 className="flex w-full cursor-pointer items-center justify-between border-0 bg-transparent px-2.5 py-1.5 text-[10.5px] uppercase tracking-[0.1em]"
                 style={{ color: "var(--muted)" }}
               >
-                <span className="truncate">{g.label}</span>
+                <span className="truncate">{t(g.label)}</span>
                 <ChevronDown size={14} style={{ transform: isOpen ? "none" : "rotate(-90deg)", transition: "transform .15s" }} />
               </button>
             ) : null}
@@ -88,13 +90,13 @@ export function Sidebar({
                       key={it.to}
                       to={it.to}
                       end={it.to === "/" || it.to === "/platform" || it.to === "/me"}
-                      title={it.label}
+                      title={t(it.label)}
                       onClick={onNavigate}
                       className={({ isActive }) => cn("flex w-full items-center gap-2.5 rounded-[var(--radius-md)] px-2.5 py-[9px] text-[14px] no-underline hover:bg-[var(--tint-1)]", isActive && "!bg-[var(--sel-bg)] font-semibold")}
                       style={({ isActive }) => ({ color: isActive ? "var(--sel-fg)" : "var(--color-text)" })}
                     >
                       <it.icon size={18} className="flex-none" strokeWidth={2} />
-                      {!collapsed ? <span className="flex-1 whitespace-nowrap">{it.label}</span> : null}
+                      {!collapsed ? <span className="flex-1 whitespace-nowrap">{t(it.label)}</span> : null}
                       {!collapsed && it.soon ? <span className="text-[10px] uppercase tracking-[0.08em]" style={{ color: "var(--muted)" }}>Soon</span> : null}
                       {!collapsed && badge ? (
                         <span className="rounded-[var(--radius-md)] px-[7px] py-px text-[11px]" style={{ background: "var(--sel-bg)", color: "var(--sel-fg)", boxShadow: "inset 0 0 0 1px var(--color-accent)" }}>
@@ -111,9 +113,9 @@ export function Sidebar({
       })}
       <div className="mt-auto flex flex-col gap-0.5">
         {footer ? (
-          <NavLink to={footer.to} onClick={onNavigate} className="flex items-center gap-2.5 rounded-[var(--radius-md)] px-2.5 py-[9px] text-[14px] no-underline" style={{ background: "var(--ok-bg)", color: "var(--ok-fg)" }} title={footer.label}>
+          <NavLink to={footer.to} onClick={onNavigate} className="flex items-center gap-2.5 rounded-[var(--radius-md)] px-2.5 py-[9px] text-[14px] no-underline" style={{ background: "var(--ok-bg)", color: "var(--ok-fg)" }} title={t(footer.label)}>
             {footer.kind === "ess" ? <Smartphone size={18} /> : <LayoutDashboard size={18} />}
-            {!collapsed ? <span className="whitespace-nowrap">{footer.label}</span> : null}
+            {!collapsed ? <span className="whitespace-nowrap">{t(footer.label)}</span> : null}
           </NavLink>
         ) : null}
         {onToggleCollapse ? (

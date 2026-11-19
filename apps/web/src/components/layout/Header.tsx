@@ -1,3 +1,5 @@
+import { t } from "@/lib/i18n";
+import { LanguageSwitch } from "./LanguageSwitch";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Bell, LogOut, Menu as MenuIcon, Moon, Search, Sun } from "lucide-react";
@@ -52,7 +54,7 @@ export function Header({ crumb, org, searchPlaceholder, onMenu, alerts = [], rol
         <div className="text-[12px]" style={{ color: "var(--muted)" }}>{crumb}</div>
         <div className="truncate text-[15px] font-semibold">{org}</div>
       </div>
-      <div className="ml-auto flex min-w-0 items-center gap-2.5">
+      <div className="ms-auto flex min-w-0 items-center gap-2.5">
         {palette ? (
           <button
             onClick={() => setOpen(true)}
@@ -60,7 +62,7 @@ export function Header({ crumb, org, searchPlaceholder, onMenu, alerts = [], rol
             style={{ color: "var(--muted)" }}
           >
             <Search size={16} />
-            <span className="flex-1 truncate text-left text-[13px]">{searchPlaceholder}</span>
+            <span className="flex-1 truncate text-start text-[13px]">{searchPlaceholder}</span>
             <span className="rounded-md border border-[var(--color-divider)] px-1.5 text-[11px]">⌘K</span>
           </button>
         ) : null}
@@ -69,7 +71,7 @@ export function Header({ crumb, org, searchPlaceholder, onMenu, alerts = [], rol
           <Popover.Trigger asChild>
             <Button icon className="relative" aria-label={`Notifications${total ? `: ${total} pending` : ""}`}>
               <Bell size={17} />
-              {total ? <span className="absolute right-2 top-[7px] h-2 w-2 rounded-full" style={{ background: "var(--color-accent)" }} /> : null}
+              {total ? <span className="absolute end-2 top-[7px] h-2 w-2 rounded-full" style={{ background: "var(--color-accent)" }} /> : null}
             </Button>
           </Popover.Trigger>
           <Popover.Portal>
@@ -92,7 +94,7 @@ export function Header({ crumb, org, searchPlaceholder, onMenu, alerts = [], rol
             </Popover.Content>
           </Popover.Portal>
         </Popover.Root>
-        <div className="flex items-center gap-2.5 pl-1.5">
+        <div className="flex items-center gap-2.5 ps-1.5">
           <Link to="/account/security" title="Your account: sign-in, security and email settings" className="flex items-center gap-2.5 rounded-[var(--radius-md)] no-underline" style={{ color: "var(--color-text)" }}>
             <Avatar name={me?.user.name ?? ""} size={36} employeeId={tenant?.employeeId} className="hidden sm:grid" />
             <div className="hidden min-w-0 leading-tight sm:block">
@@ -100,7 +102,8 @@ export function Header({ crumb, org, searchPlaceholder, onMenu, alerts = [], rol
               <div className="text-[11.5px]" style={{ color: "var(--muted)" }}>{roleLabel}</div>
             </div>
           </Link>
-          <Button icon onClick={signOut} title="Sign out" aria-label="Sign out">
+          <LanguageSwitch />
+          <Button icon onClick={signOut} title={t("Sign out")} aria-label={t("Sign out")}>
             <LogOut size={17} />
           </Button>
         </div>

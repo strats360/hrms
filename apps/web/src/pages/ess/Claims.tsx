@@ -67,7 +67,7 @@ export default function EssClaims() {
             <button
               key={c.id}
               onClick={() => setOpen(c.id)}
-              className="card flex cursor-pointer flex-row items-center justify-between gap-3 border-0 text-left text-[var(--color-text)] hover:shadow-[var(--shadow-sm)]"
+              className="card flex cursor-pointer flex-row items-center justify-between gap-3 border-0 text-start text-[var(--color-text)] hover:shadow-[var(--shadow-sm)]"
               style={{ padding: "14px 16px", font: "inherit" }}
             >
               <div className="min-w-0">

@@ -75,7 +75,7 @@ export default function EmployeeWise() {
         </Select>
         <Input className="!w-[240px]" placeholder="Search name, ID or UAN" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search" />
         {canExport ? (
-          <div className="ml-auto flex flex-wrap gap-2">
+          <div className="ms-auto flex flex-wrap gap-2">
             <Button onClick={() => file("ecr.txt", `ECR-${d.month}.txt`)}>
               <Download size={15} /> EPF ECR
             </Button>

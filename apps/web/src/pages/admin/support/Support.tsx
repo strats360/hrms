@@ -159,7 +159,7 @@ function TicketDialog({ id, onClose, readOnly }: { id: string | null; onClose: (
             <TicketStatusTag status={t.status} forCustomer />
             {t.assigneeName ? <span className="text-muted text-[13px]">Support contact: {t.assigneeName}</span> : null}
             {!readOnly && !["resolved", "closed"].includes(t.status) ? (
-              <Button size="sm" className="ml-auto" loading={patch.isPending} onClick={() => patch.mutate({ status: "resolved" }, { onSuccess: () => toast.success("Marked resolved") })}>
+              <Button size="sm" className="ms-auto" loading={patch.isPending} onClick={() => patch.mutate({ status: "resolved" }, { onSuccess: () => toast.success("Marked resolved") })}>
                 Mark resolved
               </Button>
             ) : null}
@@ -182,7 +182,7 @@ function TicketDialog({ id, onClose, readOnly }: { id: string | null; onClose: (
                 .join(" · ")}
             </div>
           ) : null}
-          <div className="max-h-[45vh] overflow-auto pr-1">
+          <div className="max-h-[45vh] overflow-auto pe-1">
             <Thread messages={t.thread} attachmentBase="/admin/support/attachments" viewer="tenant" />
           </div>
           {closed ? (

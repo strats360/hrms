@@ -63,8 +63,8 @@ export function TaxStatementView({ s, compact }: { s: TaxStatement; compact?: bo
                 <tr key={sl.from}>
                   <td className="whitespace-nowrap">{range(sl.from, sl.to)}</td>
                   <td>{pct(sl.rate)}</td>
-                  <td className="num text-right">{fmtMoney(sl.amount)}</td>
-                  <td className="num text-right">{fmtMoney(sl.tax)}</td>
+                  <td className="num text-end">{fmtMoney(sl.amount)}</td>
+                  <td className="num text-end">{fmtMoney(sl.tax)}</td>
                 </tr>
               ))}
             </tbody>

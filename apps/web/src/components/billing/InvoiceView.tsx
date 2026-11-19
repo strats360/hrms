@@ -30,7 +30,7 @@ export function InvoiceView({ inv }: { inv: InvoiceDetail }) {
             {inv.entity.pan ? ` · PAN ${inv.entity.pan}` : ""}
           </div>
         </div>
-        <div className="text-right">
+        <div className="text-end">
           <div className="text-[20px] font-semibold tracking-wide">TAX INVOICE</div>
           <div className="font-medium">{inv.number}</div>
           <div className="text-muted">Issued {fmtDate(inv.issuedOn)} · due {fmtDate(inv.dueOn)}</div>
@@ -78,7 +78,7 @@ export function InvoiceView({ inv }: { inv: InvoiceDetail }) {
           ))}
         </tbody>
       </table>
-      <div className="ml-auto flex w-full max-w-[320px] flex-col gap-1">
+      <div className="ms-auto flex w-full max-w-[320px] flex-col gap-1">
         <Row label="Taxable value" value={fmtMoney(inv.subtotal, { decimals: 2 })} />
         {intra ? (
           <>
@@ -92,7 +92,7 @@ export function InvoiceView({ inv }: { inv: InvoiceDetail }) {
           <span>Total</span>
           <span className="num">{fmtMoney(inv.total, { decimals: 2 })}</span>
         </div>
-        <div className="text-muted text-right text-[12px]">{rupeesInWords(Math.round(inv.total))}</div>
+        <div className="text-muted text-end text-[12px]">{rupeesInWords(Math.round(inv.total))}</div>
       </div>
       <div className="grid gap-4 border-t border-[var(--color-divider)] pt-3 sm:grid-cols-2">
         <div>
@@ -111,7 +111,7 @@ export function InvoiceView({ inv }: { inv: InvoiceDetail }) {
             </>
           )}
         </div>
-        <div className="text-muted sm:text-right">
+        <div className="text-muted sm:text-end">
           This is a computer-generated invoice and needs no signature.
           {inv.entity.email ? <div>Billing questions: {inv.entity.email}</div> : null}
         </div>

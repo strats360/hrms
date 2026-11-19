@@ -100,7 +100,7 @@ export default function EssPayslips() {
         <>
           <button
             onClick={() => setOpen(latest.runId)}
-            className="card cursor-pointer border-0 text-left text-[var(--color-text)]"
+            className="card cursor-pointer border-0 text-start text-[var(--color-text)]"
             style={{ padding: 20, font: "inherit", background: "var(--ok-bg)", color: "var(--ok-fg)" }}
           >
             <div className="text-[11px] uppercase tracking-[0.1em]">Latest · {monthLabel(latest.month)}</div>
@@ -108,7 +108,7 @@ export default function EssPayslips() {
             <div className="flex flex-wrap items-center gap-2 text-[12.5px]">
               <span>Net pay{latest.payDate ? ` · paid ${fmtDate(latest.payDate)}` : ""}</span>
               {latest.onHold ? <Tag tone="warn">On hold</Tag> : null}
-              <span className="ml-auto inline-flex items-center gap-0.5 font-medium">
+              <span className="ms-auto inline-flex items-center gap-0.5 font-medium">
                 View payslip <ChevronRight size={14} />
               </span>
             </div>
@@ -119,7 +119,7 @@ export default function EssPayslips() {
               <button
                 key={s.runId}
                 onClick={() => setOpen(s.runId)}
-                className="card flex cursor-pointer flex-row items-center justify-between gap-3 border-0 text-left text-[var(--color-text)] hover:shadow-[var(--shadow-sm)]"
+                className="card flex cursor-pointer flex-row items-center justify-between gap-3 border-0 text-start text-[var(--color-text)] hover:shadow-[var(--shadow-sm)]"
                 style={{ padding: "14px 16px", font: "inherit" }}
               >
                 <div className="min-w-0">

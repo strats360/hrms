@@ -116,7 +116,7 @@ export default function EssAttendance() {
                     disabled={!canCorrect}
                     onClick={() => { setPrefillDate(d.date); setOpen(true); }}
                     title={`${fmtDate(d.date)}: ${d.status ? statusLabel(d.status) : "No record"}${d.checkIn ? ` · ${d.checkIn} to ${d.checkOut ?? "…"}` : ""}`}
-                    className="flex min-h-[54px] flex-col items-start gap-0.5 rounded-[var(--radius-sm)] border p-1.5 text-left sm:min-h-[72px]"
+                    className="flex min-h-[54px] flex-col items-start gap-0.5 rounded-[var(--radius-sm)] border p-1.5 text-start sm:min-h-[72px]"
                     style={{ background: c.bg, color: c.fg, borderColor: d.date === todayLocal() ? "var(--color-accent)" : "var(--color-divider)", cursor: canCorrect ? "pointer" : "default" }}
                   >
                     <span className="text-[12px] font-semibold">{Number(d.date.slice(8))}</span>
@@ -133,7 +133,7 @@ export default function EssAttendance() {
             {[...days].reverse().filter((d) => d.checkIn).slice(0, 10).map((d) => (
               <div key={d.date} className="flex justify-between gap-2 rounded-[var(--radius-md)] px-3 py-2.5 text-[13px]" style={{ background: "var(--color-surface)" }}>
                 <span>{fmtDate(d.date, false)}</span>
-                <span className="num text-right">{d.checkIn} to {d.checkOut ?? "now"}{d.workMinutes ? ` · ${hoursMinutes(d.workMinutes)}` : ""}{d.source ? ` · ${SOURCE[d.source] ?? d.source}` : ""}</span>
+                <span className="num text-end">{d.checkIn} to {d.checkOut ?? "now"}{d.workMinutes ? ` · ${hoursMinutes(d.workMinutes)}` : ""}{d.source ? ` · ${SOURCE[d.source] ?? d.source}` : ""}</span>
               </div>
             ))}
             {days.every((d) => !d.checkIn) ? <div className="text-muted text-[13px]">No check-ins this month.</div> : null}

@@ -343,7 +343,7 @@ function BranchesPayroll({ t, onBack, onDone, onExit }: { t: Tenant; onBack: () 
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Checkbox checked={nb.isHeadOffice || branches.length === 0} disabled={branches.length === 0} onChange={(v) => setNb({ ...nb, isHeadOffice: v })} label={<span className="text-[13px]">Head office</span>} />
-            <div className="ml-auto flex gap-2">
+            <div className="ms-auto flex gap-2">
               <Button onClick={() => setAdding(false)}>Cancel</Button>
               <Button variant="primary" loading={addBranch.isPending} onClick={submitBranch}>Save branch</Button>
             </div>
@@ -416,7 +416,7 @@ function ImportStep({ onBack, onDone, onExit }: { onBack: () => void; onDone: ()
     <>
       <div className="grid gap-3 sm:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
         {opts.map((o) => (
-          <button key={o.k} type="button" onClick={() => setChoice(o.k)} aria-pressed={choice === o.k} className="card cursor-pointer !gap-1.5 !p-[18px] text-left text-[var(--color-text)]" style={{ border: `1px solid ${choice === o.k ? "var(--color-accent)" : "var(--color-divider)"}`, font: "inherit" }}>
+          <button key={o.k} type="button" onClick={() => setChoice(o.k)} aria-pressed={choice === o.k} className="card cursor-pointer !gap-1.5 !p-[18px] text-start text-[var(--color-text)]" style={{ border: `1px solid ${choice === o.k ? "var(--color-accent)" : "var(--color-divider)"}`, font: "inherit" }}>
             {o.icon}
             <div className="font-medium">{o.title}</div>
             <div className="text-muted text-[12.5px]">{o.sub}</div>
@@ -506,7 +506,7 @@ function InviteGoLive({ onBack, onExit, onFinish }: { onBack: () => void; onExit
               {k.ok ? <Check size={12} /> : null}
             </span>
             {k.label}
-            <span className="text-muted ml-auto text-[12px]">{k.note ?? (k.ok ? "Done" : "Pending")}</span>
+            <span className="text-muted ms-auto text-[12px]">{k.note ?? (k.ok ? "Done" : "Pending")}</span>
           </div>
         ))}
       </Card>

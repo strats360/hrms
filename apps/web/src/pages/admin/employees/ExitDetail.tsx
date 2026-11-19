@@ -251,9 +251,9 @@ function Clearance({ x, editable, onChange }: { x: ExitDetailView; editable: boo
         {x.clearance.map((i) => (
           <div key={i.key} className="flex flex-col gap-0.5">
             <Checkbox checked={i.done} disabled={!editable || tick.isPending} onChange={(v) => tick.mutate({ key: i.key, done: v })} label={i.label} />
-            {i.done && i.doneBy ? <div className="text-muted pl-7 text-[12px]">{`${i.doneBy}${i.doneAt ? `, ${fmtDate(i.doneAt.slice(0, 10))}` : ""}`}</div> : null}
+            {i.done && i.doneBy ? <div className="text-muted ps-7 text-[12px]">{`${i.doneBy}${i.doneAt ? `, ${fmtDate(i.doneAt.slice(0, 10))}` : ""}`}</div> : null}
             {i.key === "assets" && x.heldAssets?.length ? (
-              <div className="pl-7 text-[12.5px] text-[var(--bad)]">
+              <div className="ps-7 text-[12.5px] text-[var(--bad)]">
                 Still with them:{" "}
                 {x.heldAssets.map((a, n) => (
                   <span key={a.id}>{n ? ", " : ""}<Link to={`/assets/${a.id}`}>{a.name} ({a.tag})</Link></span>

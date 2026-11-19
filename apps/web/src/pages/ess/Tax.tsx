@@ -177,7 +177,7 @@ export default function EssTax() {
             <div className="card-kicker">FY {t.fy} declaration</div>
             <div className="mt-1">
               <Tag tone={status.tone}>{status.label}</Tag>
-              {t.declaration?.submittedAt ? <span className="text-muted ml-2 text-[12px]">submitted {fmtDate(t.declaration.submittedAt.slice(0, 10))}</span> : null}
+              {t.declaration?.submittedAt ? <span className="text-muted ms-2 text-[12px]">submitted {fmtDate(t.declaration.submittedAt.slice(0, 10))}</span> : null}
             </div>
           </div>
         </div>
@@ -216,7 +216,7 @@ export default function EssTax() {
                   setRegime(r);
                   setDirty(true);
                 }}
-                className="card flex cursor-pointer flex-col items-start !gap-1 border text-left text-[var(--color-text)] disabled:cursor-default"
+                className="card flex cursor-pointer flex-col items-start !gap-1 border text-start text-[var(--color-text)] disabled:cursor-default"
                 style={{ padding: 16, font: "inherit", borderColor: on ? "var(--color-accent)" : "var(--color-divider)", background: on ? "var(--sel-bg)" : undefined }}
               >
                 <div className="flex w-full items-center justify-between gap-2">
@@ -336,7 +336,7 @@ export default function EssTax() {
         {error ? <Notice tone="bad">{error}</Notice> : null}
         {editable ? (
           <div className="flex flex-wrap items-center justify-end gap-2">
-            {dirty ? <span className="text-muted mr-auto text-[12.5px]">You have unsaved changes</span> : null}
+            {dirty ? <span className="text-muted me-auto text-[12.5px]">You have unsaved changes</span> : null}
             <Button loading={save.isPending} onClick={() => save.mutate()}>
               Save draft
             </Button>
@@ -470,7 +470,7 @@ function ProofRow({ section, amount, proofs, editable, onUpload, uploading, onDe
               <Tag tone={PROOF_TONE[p.status]}>{p.status === "pending" ? "Waiting for HR" : p.status === "accepted" ? "Accepted" : "Rejected"}</Tag>
               {p.note ? <span className="text-muted text-[12px]">{p.note}</span> : null}
               {editable && p.status === "pending" ? (
-                <Button icon size="sm" variant="ghost" className="ml-auto" aria-label={`Remove ${p.fileName}`} onClick={() => onDelete(p.id)}>
+                <Button icon size="sm" variant="ghost" className="ms-auto" aria-label={`Remove ${p.fileName}`} onClick={() => onDelete(p.id)}>
                   <Trash2 size={14} />
                 </Button>
               ) : null}
@@ -489,7 +489,7 @@ function ComputationCard({ tax }: { tax: EmployeeTax }) {
   const [open, setOpen] = useState(false);
   return (
     <Card className="!gap-3">
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex w-full cursor-pointer items-center justify-between gap-2 border-0 bg-transparent p-0 text-left text-[var(--color-text)]" style={{ font: "inherit" }}>
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex w-full cursor-pointer items-center justify-between gap-2 border-0 bg-transparent p-0 text-start text-[var(--color-text)]" style={{ font: "inherit" }}>
         <div>
           <div className="card-title text-[17px]">Your tax computation</div>
           <div className="text-muted text-[13px]">
@@ -517,8 +517,8 @@ function ComputationCard({ tax }: { tax: EmployeeTax }) {
                   <tr key={m.month}>
                     <td className="whitespace-nowrap">{monthLabel(m.month)}</td>
                     <td>{m.status === "locked" ? <Tag tone="ok">Paid</Tag> : <Tag tone="neutral">Projected</Tag>}</td>
-                    <td className="num text-right">{fmtMoney(m.gross)}</td>
-                    <td className="num text-right">{m.status === "locked" ? fmtMoney(m.tds) : tax.projectedMonths ? `~${fmtMoney(tax.monthlyEstimate)}` : "—"}</td>
+                    <td className="num text-end">{fmtMoney(m.gross)}</td>
+                    <td className="num text-end">{m.status === "locked" ? fmtMoney(m.tds) : tax.projectedMonths ? `~${fmtMoney(tax.monthlyEstimate)}` : "—"}</td>
                   </tr>
                 ))}
               </tbody>

@@ -109,7 +109,7 @@ export default function Balances() {
             Available days after leave already taken. Hover a figure for the full breakdown.
             {yearClose.data?.lastClosed ? ` Leave year ${yearClose.data.lastClosed} is closed.` : ""}
             {can("leave", "configure") && !due && new Date().getMonth() === 11 ? (
-              <button type="button" className="text-accent ml-1 underline" onClick={() => setClosing(thisYear)}>
+              <button type="button" className="text-accent ms-1 underline" onClick={() => setClosing(thisYear)}>
                 Close {thisYear}
               </button>
             ) : null}

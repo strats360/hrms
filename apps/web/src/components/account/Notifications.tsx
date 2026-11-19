@@ -37,7 +37,7 @@ function AlwaysSent() {
   return (
     <details className="text-[12.5px]">
       <summary className="text-muted cursor-pointer">Emails that always go out</summary>
-      <ul className="text-muted !mb-0 !mt-1.5 flex flex-col gap-1 pl-5">
+      <ul className="text-muted !mb-0 !mt-1.5 flex flex-col gap-1 ps-5">
         {ALWAYS_SENT.map((x) => (
           <li key={x}>{x}</li>
         ))}

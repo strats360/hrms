@@ -165,10 +165,10 @@ export function YearCloseDialog({ year, onClose }: { year: number; onClose: () =
                 <tr>
                   <th>Employee</th>
                   <th>Type</th>
-                  <th className="text-right">Unused</th>
-                  <th className="text-right">Carried</th>
-                  <th className="text-right">Lapses</th>
-                  <th className="text-right">Encashed</th>
+                  <th className="text-end">Unused</th>
+                  <th className="text-end">Carried</th>
+                  <th className="text-end">Lapses</th>
+                  <th className="text-end">Encashed</th>
                 </tr>
               </thead>
               <tbody>
@@ -178,10 +178,10 @@ export function YearCloseDialog({ year, onClose }: { year: number; onClose: () =
                       {r.name} <span className="text-muted">· {r.employeeCode}</span>
                     </td>
                     <td>{r.type}</td>
-                    <td className="num text-right">{r.left}</td>
-                    <td className="num text-right">{r.carried}</td>
-                    <td className="num text-right">{r.lapsed || "—"}</td>
-                    <td className="num text-right">{r.encashed || "—"}</td>
+                    <td className="num text-end">{r.left}</td>
+                    <td className="num text-end">{r.carried}</td>
+                    <td className="num text-end">{r.lapsed || "—"}</td>
+                    <td className="num text-end">{r.encashed || "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -216,8 +216,8 @@ export function EncashmentsCard() {
             <tr>
               <th>Employee</th>
               <th>Leave</th>
-              <th className="text-right">Days</th>
-              <th className="text-right">Amount</th>
+              <th className="text-end">Days</th>
+              <th className="text-end">Amount</th>
               <th>Status</th>
               <th />
             </tr>
@@ -232,13 +232,13 @@ export function EncashmentsCard() {
                   {e.leaveType}
                   {e.reason === "year_end" ? <span className="text-muted"> · lapsed {e.year}</span> : null}
                 </td>
-                <td className="num text-right">{e.days}</td>
-                <td className="num text-right">{fmtMoney(e.amount)}</td>
+                <td className="num text-end">{e.days}</td>
+                <td className="num text-end">{fmtMoney(e.amount)}</td>
                 <td>
                   <Tag tone={STATE[e.state].tone}>{STATE[e.state].label}</Tag>
                   {e.payrollMonth ? <span className="text-muted"> {monthLabel(e.payrollMonth)}</span> : null}
                 </td>
-                <td className="text-right">
+                <td className="text-end">
                   {e.state === "pending" && can("leave", "configure") ? (
                     <Button size="sm" variant="ghost" loading={cancel.isPending && cancel.variables === e.id} onClick={() => cancel.mutate(e.id)}>
                       Cancel

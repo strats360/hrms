@@ -17,7 +17,7 @@ export function BrandMark({ size = 34, name = "Saralix" }: { size?: number; name
 export function CenteredPage({ children, width = 720 }: { children: ReactNode; width?: number }) {
   return (
     <div className="relative min-h-screen px-4 py-8" style={{ background: "var(--color-bg)", color: "var(--color-text)" }}>
-      <div className="absolute right-4 top-4">
+      <div className="absolute end-4 top-4">
         <ThemeToggle />
       </div>
       <div className="mx-auto flex flex-col gap-4" style={{ width: `min(${width}px, 100%)` }}>
@@ -44,7 +44,7 @@ export function StepRail({ steps }: { steps: RailStep[] }) {
           type="button"
           onClick={s.onClick}
           disabled={!s.onClick}
-          className="flex items-center gap-2.5 rounded-[var(--radius-md)] border-0 px-2.5 py-2 text-left text-[13.5px] disabled:cursor-default"
+          className="flex items-center gap-2.5 rounded-[var(--radius-md)] border-0 px-2.5 py-2 text-start text-[13.5px] disabled:cursor-default"
           style={{ background: s.state === "current" ? "var(--sel-bg)" : "transparent", color: "var(--color-text)", cursor: s.onClick ? "pointer" : "default" }}
           aria-current={s.state === "current" ? "step" : undefined}
         >
@@ -82,7 +82,7 @@ export function WizardFrame({ rail, children, footnote }: { rail: ReactNode; chi
         {footnote ? <div className="text-muted mt-auto text-[12.5px]">{footnote}</div> : null}
       </div>
       <div className="relative w-full max-w-[860px] px-4 py-8 sm:px-12 sm:py-10">
-        <div className="absolute right-4 top-4 hidden md:block">
+        <div className="absolute end-4 top-4 hidden md:block">
           <ThemeToggle />
         </div>
         <div className="flex flex-col gap-5">{children}</div>

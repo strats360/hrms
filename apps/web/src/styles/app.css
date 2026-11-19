@@ -76,7 +76,8 @@ button { font-family: inherit; }
 .text-muted { color: var(--muted); }
 a { color: var(--color-accent); }
 a:hover { color: var(--sel-fg); }
-select.input { appearance: none; padding-right: 30px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239397ab' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+select.input { appearance: none; padding-inline-end: 30px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239397ab' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+[dir="rtl"] select.input { background-position: left 10px center; }
 .input[aria-invalid="true"] { border-color: var(--bad); }
 .scroll-thin { scrollbar-width: thin; scrollbar-color: var(--tint-2) transparent; }
 .stat-value { font-family: var(--font-heading); font-size: 30px; letter-spacing: -0.02em; line-height: 1.15; font-variant-numeric: tabular-nums; }
@@ -201,4 +202,14 @@ select.input { appearance: none; padding-right: 30px; background-image: url("dat
   width: 0;
   height: 18px;
   border-left: 1px solid var(--org-line);
+}
+
+/*
+ * Right to left (Arabic). Most text is still English or numbers, so each cell, paragraph and
+ * field takes its direction from its own text: "16 Dec 2025" and "₹8.76 L" keep their order,
+ * Arabic reads right to left. See lib/i18n.ts.
+ */
+[dir="rtl"] :where(p, li, td, th, h1, h2, h3, h4, label, input, textarea, .num, .truncate),
+[dir="rtl"] :where(div, span):not(:has(*)) {
+  unicode-bidi: plaintext;
 }

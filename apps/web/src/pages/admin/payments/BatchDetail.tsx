@@ -241,7 +241,7 @@ function AddLineDialog({ open, batchId, onClose, onDone }: { open: boolean; batc
             {hits.data?.rows.length ? (
               <div className="card elev-md absolute inset-x-0 top-[calc(100%+4px)] z-10 !gap-0 !p-1">
                 {hits.data.rows.map((h) => (
-                  <button key={h.id} type="button" className="cursor-pointer rounded-[var(--radius-sm)] border-0 bg-transparent px-2.5 py-2 text-left text-[13px] text-[var(--color-text)] hover:bg-[var(--tint-1)]" onClick={() => setEmp(h)}>
+                  <button key={h.id} type="button" className="cursor-pointer rounded-[var(--radius-sm)] border-0 bg-transparent px-2.5 py-2 text-start text-[13px] text-[var(--color-text)] hover:bg-[var(--tint-1)]" onClick={() => setEmp(h)}>
                     {h.fullName} <span className="text-muted">· {h.employeeCode}</span>
                   </button>
                 ))}

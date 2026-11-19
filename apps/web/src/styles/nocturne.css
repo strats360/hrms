@@ -194,7 +194,7 @@ textarea.input { min-height: 90px; resize: vertical; }
   display: inline-flex; align-items: center; gap: 6px;
   padding: 7px 12px; font-size: 13px; cursor: pointer;
 }
-.seg-opt + .seg-opt { border-left: 1px solid var(--color-divider); }
+.seg-opt + .seg-opt { border-inline-start: 1px solid var(--color-divider); }
 .seg-opt:has(input:checked) { color: var(--color-accent); box-shadow: inset 0 0 0 1px var(--color-accent); }
 .seg-opt:not(:has(input:checked)):hover { background: color-mix(in srgb, var(--color-text) 7%, transparent); }
 .seg-opt:has(input:focus-visible) { outline: 2px solid var(--color-accent); outline-offset: -2px; }
@@ -237,7 +237,7 @@ textarea.input { min-height: 90px; resize: vertical; }
 }
 .nav-brand {
   font-family: var(--font-heading); font-weight: var(--font-heading-weight);
-  font-size: 18px; margin-right: auto;
+  font-size: 18px; margin-inline-end: auto;
 }
 .nav a { color: inherit; text-decoration: none; font-size: 14px; }
 .nav a:hover, .nav a[aria-current='page'] { color: var(--color-accent); }
@@ -245,7 +245,7 @@ textarea.input { min-height: 90px; resize: vertical; }
 /* — tables — */
 .table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .table th {
-  text-align: left; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  text-align: start; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
   color: color-mix(in srgb, var(--color-text) 60%, transparent);
   padding: var(--space-2); border-bottom: 1px solid transparent; /* keeps layout; the row paints the fading rule */
 }

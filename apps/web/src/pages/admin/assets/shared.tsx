@@ -86,7 +86,7 @@ export function AssignDialog({ asset, onClose }: { asset: Pick<Asset, "id" | "ta
           ) : (
             <div className="flex flex-col gap-1">
               <Input aria-label="Find an employee" placeholder="Type a name or employee ID" value={find} onChange={(e) => setFind(e.target.value)} autoFocus />
-              {people.map((p) => <button key={p.id} type="button" className="rounded px-2 py-1.5 text-left text-[13.5px] hover:bg-[var(--tint-1)]" onClick={() => setF({ ...f, employeeId: p.id })}>{p.name} <span className="text-muted">({p.code})</span></button>)}
+              {people.map((p) => <button key={p.id} type="button" className="rounded px-2 py-1.5 text-start text-[13.5px] hover:bg-[var(--tint-1)]" onClick={() => setF({ ...f, employeeId: p.id })}>{p.name} <span className="text-muted">({p.code})</span></button>)}
             </div>
           )}
         </Field>

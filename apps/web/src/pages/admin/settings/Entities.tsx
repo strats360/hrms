@@ -93,7 +93,7 @@ export default function Entities() {
                   <th>Country</th>
                   <th>Currency</th>
                   <th>Time zone</th>
-                  <th className="text-right">Employees</th>
+                  <th className="text-end">Employees</th>
                   {editable ? <th /> : null}
                 </tr>
               </thead>
@@ -102,14 +102,14 @@ export default function Entities() {
                   <tr key={e.id}>
                     <td className="min-w-[220px]">
                       <div className="font-semibold">
-                        {e.name} {e.isDefault ? <Tag tone="accent" className="ml-1">Default</Tag> : null}
+                        {e.name} {e.isDefault ? <Tag tone="accent" className="ms-1">Default</Tag> : null}
                       </div>
                       <div className="text-muted text-[12px]">{[e.code, e.legalName && e.legalName !== e.name ? e.legalName : null].filter(Boolean).join(" · ")}</div>
                     </td>
                     <td>{e.countryName}</td>
                     <td>{e.currency}</td>
                     <td className="text-muted text-[12.5px]">{e.timeZone}</td>
-                    <td className="num text-right">{e.employees}</td>
+                    <td className="num text-end">{e.employees}</td>
                     {editable ? (
                       <td>
                         <div className="flex justify-end gap-1">

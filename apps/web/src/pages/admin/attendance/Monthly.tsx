@@ -120,7 +120,7 @@ export default function Monthly() {
           <table className="w-full border-collapse text-[12px]" style={{ minWidth: 1100 }}>
             <thead>
               <tr style={{ color: "var(--muted)" }}>
-                <th className={`${th} sticky left-0 z-[1] text-left`} style={{ background: "var(--color-surface)" }}>
+                <th className={`${th} sticky start-0 z-[1] text-start`} style={{ background: "var(--color-surface)" }}>
                   Employee
                 </th>
                 {query.data?.days.map((d) => {
@@ -133,7 +133,7 @@ export default function Monthly() {
                   );
                 })}
                 {["Present", "Late", "Half", "Absent", "Leave", "Paid days"].map((h) => (
-                  <th key={h} className={`${th} text-right`}>
+                  <th key={h} className={`${th} text-end`}>
                     {h}
                   </th>
                 ))}
@@ -142,7 +142,7 @@ export default function Monthly() {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.employeeId} style={{ borderTop: "1px solid var(--color-divider)" }}>
-                  <td className="sticky left-0 z-[1] whitespace-nowrap px-2 py-1.5" style={{ background: "var(--color-surface)" }}>
+                  <td className="sticky start-0 z-[1] whitespace-nowrap px-2 py-1.5" style={{ background: "var(--color-surface)" }}>
                     <div className="font-semibold">{r.name}</div>
                     <div className="text-muted text-[11px]">
                       {r.code}
@@ -162,12 +162,12 @@ export default function Monthly() {
                       </td>
                     );
                   })}
-                  <td className="num px-2 text-right font-semibold">{r.totals.present}</td>
-                  <td className="num px-2 text-right" style={{ color: r.totals.late ? "var(--warn-fg)" : undefined }}>{r.totals.late}</td>
-                  <td className="num px-2 text-right">{r.totals.halfDay}</td>
-                  <td className="num px-2 text-right" style={{ color: r.totals.absent ? "var(--bad-fg)" : undefined }}>{r.totals.absent}</td>
-                  <td className="num px-2 text-right">{r.totals.leave}</td>
-                  <td className="num px-2 text-right font-semibold">{r.totals.paidDays}</td>
+                  <td className="num px-2 text-end font-semibold">{r.totals.present}</td>
+                  <td className="num px-2 text-end" style={{ color: r.totals.late ? "var(--warn-fg)" : undefined }}>{r.totals.late}</td>
+                  <td className="num px-2 text-end">{r.totals.halfDay}</td>
+                  <td className="num px-2 text-end" style={{ color: r.totals.absent ? "var(--bad-fg)" : undefined }}>{r.totals.absent}</td>
+                  <td className="num px-2 text-end">{r.totals.leave}</td>
+                  <td className="num px-2 text-end font-semibold">{r.totals.paidDays}</td>
                 </tr>
               ))}
               {rows.length === 0 ? (

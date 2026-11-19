@@ -1,3 +1,5 @@
+import { t as tr, useLocale } from "@/lib/i18n";
+import { LanguageSwitch } from "./LanguageSwitch";
 import { useEffect } from "react";
 import { Navigate, NavLink, Outlet } from "react-router";
 import { toast } from "sonner";
@@ -25,6 +27,7 @@ const TABS = [
 
 /** Employee self-service: top bar on desktop, bottom tab bar on phones. */
 export function EssLayout() {
+  useLocale();
   const { tenant, me, signOut, has } = useSession();
   const tabs = TABS.filter((t) => !("feature" in t) || has((t as { feature: string }).feature));
   const phoneTabs = tabs.filter((t) => !("phone" in t && t.phone === false));
@@ -46,17 +49,17 @@ export function EssLayout() {
           <div className="-mb-[18px]">
             <Brand subtitle={tenant.tenantName} />
           </div>
-          <nav className="ml-4 hidden gap-1 md:flex" aria-label="Self-service">
+          <nav className="ms-4 hidden gap-1 md:flex" aria-label="Self-service">
             {tabs.map((t) => (
               <NavLink key={t.to} to={t.to} end={t.end} className="rounded-[var(--radius-md)] px-3 py-2 text-[14px] no-underline hover:bg-[var(--tint-1)]" style={({ isActive }) => ({ background: isActive ? "var(--sel-bg)" : undefined, color: isActive ? "var(--sel-fg)" : "var(--color-text)", fontWeight: isActive ? 600 : 400 })}>
-                {t.label}
+                {tr(t.label)}
               </NavLink>
             ))}
           </nav>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ms-auto flex items-center gap-2">
             {tenant.roleId ? (
               <NavLink to="/" className="btn btn-secondary hidden !text-[13px] sm:inline-flex">
-                <LayoutDashboard size={15} /> Admin console
+                <LayoutDashboard size={15} /> {tr("Admin console")}
               </NavLink>
             ) : null}
             <ThemeToggle />
@@ -64,7 +67,8 @@ export function EssLayout() {
               <ShieldCheck size={17} />
             </NavLink>
             <span className="hidden text-[13px] font-medium sm:inline">{me?.user.name}</span>
-            <Button icon onClick={signOut} aria-label="Sign out" title="Sign out">
+            <LanguageSwitch />
+            <Button icon onClick={signOut} aria-label={tr("Sign out")} title={tr("Sign out")}>
               <LogOut size={17} />
             </Button>
           </div>
@@ -82,7 +86,7 @@ export function EssLayout() {
         {phoneTabs.map((t) => (
           <NavLink key={t.to} to={t.to} end={t.end} className="flex min-w-0 flex-col items-center gap-0.5 py-2 text-[10.5px] no-underline" style={({ isActive }) => ({ color: isActive ? "var(--sel-fg)" : "var(--muted)" })}>
             <t.icon size={20} />
-            {t.label}
+            {tr(t.label)}
           </NavLink>
         ))}
       </nav>

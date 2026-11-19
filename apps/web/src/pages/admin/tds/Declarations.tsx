@@ -199,7 +199,7 @@ function ReviewDialog({ id, onClose }: { id: string | null; onClose: () => void 
                             </a>
                             <Tag tone={p.status === "accepted" ? "ok" : p.status === "rejected" ? "bad" : "warn"}>{p.status === "pending" ? "To review" : p.status === "accepted" ? "Accepted" : "Rejected"}</Tag>
                             {canEdit && !locked ? (
-                              <span className="ml-auto flex gap-1">
+                              <span className="ms-auto flex gap-1">
                                 <Button size="sm" icon title="Accept" aria-label={`Accept ${p.fileName}`} disabled={p.status === "accepted"} onClick={() => proof.mutate({ id: p.id, status: "accepted" })}>
                                   <Check size={14} />
                                 </Button>

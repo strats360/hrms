@@ -33,7 +33,7 @@ export default function Security() {
           <div className="-mb-[18px]">
             <Brand subtitle={tenant?.tenantName} />
           </div>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ms-auto flex items-center gap-2">
             <ThemeToggle />
             {needsTwoFactor ? null : (
               <Link to={back} className="btn btn-secondary !text-[13px]">

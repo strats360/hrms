@@ -142,8 +142,8 @@ function EmployeeComputation({ id, fy }: { id: string; fy: string }) {
                   <tr key={m.month}>
                     <td className="whitespace-nowrap">{monthLabel(m.month)}</td>
                     <td>{m.status === "locked" ? <Tag tone="ok">Locked</Tag> : <Tag tone="neutral">Projected</Tag>}</td>
-                    <td className="num text-right">{fmtMoney(m.gross)}</td>
-                    <td className="num text-right">{m.status === "locked" ? fmtMoney(m.tds) : "—"}</td>
+                    <td className="num text-end">{fmtMoney(m.gross)}</td>
+                    <td className="num text-end">{m.status === "locked" ? fmtMoney(m.tds) : "—"}</td>
                   </tr>
                 ))}
               </tbody>

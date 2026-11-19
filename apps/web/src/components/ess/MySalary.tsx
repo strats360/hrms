@@ -65,8 +65,8 @@ export function MySalary({ data: d }: { data: MySalaryData }) {
             <thead>
               <tr>
                 <th>Component</th>
-                <th className="text-right">Monthly</th>
-                <th className="text-right">Yearly</th>
+                <th className="text-end">Monthly</th>
+                <th className="text-end">Yearly</th>
               </tr>
             </thead>
             <tbody>
@@ -138,8 +138,8 @@ function Row({ label, amount, strong }: { label: string; amount: number; strong?
   return (
     <tr className={strong ? "font-semibold" : undefined}>
       <td>{label}</td>
-      <td className="num text-right">{fmtMoney(amount)}</td>
-      <td className="num text-right">{fmtMoney(amount * 12)}</td>
+      <td className="num text-end">{fmtMoney(amount)}</td>
+      <td className="num text-end">{fmtMoney(amount * 12)}</td>
     </tr>
   );
 }

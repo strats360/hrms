@@ -36,11 +36,11 @@ export function WhatErasureMeans({ erased, kept }: { erased: string[]; kept: str
     <div className="grid gap-3 text-[13px] sm:grid-cols-2">
       <div>
         <div className="mb-1 font-medium">Removed</div>
-        <ul className="text-muted !m-0 flex flex-col gap-1 pl-5">{erased.map((x) => <li key={x}>{x}</li>)}</ul>
+        <ul className="text-muted !m-0 flex flex-col gap-1 ps-5">{erased.map((x) => <li key={x}>{x}</li>)}</ul>
       </div>
       <div>
         <div className="mb-1 font-medium">Kept, because the law requires it</div>
-        <ul className="text-muted !m-0 flex flex-col gap-1 pl-5">{kept.map((x) => <li key={x}>{x}</li>)}</ul>
+        <ul className="text-muted !m-0 flex flex-col gap-1 ps-5">{kept.map((x) => <li key={x}>{x}</li>)}</ul>
       </div>
     </div>
   );

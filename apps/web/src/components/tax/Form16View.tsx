@@ -61,17 +61,17 @@ export function Form16View({ f }: { f: Form16Data }) {
                 <tr key={q.quarter}>
                   <td>{q.quarter}</td>
                   <td>{q.receipt ?? "—"}</td>
-                  <td className="num text-right">{fmtMoney(q.amountPaid)}</td>
-                  <td className="num text-right">{fmtMoney(q.tdsDeducted)}</td>
-                  <td className="num text-right">{fmtMoney(q.tdsDeposited)}</td>
+                  <td className="num text-end">{fmtMoney(q.amountPaid)}</td>
+                  <td className="num text-end">{fmtMoney(q.tdsDeducted)}</td>
+                  <td className="num text-end">{fmtMoney(q.tdsDeposited)}</td>
                 </tr>
               ))}
               <tr>
                 <td className="font-semibold" colSpan={3}>
                   Total
                 </td>
-                <td className="num text-right font-semibold">{fmtMoney(totalDeducted)}</td>
-                <td className="num text-right font-semibold">{fmtMoney(totalDeposited)}</td>
+                <td className="num text-end font-semibold">{fmtMoney(totalDeducted)}</td>
+                <td className="num text-end font-semibold">{fmtMoney(totalDeposited)}</td>
               </tr>
             </tbody>
           </table>

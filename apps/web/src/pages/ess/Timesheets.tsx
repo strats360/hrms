@@ -76,17 +76,17 @@ export default function EssTimesheets() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[820px] text-[13px]">
               <thead>
-                <tr className="text-muted text-left text-[12px]">
-                  <th className="py-2 pr-2 font-medium">Project and what you did</th>
+                <tr className="text-muted text-start text-[12px]">
+                  <th className="py-2 pe-2 font-medium">Project and what you did</th>
                   {d.dates.map((x) => <th key={x} className="w-[62px] px-1 py-2 text-center font-medium">{dayLabel(x)}</th>)}
-                  <th className="w-[76px] py-2 pl-2 text-right font-medium">Total</th>
+                  <th className="w-[76px] py-2 ps-2 text-end font-medium">Total</th>
                   <th className="w-8" />
                 </tr>
               </thead>
               <tbody>
                 {parsed.map((r, i) => (
                   <tr key={r.key} className="border-t border-[var(--color-divider)] align-top">
-                    <td className="py-2 pr-2">
+                    <td className="py-2 pe-2">
                       <div className="flex flex-col gap-1.5">
                         <Select aria-label={`Project for row ${i + 1}`} value={r.projectId} onChange={(e) => set(i, { projectId: e.target.value })}>
                           {d.projects.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}{p.archived ? " (archived)" : ""}</option>)}
@@ -99,18 +99,18 @@ export default function EssTimesheets() {
                         <Input aria-label={`${dayLabel(x)} hours, row ${i + 1}`} inputMode="decimal" className={`!px-1.5 text-center ${r.minutes[x] === null ? "!border-[var(--bad)]" : ""}`} value={rows[i]!.cells[x] ?? ""} onChange={(e) => set(i, { cells: { ...rows[i]!.cells, [x]: e.target.value } })} />
                       </td>
                     ))}
-                    <td className="num whitespace-nowrap py-3 pl-2 text-right font-medium">{hoursLabel(Object.values(r.minutes).reduce<number>((a, b) => a + (b ?? 0), 0))}</td>
+                    <td className="num whitespace-nowrap py-3 ps-2 text-end font-medium">{hoursLabel(Object.values(r.minutes).reduce<number>((a, b) => a + (b ?? 0), 0))}</td>
                     <td className="py-2"><Button icon variant="ghost" aria-label={`Remove row ${i + 1}`} onClick={() => setRows(rows.filter((_, j) => j !== i))}><Trash2 size={15} /></Button></td>
                   </tr>
                 ))}
                 <tr className="border-t border-[var(--color-border)] font-medium">
-                  <td className="py-2 pr-2">Total</td>
+                  <td className="py-2 pe-2">Total</td>
                   {d.dates.map((x) => <td key={x} className={`num px-1 py-2 text-center ${dayTotal(x) > 24 * 60 ? "text-[var(--bad)]" : ""}`}>{dayTotal(x) ? hoursLabel(dayTotal(x)) : ""}</td>)}
-                  <td className="num whitespace-nowrap py-2 pl-2 text-right">{hoursLabel(total)}</td>
+                  <td className="num whitespace-nowrap py-2 ps-2 text-end">{hoursLabel(total)}</td>
                   <td />
                 </tr>
                 <tr className="text-muted">
-                  <td className="py-1 pr-2 text-[12px]">Attendance</td>
+                  <td className="py-1 pe-2 text-[12px]">Attendance</td>
                   {d.dates.map((x) => <td key={x} className="num px-1 py-1 text-center text-[12px]">{d.attendance[x]?.minutes ? hoursLabel(d.attendance[x]!.minutes) : d.attendance[x]?.status === "on_leave" ? "Leave" : ""}</td>)}
                   <td colSpan={2} />
                 </tr>
@@ -131,7 +131,7 @@ export default function EssTimesheets() {
         <Card className="!gap-1">
           <CardHeader title="Recent weeks" />
           {d.recent.map((r) => (
-            <button key={r.weekStart} type="button" onClick={() => go(r.weekStart)} className="flex items-center justify-between gap-2 border-b border-[var(--color-divider)] py-2 text-left text-[13.5px] last:border-b-0">
+            <button key={r.weekStart} type="button" onClick={() => go(r.weekStart)} className="flex items-center justify-between gap-2 border-b border-[var(--color-divider)] py-2 text-start text-[13.5px] last:border-b-0">
               <span>Week of {fmtDate(r.weekStart)}</span>
               <span className="flex items-center gap-3"><span className="num text-muted">{hoursLabel(r.totalMinutes)}</span><Tag tone={SHEET_TONE[r.status]}>{TIMESHEET_STATUS_LABEL[r.status]}</Tag></span>
             </button>

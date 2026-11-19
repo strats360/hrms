@@ -66,7 +66,7 @@ export default function RunWizard() {
                   disabled={!reachable}
                   aria-current={active ? "step" : undefined}
                   onClick={() => setStep(n)}
-                  className="flex cursor-pointer items-center gap-2.5 rounded-[var(--radius-md)] border-0 px-2.5 py-2 text-left text-[13.5px] hover:bg-[var(--tint-1)] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex cursor-pointer items-center gap-2.5 rounded-[var(--radius-md)] border-0 px-2.5 py-2 text-start text-[13.5px] hover:bg-[var(--tint-1)] disabled:cursor-not-allowed disabled:opacity-50"
                   style={{ background: active ? "var(--sel-bg)" : "transparent", color: active ? "var(--sel-fg)" : "var(--color-text)", fontWeight: active ? 600 : 400 }}
                 >
                   <span className="grid h-6 w-6 flex-none place-items-center rounded-full text-[11.5px] font-semibold" style={{ background: done ? "var(--ok-bg)" : active ? "var(--color-accent)" : "var(--tint-2)", color: done ? "var(--ok-fg)" : active ? "var(--color-bg)" : "var(--muted)" }}>

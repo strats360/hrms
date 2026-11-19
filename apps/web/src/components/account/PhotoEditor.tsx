@@ -70,7 +70,7 @@ export function PhotoEditor({ employeeId, name, endpoint, size = 88, canEdit = t
             title={has ? "Change photo" : "Add photo"}
             disabled={busy}
             onClick={() => input.current?.click()}
-            className="absolute -bottom-0.5 -right-0.5 grid h-8 w-8 cursor-pointer place-items-center rounded-full border-2 border-[var(--color-surface)] bg-[var(--color-accent)] text-[#161826] disabled:opacity-60"
+            className="absolute -bottom-0.5 -end-0.5 grid h-8 w-8 cursor-pointer place-items-center rounded-full border-2 border-[var(--color-surface)] bg-[var(--color-accent)] text-[#161826] disabled:opacity-60"
           >
             <Camera size={15} />
           </button>

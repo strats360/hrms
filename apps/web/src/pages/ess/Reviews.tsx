@@ -48,7 +48,7 @@ export default function EssReviews() {
         <div className="grid items-start gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
           <Card padded={false} className="!gap-0 overflow-hidden">
             {list.map((r) => (
-              <button key={r.id} type="button" onClick={() => setParams({ id: r.id })} className="flex w-full items-center gap-3 border-b border-[var(--color-divider)] px-4 py-3 text-left last:border-b-0" style={{ background: r.id === id ? "var(--sel-bg)" : undefined }}>
+              <button key={r.id} type="button" onClick={() => setParams({ id: r.id })} className="flex w-full items-center gap-3 border-b border-[var(--color-divider)] px-4 py-3 text-start last:border-b-0" style={{ background: r.id === id ? "var(--sel-bg)" : undefined }}>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[14px] font-medium">{r.cycle}</div>
                   <div className="text-muted text-[12px]">{fmtDate(r.periodStart)} to {fmtDate(r.periodEnd)}</div>

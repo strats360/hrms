@@ -28,10 +28,10 @@ export function InstallCard() {
   };
   return (
     <div className="card relative !gap-2 !p-4" style={{ background: "var(--sel-bg)", color: "var(--sel-fg)" }} role="region" aria-label="Install the app">
-      <button type="button" aria-label="Don't show this again" onClick={close} className="absolute right-2 top-2 cursor-pointer rounded-full border-0 bg-transparent p-1 text-[inherit] opacity-70 hover:opacity-100">
+      <button type="button" aria-label="Don't show this again" onClick={close} className="absolute end-2 top-2 cursor-pointer rounded-full border-0 bg-transparent p-1 text-[inherit] opacity-70 hover:opacity-100">
         <X size={16} />
       </button>
-      <div className="flex items-center gap-3 pr-6">
+      <div className="flex items-center gap-3 pe-6">
         <img src="/icons/icon-192.png" alt="" className="h-10 w-10 flex-none rounded-[10px]" />
         <div className="min-w-0">
           <div className="text-[14px] font-semibold">Install Saralix on your phone</div>
@@ -45,7 +45,7 @@ export function InstallCard() {
           </Button>
         </div>
       ) : steps ? (
-        <ol className="!m-0 flex flex-col gap-1 pl-5 text-[13px]">
+        <ol className="!m-0 flex flex-col gap-1 ps-5 text-[13px]">
           <li>
             Tap <Share size={13} className="inline align-[-2px]" aria-label="Share" /> Share at the bottom of Safari
           </li>

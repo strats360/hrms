@@ -63,11 +63,11 @@ export function SettlementStatement({ company, exit }: { company: Company; exit:
           {lines.length ? (
             lines.map((l) => (
               <tr key={l.key} className="border-b border-[var(--color-divider)]">
-                <td className="py-1.5 pr-2">
+                <td className="py-1.5 pe-2">
                   {l.label}
                   {l.note ? <div className="text-muted text-[11.5px]">{l.note}</div> : null}
                 </td>
-                <td className="num py-1.5 text-right">{fmtMoney(l.amount)}</td>
+                <td className="num py-1.5 text-end">{fmtMoney(l.amount)}</td>
               </tr>
             ))
           ) : (
@@ -77,7 +77,7 @@ export function SettlementStatement({ company, exit }: { company: Company; exit:
           )}
           <tr className="font-medium">
             <td className="py-1.5">Total</td>
-            <td className="num py-1.5 text-right">{fmtMoney(total)}</td>
+            <td className="num py-1.5 text-end">{fmtMoney(total)}</td>
           </tr>
         </tbody>
       </table>

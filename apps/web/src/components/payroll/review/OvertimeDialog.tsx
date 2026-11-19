@@ -69,10 +69,10 @@ export function OvertimeDialog({ runId, open, onClose }: { runId: string; open: 
             <thead>
               <tr>
                 <th>Employee</th>
-                <th className="text-right">Recorded</th>
-                <th className="text-right">Rate / hour</th>
+                <th className="text-end">Recorded</th>
+                <th className="text-end">Rate / hour</th>
                 <th>Hours to pay</th>
-                <th className="text-right">Amount</th>
+                <th className="text-end">Amount</th>
               </tr>
             </thead>
             <tbody>
@@ -83,15 +83,15 @@ export function OvertimeDialog({ runId, open, onClose }: { runId: string; open: 
                     <td className="whitespace-nowrap">
                       {r.name} <span className="text-muted">· {r.employeeCode}</span>
                     </td>
-                    <td className="num text-right">
+                    <td className="num text-end">
                       {r.hours} h<span className="text-muted"> · {r.days} day{r.days === 1 ? "" : "s"}</span>
-                      {r.overLimit ? <Tag tone="warn" className="ml-1">Over {s?.monthlyLimitHours} h</Tag> : null}
+                      {r.overLimit ? <Tag tone="warn" className="ms-1">Over {s?.monthlyLimitHours} h</Tag> : null}
                     </td>
-                    <td className="num text-right">{fmtMoney(r.ratePerHour)}</td>
+                    <td className="num text-end">{fmtMoney(r.ratePerHour)}</td>
                     <td>
                       <Input className="!w-[90px]" type="number" min={0} step={0.5} value={hours[r.employeeId] ?? ""} onChange={(e) => setHours({ ...hours, [r.employeeId]: e.target.value })} aria-label={`Hours for ${r.name}`} />
                     </td>
-                    <td className="num text-right">{fmtMoney(Math.round(r.ratePerHour * h))}</td>
+                    <td className="num text-end">{fmtMoney(Math.round(r.ratePerHour * h))}</td>
                   </tr>
                 );
               })}

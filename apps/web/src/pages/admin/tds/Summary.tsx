@@ -93,7 +93,7 @@ export default function Summary() {
             <option value="submitted">Submitted</option>
             <option value="verified">Verified</option>
           </Select>
-          <span className="text-muted ml-auto text-[12.5px]">Click an employee for the full tax computation</span>
+          <span className="text-muted ms-auto text-[12.5px]">Click an employee for the full tax computation</span>
         </div>
         <DataTable data={rows} columns={cols} getRowId={(r) => r.employeeId} pageSize={15} storageKey="tds-summary" onRowClick={(r) => nav(`/tds/compute${qs({ employee: r.employeeId, fy })}`)} />
       </TableCard>

@@ -300,7 +300,7 @@ function TaxStep({ p, onBack, onSaved }: { p: OnbProfile; onBack: () => void; on
       <Field label={`Tax regime for this financial year`}>
         <div className="flex flex-wrap gap-2">
           {regimes.map((r) => (
-            <button key={r.value} type="button" aria-pressed={f.taxRegime === r.value} onClick={() => setF({ ...f, taxRegime: r.value })} className="card min-w-[200px] flex-1 cursor-pointer !gap-0.5 !p-3.5 text-left text-[var(--color-text)]" style={{ border: `1px solid ${f.taxRegime === r.value ? "var(--color-accent)" : "var(--color-divider)"}`, font: "inherit" }}>
+            <button key={r.value} type="button" aria-pressed={f.taxRegime === r.value} onClick={() => setF({ ...f, taxRegime: r.value })} className="card min-w-[200px] flex-1 cursor-pointer !gap-0.5 !p-3.5 text-start text-[var(--color-text)]" style={{ border: `1px solid ${f.taxRegime === r.value ? "var(--color-accent)" : "var(--color-divider)"}`, font: "inherit" }}>
               <span className="font-medium">{r.label}</span>
               <span className="text-muted text-[12px]">{r.hint}</span>
             </button>

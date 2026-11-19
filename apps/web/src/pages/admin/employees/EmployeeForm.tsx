@@ -400,7 +400,7 @@ export default function EmployeeForm() {
                 onChange={(v) => set("sendInvite", v)}
                 label={<span className="font-medium">Send a self-onboarding invite by email</span>}
               />
-              <div className="text-muted pl-6 text-[13px]">
+              <div className="text-muted ps-6 text-[13px]">
                 The employee gets a secure link to set a password and fill in their personal, bank and tax details and upload documents. HR verifies before they become active.
               </div>
             </Card>

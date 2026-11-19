@@ -74,12 +74,12 @@ export default function OrgChart() {
     <Card className="!gap-3 min-w-0">
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[220px] flex-1 sm:max-w-[320px]">
-          <Search size={15} className="text-muted pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2" />
-          <Input className="!pl-8" placeholder="Find a person" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Find a person" />
+          <Search size={15} className="text-muted pointer-events-none absolute start-2.5 top-1/2 -translate-y-1/2" />
+          <Input className="!ps-8" placeholder="Find a person" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Find a person" />
           {matches.length ? (
             <div className="card elev-md absolute inset-x-0 top-[calc(100%+4px)] z-20 !gap-0 !p-1">
               {matches.map((m) => (
-                <button key={m.id} type="button" onClick={() => show(m.id)} className="flex w-full cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] border-0 bg-transparent px-2 py-1.5 text-left text-[13px] text-[var(--color-text)] hover:bg-[var(--tint-1)]">
+                <button key={m.id} type="button" onClick={() => show(m.id)} className="flex w-full cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] border-0 bg-transparent px-2 py-1.5 text-start text-[13px] text-[var(--color-text)] hover:bg-[var(--tint-1)]">
                   <Avatar employeeId={m.id} name={m.name} size={24} />
                   <span className="min-w-0 truncate">
                     {m.name} <span className="text-muted">· {m.designation ?? m.code}</span>
@@ -96,7 +96,7 @@ export default function OrgChart() {
           ))}
         </Select>
         <PillTabs<"chart" | "list"> value={view} onChange={setView} tabs={[{ value: "chart", label: "Chart" }, { value: "list", label: "List" }]} />
-        <div className="ml-auto flex gap-1.5">
+        <div className="ms-auto flex gap-1.5">
           <Button size="sm" onClick={all}>
             <ChevronsUpDown size={14} /> Expand all
           </Button>
@@ -159,7 +159,7 @@ function PersonCard({ node, ctx, compact }: { node: OrgNode; ctx: Ctx; compact?:
   return (
     <div
       id={`org-${node.id}`}
-      className={cn("card relative flex !gap-0 text-left transition-opacity", compact ? "w-[210px] !p-2" : "w-[190px] flex-col items-center !p-3 text-center", dim && "opacity-35")}
+      className={cn("card relative flex !gap-0 text-start transition-opacity", compact ? "w-[210px] !p-2" : "w-[190px] flex-col items-center !p-3 text-center", dim && "opacity-35")}
       style={ctx.focus === node.id ? { outline: "2px solid var(--color-accent)", outlineOffset: 2 } : undefined}
     >
       <div className={cn("flex min-w-0 gap-2", compact ? "flex-row items-center" : "flex-col items-center")}>
@@ -178,7 +178,7 @@ function PersonCard({ node, ctx, compact }: { node: OrgNode; ctx: Ctx; compact?:
           onClick={() => (compact ? ctx.drill(node.id) : ctx.toggle(node.id))}
           aria-expanded={compact ? undefined : ctx.open.has(node.id)}
           aria-label={compact ? `Show ${node.name}'s team` : undefined}
-          className={cn("mt-2 inline-flex cursor-pointer items-center gap-1 rounded-full border border-[var(--color-divider)] bg-[var(--color-surface)] px-2 py-0.5 text-[11.5px] text-[var(--color-text)] hover:bg-[var(--tint-1)]", compact && "ml-auto mt-0 self-center")}
+          className={cn("mt-2 inline-flex cursor-pointer items-center gap-1 rounded-full border border-[var(--color-divider)] bg-[var(--color-surface)] px-2 py-0.5 text-[11.5px] text-[var(--color-text)] hover:bg-[var(--tint-1)]", compact && "ms-auto mt-0 self-center")}
         >
           {node.children.length}
           {node.teamSize > node.children.length ? <span className="text-muted">/ {node.teamSize}</span> : null}

@@ -94,8 +94,8 @@ export function GenerateLetterDialog({ employee, onClose, initialTemplate = "bui
                 {p.salaryTable.map((r) => (
                   <tr key={r.label} className={r.strong ? "font-semibold" : undefined}>
                     <td>{r.label}</td>
-                    <td className="num text-right">{rupees(r.monthly)}</td>
-                    <td className="num text-right">{rupees(r.monthly * 12)}</td>
+                    <td className="num text-end">{rupees(r.monthly)}</td>
+                    <td className="num text-end">{rupees(r.monthly * 12)}</td>
                   </tr>
                 ))}
               </tbody>

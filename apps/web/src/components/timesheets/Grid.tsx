@@ -17,29 +17,29 @@ export function WeekTable({ dates, rows, projects, attendance }: { dates: string
     <div className="overflow-x-auto">
       <table className="w-full min-w-[720px] text-[13px]">
         <thead>
-          <tr className="text-muted text-left text-[12px]">
-            <th className="py-2 pr-3 font-medium">Project</th>
-            {dates.map((d) => <th key={d} className="px-1 py-2 text-right font-medium">{dayLabel(d)}</th>)}
-            <th className="py-2 pl-3 text-right font-medium">Total</th>
+          <tr className="text-muted text-start text-[12px]">
+            <th className="py-2 pe-3 font-medium">Project</th>
+            {dates.map((d) => <th key={d} className="px-1 py-2 text-end font-medium">{dayLabel(d)}</th>)}
+            <th className="py-2 ps-3 text-end font-medium">Total</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r, i) => (
             <tr key={i} className="border-t border-[var(--color-divider)]">
-              <td className="py-2 pr-3"><div className="font-medium">{p.get(r.projectId)?.code} {p.get(r.projectId)?.name}</div>{r.note ? <div className="text-muted text-[12px]">{r.note}</div> : null}</td>
-              {dates.map((d) => <td key={d} className="num px-1 py-2 text-right">{r.minutes[d] ? hoursLabel(r.minutes[d]!) : ""}</td>)}
-              <td className="num py-2 pl-3 text-right font-medium">{hoursLabel(Object.values(r.minutes).reduce((a, b) => a + b, 0))}</td>
+              <td className="py-2 pe-3"><div className="font-medium">{p.get(r.projectId)?.code} {p.get(r.projectId)?.name}</div>{r.note ? <div className="text-muted text-[12px]">{r.note}</div> : null}</td>
+              {dates.map((d) => <td key={d} className="num px-1 py-2 text-end">{r.minutes[d] ? hoursLabel(r.minutes[d]!) : ""}</td>)}
+              <td className="num py-2 ps-3 text-end font-medium">{hoursLabel(Object.values(r.minutes).reduce((a, b) => a + b, 0))}</td>
             </tr>
           ))}
           <tr className="border-t border-[var(--color-border)] font-medium">
-            <td className="py-2 pr-3">Total</td>
-            {dates.map((d) => <td key={d} className="num px-1 py-2 text-right">{day(d) ? hoursLabel(day(d)) : ""}</td>)}
-            <td className="num py-2 pl-3 text-right">{hoursLabel(total)}</td>
+            <td className="py-2 pe-3">Total</td>
+            {dates.map((d) => <td key={d} className="num px-1 py-2 text-end">{day(d) ? hoursLabel(day(d)) : ""}</td>)}
+            <td className="num py-2 ps-3 text-end">{hoursLabel(total)}</td>
           </tr>
           <tr className="text-muted">
-            <td className="py-1 pr-3 text-[12px]">Attendance</td>
-            {dates.map((d) => <td key={d} className="num px-1 py-1 text-right text-[12px]">{attendance[d]?.minutes ? hoursLabel(attendance[d]!.minutes) : attendance[d]?.status === "on_leave" ? "Leave" : ""}</td>)}
-            <td className="num py-1 pl-3 text-right text-[12px]">{hoursLabel(dates.reduce((a, d) => a + (attendance[d]?.minutes ?? 0), 0))}</td>
+            <td className="py-1 pe-3 text-[12px]">Attendance</td>
+            {dates.map((d) => <td key={d} className="num px-1 py-1 text-end text-[12px]">{attendance[d]?.minutes ? hoursLabel(attendance[d]!.minutes) : attendance[d]?.status === "on_leave" ? "Leave" : ""}</td>)}
+            <td className="num py-1 ps-3 text-end text-[12px]">{hoursLabel(dates.reduce((a, d) => a + (attendance[d]?.minutes ?? 0), 0))}</td>
           </tr>
         </tbody>
       </table>

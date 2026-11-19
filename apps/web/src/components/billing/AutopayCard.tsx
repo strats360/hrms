@@ -138,7 +138,7 @@ export function AutopayCard() {
               {d.nextCharge && canEdit ? (
                 <button
                   type="button"
-                  className="text-accent ml-2 text-[12px] underline disabled:opacity-50"
+                  className="text-accent ms-2 text-[12px] underline disabled:opacity-50"
                   disabled={skip.isPending}
                   onClick={() => void confirmAction({ title: `Skip the debit for ${d.nextCharge!.invoice}?`, body: "You'll need to pay this invoice yourself. Autopay stays on for later invoices.", confirmLabel: "Skip debit" }).then((ok) => ok && skip.mutate(d.nextCharge!.orderId))}
                 >

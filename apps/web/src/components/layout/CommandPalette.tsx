@@ -94,7 +94,7 @@ export function CommandPalette({ open, onOpenChange, onGo }: { open: boolean; on
                 aria-selected={i === active}
                 onMouseEnter={() => setActive(i)}
                 onClick={() => go(h)}
-                className="flex cursor-pointer items-center justify-between gap-3 rounded-[var(--radius-sm)] border-0 px-3 py-2 text-left text-[14px]"
+                className="flex cursor-pointer items-center justify-between gap-3 rounded-[var(--radius-sm)] border-0 px-3 py-2 text-start text-[14px]"
                 style={{ background: i === active ? "var(--tint-1)" : "transparent", color: "var(--color-text)" }}
               >
                 <span>{h.label}</span>

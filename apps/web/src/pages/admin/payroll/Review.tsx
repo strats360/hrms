@@ -181,7 +181,7 @@ export default function Review() {
         </Select>
         {run.status === "calculated" && can("payroll", "edit") ? (
           <>
-            <Button className="ml-auto" onClick={() => setOvertime(true)}>
+            <Button className="ms-auto" onClick={() => setOvertime(true)}>
               <Clock size={16} /> Overtime
             </Button>
             <Button loading={encash.isPending} onClick={() => encash.mutate()}>
@@ -190,7 +190,7 @@ export default function Review() {
           </>
         ) : null}
         {can("payroll", "export") ? (
-          <Button className={run.status === "calculated" && can("payroll", "edit") ? "" : "ml-auto"} onClick={() => download(`/admin/payroll/runs/${run.id}/register.csv`, `salary-register-${run.month}.csv`).catch((e) => toast.error(e.message))}>
+          <Button className={run.status === "calculated" && can("payroll", "edit") ? "" : "ms-auto"} onClick={() => download(`/admin/payroll/runs/${run.id}/register.csv`, `salary-register-${run.month}.csv`).catch((e) => toast.error(e.message))}>
             <Download size={16} /> Export register
           </Button>
         ) : null}

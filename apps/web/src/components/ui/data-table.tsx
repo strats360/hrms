@@ -193,7 +193,7 @@ export function DataTable<T>({
     <div className="relative flex min-w-0 flex-col gap-2">
       <div className="flex min-h-9 flex-wrap items-center gap-2">
         {selected.length > 0 && bulkActions?.length ? (
-          <div className="flex items-center gap-1.5 rounded-[var(--radius-md)] py-1 pl-3 pr-1.5 text-[13px]" style={{ background: "var(--sel-bg)" }}>
+          <div className="flex items-center gap-1.5 rounded-[var(--radius-md)] py-1 ps-3 pe-1.5 text-[13px]" style={{ background: "var(--sel-bg)" }}>
             <span className="font-medium">{selected.length} selected</span>
             {bulkActions.map((a) => (
               <Button key={a.label} size="sm" disabled={busy} onClick={() => runBulk(a)}>
@@ -206,7 +206,7 @@ export function DataTable<T>({
           </div>
         ) : null}
         {toolbar}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ms-auto flex items-center gap-2">
           {loading ? <Spinner size={14} /> : null}
           <span className="text-muted whitespace-nowrap text-[12.5px]">
             {from}–{to} of {total}

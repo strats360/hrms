@@ -45,7 +45,7 @@ export default function Assets() {
         cell: ({ row: { original: a } }) =>
           a.holder ? (
             <div>
-              <div>{a.holder.name}{["notice", "exited", "inactive"].includes(a.holder.status) ? <Tag tone="warn" className="ml-1.5">{a.holder.status === "notice" ? "Leaving" : "Left"}</Tag> : null}</div>
+              <div>{a.holder.name}{["notice", "exited", "inactive"].includes(a.holder.status) ? <Tag tone="warn" className="ms-1.5">{a.holder.status === "notice" ? "Leaving" : "Left"}</Tag> : null}</div>
               <div className="text-muted text-[12px]">since {a.assignedOn ? fmtDate(a.assignedOn) : "—"}{a.acknowledged ? "" : " · not confirmed yet"}</div>
             </div>
           ) : <span className="text-muted">{a.branch ?? "—"}</span>,

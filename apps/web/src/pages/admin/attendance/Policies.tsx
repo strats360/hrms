@@ -33,7 +33,7 @@ const BLANK: Form = { name: "", startTime: "09:00", endTime: "18:00", graceMinut
 const Row = ({ k, v }: { k: string; v: React.ReactNode }) => (
   <div className="flex justify-between gap-3">
     <span className="text-muted">{k}</span>
-    <span className="text-right">{v}</span>
+    <span className="text-end">{v}</span>
   </div>
 );
 
@@ -125,7 +125,7 @@ export default function Policies() {
         <DevicesCard />
         <Card className="!gap-2.5">
           <CardHeader title="How status is worked out" />
-          <ul className="m-0 flex list-disc flex-col gap-1.5 pl-5 text-[13.5px]">
+          <ul className="m-0 flex list-disc flex-col gap-1.5 ps-5 text-[13.5px]">
             <li>Check-in after the shift start plus grace time is marked late.</li>
             <li>Worked time below the half-day threshold is absent; below the full-day threshold is a half day.</li>
             <li>Time worked beyond the shift length counts as overtime in blocks of 30 minutes.</li>
@@ -134,7 +134,7 @@ export default function Policies() {
         </Card>
         <Card className="!gap-2.5">
           <CardHeader title="Approvals" />
-          <ul className="m-0 flex list-disc flex-col gap-1.5 pl-5 text-[13.5px]">
+          <ul className="m-0 flex list-disc flex-col gap-1.5 ps-5 text-[13.5px]">
             <li>Employees raise correction requests from self-service.</li>
             <li>The reporting manager or HR approves. Nobody can approve their own request.</li>
             <li>Approved corrections update the day's record and are kept in the audit log.</li>

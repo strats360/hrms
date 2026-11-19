@@ -133,7 +133,7 @@ export default function Reports() {
             <Field label="Find a report" className="min-w-[180px]">
               <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Salary, PF, leave…" />
             </Field>
-            <div className="text-muted ml-auto pb-2 text-[12.5px]">Filters apply to every report below</div>
+            <div className="text-muted ms-auto pb-2 text-[12.5px]">Filters apply to every report below</div>
           </Card>
           {!list.data.canExport ? <Notice tone="sel">You can preview reports. Ask an admin for export rights to download them.</Notice> : null}
           <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(300px, 100%), 1fr))" }}>

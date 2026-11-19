@@ -54,7 +54,7 @@ function Distribution({ d }: { d: Record<number, number> }) {
           <div className="h-3 overflow-hidden rounded-full bg-[var(--tint-1)]" role="img" aria-label={`${d[n] ?? 0} people`}>
             <div className="h-full rounded-full bg-[var(--color-accent)]" style={{ width: `${((d[n] ?? 0) / max) * 100}%` }} />
           </div>
-          <span className="num w-16 text-right">{d[n] ?? 0}{total ? <span className="text-muted"> · {Math.round(((d[n] ?? 0) / total) * 100)}%</span> : null}</span>
+          <span className="num w-16 text-end">{d[n] ?? 0}{total ? <span className="text-muted"> · {Math.round(((d[n] ?? 0) / total) * 100)}%</span> : null}</span>
         </div>
       ))}
     </Card>

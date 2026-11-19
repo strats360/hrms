@@ -115,7 +115,7 @@ export function ReplyBox({ onSend, internalOption, disabled, placeholder = "Writ
         </Button>
         <input ref={ref} type="file" multiple accept="application/pdf,image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => (setFiles([...files, ...Array.from(e.target.files ?? [])].slice(0, 3)), (e.target.value = ""))} />
         {internalOption ? <Checkbox checked={internal} onChange={setInternal} label="Internal note (customer can't see it)" /> : null}
-        <Button variant="primary" className="ml-auto" disabled={disabled || !body.trim()} loading={busy} onClick={send}>
+        <Button variant="primary" className="ms-auto" disabled={disabled || !body.trim()} loading={busy} onClick={send}>
           {internal ? "Add note" : "Send reply"}
         </Button>
       </div>

@@ -234,7 +234,7 @@ function LopRow({ item, run, editable }: { item: PayrollItem; run: PayrollRun; e
         ) : (
           <span className="num">{item.lopOverride ?? item.lopDays}</span>
         )}
-        {item.lopOverride !== null ? <Tag tone="accent" className="ml-1.5">Overridden</Tag> : null}
+        {item.lopOverride !== null ? <Tag tone="accent" className="ms-1.5">Overridden</Tag> : null}
       </td>
       {editable ? (
         <td>
@@ -374,7 +374,7 @@ export function StepReview({ run }: { run: PayrollRun }) {
       ) : q.data?.length ? (
         <div className="flex flex-col gap-1.5">
           {q.data.slice(0, 10).map((i) => (
-            <button key={i.id} onClick={() => setSlip(i.employeeId)} className="flex cursor-pointer flex-wrap items-center justify-between gap-2 rounded-[var(--radius-md)] border-0 px-3 py-2 text-left text-[13px]" style={{ background: "var(--tint-1)", color: "var(--color-text)" }}>
+            <button key={i.id} onClick={() => setSlip(i.employeeId)} className="flex cursor-pointer flex-wrap items-center justify-between gap-2 rounded-[var(--radius-md)] border-0 px-3 py-2 text-start text-[13px]" style={{ background: "var(--tint-1)", color: "var(--color-text)" }}>
               <span>
                 <span className="font-medium">{i.snapshot.name}</span> <span className="text-muted">{i.snapshot.code}</span>
                 <span className="text-muted block text-[12px]">{[i.onHold ? `On hold${i.holdReason ? `: ${i.holdReason}` : ""}` : null, ...i.warnings].filter(Boolean).join(" · ")}</span>

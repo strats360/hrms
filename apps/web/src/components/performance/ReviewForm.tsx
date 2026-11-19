@@ -26,7 +26,7 @@ export function RatingInput({ value, onChange, label, disabled }: { value: numbe
             title={RATING_LABEL[n]}
             disabled={disabled}
             onClick={() => onChange(n)}
-            className="h-8 w-9 border-r border-[var(--color-border)] text-[13px] last:border-r-0 disabled:cursor-not-allowed"
+            className="h-8 w-9 border-e border-[var(--color-border)] text-[13px] last:border-e-0 disabled:cursor-not-allowed"
             style={{ background: value === n ? "var(--color-accent)" : "transparent", color: value === n ? "white" : "var(--color-text)", fontWeight: value === n ? 600 : 400 }}
           >
             {n}
@@ -164,7 +164,7 @@ export function AssessmentForm({ review, by, endpoint, onSaved }: { review: Revi
             <div key={k} className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-[13.5px]">
                 {k}
-                {by === "manager" && review.self.competencies?.[k] ? <span className="text-muted ml-2 text-[12px]">they said {review.self.competencies[k]}</span> : null}
+                {by === "manager" && review.self.competencies?.[k] ? <span className="text-muted ms-2 text-[12px]">they said {review.self.competencies[k]}</span> : null}
               </span>
               <RatingInput label={k} value={f.competencies[k]} onChange={(v) => setF({ ...f, competencies: { ...f.competencies, [k]: v } })} />
             </div>
