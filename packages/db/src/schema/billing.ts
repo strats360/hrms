@@ -28,6 +28,10 @@ export const plans = pgTable(
 export interface InvoiceParty {
   name: string;
   legalName?: string | null;
+  /** Country (ISO 3166 alpha 2); missing on invoices from before multi country billing means India. */
+  country?: string | null;
+  /** VAT or TRN number outside India (GSTIN stays in gstin). */
+  taxNumber?: string | null;
   gstin: string | null;
   address: string | null;
   state: string | null;
@@ -62,7 +66,11 @@ export const invoices = pgTable(
     cgst: money("cgst").notNull().default(0),
     sgst: money("sgst").notNull().default(0),
     igst: money("igst").notNull().default(0),
+    /** Tax lines as printed (GST split, VAT, or 0% export). Empty on older invoices: use cgst, sgst and igst. */
+    taxLines: jsonb("tax_lines").$type<{ code: string; label: string; rate: number; amount: number }[]>().notNull().default([]),
     total: money("total").notNull(),
+    /** ISO 4217, the invoicing entity's currency when issued. */
+    currency: text("currency").notNull().default("INR"),
     seller: jsonb("seller").$type<InvoiceParty>().notNull(),
     buyer: jsonb("buyer").$type<InvoiceParty>().notNull(),
     /** issued | paid | void (overdue is issued past its due date) */

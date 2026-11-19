@@ -6,7 +6,8 @@ import { useSession } from "@/lib/session";
 import type { InvoicingEntity } from "@/lib/types";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Field, Input, Textarea } from "@/components/ui/field";
+import { Field, Input, Select, Textarea } from "@/components/ui/field";
+import { COUNTRIES, COUNTRY_CODES, taxIdLabel, type CountryCode } from "@hrms/shared";
 import { ErrorState, Loading, Notice, PageHeader } from "@/components/ui/page";
 import { Tag } from "@/components/ui/tag";
 
@@ -53,17 +54,32 @@ export default function PlatformSettings() {
         {gw.data && !gw.data.configured ? <Notice tone="sel">Set CASHFREE_APP_ID and CASHFREE_SECRET_KEY as GitHub environment secrets and CASHFREE_ENV (sandbox or production) as a variable, then deploy. See docs/DEPLOY.md.</Notice> : null}
       </Card>
       <Card style={{ padding: 22 }} className="!gap-3">
-        <CardHeader title="Invoicing entity" sub="Printed on every invoice. Its state decides CGST + SGST or IGST." />
+        <CardHeader title="Invoicing entity" sub="Printed on every invoice. Its country decides GST or VAT and the currency; in India its state decides CGST + SGST or IGST." />
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Legal name">
             <Input value={f.legalName} onChange={(e) => set("legalName", e.target.value)} disabled={!superAdmin} />
           </Field>
-          <Field label="GSTIN">
-            <Input value={f.gstin ?? ""} onChange={(e) => set("gstin", e.target.value.toUpperCase() || null)} disabled={!superAdmin} maxLength={15} />
+          <Field label="Country" hint={`Invoices in ${COUNTRIES[(f.country ?? "IN") as CountryCode].currency}`}>
+            <Select value={f.country ?? "IN"} onChange={(e) => set("country", e.target.value)} disabled={!superAdmin}>
+              {COUNTRY_CODES.map((c) => (
+                <option key={c} value={c}>{COUNTRIES[c].name}</option>
+              ))}
+            </Select>
           </Field>
-          <Field label="PAN">
-            <Input value={f.pan ?? ""} onChange={(e) => set("pan", e.target.value.toUpperCase() || null)} disabled={!superAdmin} maxLength={10} />
-          </Field>
+          {(f.country ?? "IN") === "IN" ? (
+            <>
+              <Field label="GSTIN">
+                <Input value={f.gstin ?? ""} onChange={(e) => set("gstin", e.target.value.toUpperCase() || null)} disabled={!superAdmin} maxLength={15} />
+              </Field>
+              <Field label="PAN">
+                <Input value={f.pan ?? ""} onChange={(e) => set("pan", e.target.value.toUpperCase() || null)} disabled={!superAdmin} maxLength={10} />
+              </Field>
+            </>
+          ) : (
+            <Field label={taxIdLabel(f.country!)} hint={f.country === "SA" ? "Printed in the ZATCA QR code on every invoice" : undefined}>
+              <Input value={f.taxNumber ?? ""} onChange={(e) => set("taxNumber", e.target.value.trim() || null)} disabled={!superAdmin} maxLength={30} />
+            </Field>
+          )}
           <Field label="State">
             <Input value={f.state ?? ""} onChange={(e) => set("state", e.target.value || null)} disabled={!superAdmin} />
           </Field>

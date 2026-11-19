@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Printer } from "lucide-react";
-import { fmtDate, fmtMoney, rupeesInWords } from "@hrms/shared";
+import { renderSVG } from "uqr";
+import { fmtDate, fmtMoney, rupeesInWords, taxIdLabel, zatcaQr } from "@hrms/shared";
 import { api } from "@/lib/api";
 import type { InvoiceDetail, InvoiceStatus } from "@/lib/types";
 import { Dialog } from "@/components/ui/dialog";
@@ -19,6 +20,15 @@ export function InvoiceStatusTag({ status }: { status: InvoiceStatus }) {
 /** Tax invoice layout (prints on A4 via the browser's Save as PDF). */
 export function InvoiceView({ inv }: { inv: InvoiceDetail }) {
   const intra = inv.cgst > 0 || inv.sgst > 0;
+  const cur = inv.currency ?? "INR";
+  const money = (n: number) => fmtMoney(n, { decimals: cur === "INR" ? 2 : undefined, currency: cur });
+  const sellerCountry = inv.seller.country ?? "IN";
+  const india = sellerCountry === "IN";
+  // GST split for India and older invoices; otherwise the lines stored on the invoice
+  const taxLines = inv.taxLines?.length ? inv.taxLines : intra ? [{ label: "CGST 9%", amount: inv.cgst }, { label: "SGST 9%", amount: inv.sgst }] : [{ label: "IGST 18%", amount: inv.igst }];
+  const vat = taxLines.reduce((n, l) => n + l.amount, 0);
+  // Saudi tax invoices carry ZATCA's QR code (e-invoicing phase 1)
+  const qr = sellerCountry === "SA" && inv.seller.taxNumber ? renderSVG(zatcaQr({ sellerName: inv.seller.legalName ?? inv.seller.name, vatNumber: inv.seller.taxNumber, timestamp: `${inv.issuedOn}T00:00:00Z`, total: inv.total, vat }), { border: 1 }) : null;
   return (
     <div className="flex flex-col gap-4 text-[13px]" style={{ color: "var(--color-text)" }}>
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--color-divider)] pb-4">
@@ -26,8 +36,8 @@ export function InvoiceView({ inv }: { inv: InvoiceDetail }) {
           <div className="text-[18px] font-semibold">{inv.seller.legalName ?? inv.seller.name}</div>
           <div className="text-muted max-w-[340px]">{inv.seller.address}</div>
           <div className="text-muted">
-            GSTIN {inv.seller.gstin ?? "—"}
-            {inv.entity.pan ? ` · PAN ${inv.entity.pan}` : ""}
+            {india ? `GSTIN ${inv.seller.gstin ?? "—"}` : `${taxIdLabel(sellerCountry)} ${inv.seller.taxNumber ?? "—"}`}
+            {india && inv.entity.pan ? ` · PAN ${inv.entity.pan}` : ""}
           </div>
         </div>
         <div className="text-end">
@@ -44,13 +54,13 @@ export function InvoiceView({ inv }: { inv: InvoiceDetail }) {
           <div className="text-muted text-[11px] uppercase tracking-[0.08em]">Billed to</div>
           <div className="font-medium">{inv.buyer.legalName ?? inv.buyer.name}</div>
           <div className="text-muted">{inv.buyer.address}</div>
-          <div className="text-muted">GSTIN {inv.buyer.gstin ?? "Unregistered"}</div>
+          <div className="text-muted">{(inv.buyer.country ?? "IN") === "IN" ? `GSTIN ${inv.buyer.gstin ?? "Unregistered"}` : `${taxIdLabel(inv.buyer.country!)} ${inv.buyer.taxNumber ?? "not given"}`}</div>
         </div>
         <div>
           <div className="text-muted text-[11px] uppercase tracking-[0.08em]">Place of supply</div>
           <div>
-            {inv.buyer.state ?? "—"}
-            {inv.buyer.stateCode ? ` (${inv.buyer.stateCode})` : ""}
+            {(inv.buyer.country ?? "IN") === "IN" ? (inv.buyer.state ?? "—") : inv.buyer.country}
+            {(inv.buyer.country ?? "IN") === "IN" && inv.buyer.stateCode ? ` (${inv.buyer.stateCode})` : ""}
           </div>
           <div className="text-muted">Period: {inv.periodLabel}</div>
           <div className="text-muted">Reverse charge: No</div>
@@ -72,27 +82,23 @@ export function InvoiceView({ inv }: { inv: InvoiceDetail }) {
               <td>{l.description}</td>
               <td>{l.sac}</td>
               <td style={{ textAlign: "right" }} className="num">{l.quantity}</td>
-              <td style={{ textAlign: "right" }} className="num">{fmtMoney(l.rate, { decimals: 2 })}</td>
-              <td style={{ textAlign: "right" }} className="num">{fmtMoney(l.amount, { decimals: 2 })}</td>
+              <td style={{ textAlign: "right" }} className="num">{money(l.rate)}</td>
+              <td style={{ textAlign: "right" }} className="num">{money(l.amount)}</td>
             </tr>
           ))}
         </tbody>
       </table>
       <div className="ms-auto flex w-full max-w-[320px] flex-col gap-1">
-        <Row label="Taxable value" value={fmtMoney(inv.subtotal, { decimals: 2 })} />
-        {intra ? (
-          <>
-            <Row label="CGST 9%" value={fmtMoney(inv.cgst, { decimals: 2 })} />
-            <Row label="SGST 9%" value={fmtMoney(inv.sgst, { decimals: 2 })} />
-          </>
-        ) : (
-          <Row label="IGST 18%" value={fmtMoney(inv.igst, { decimals: 2 })} />
-        )}
+        <Row label="Taxable value" value={money(inv.subtotal)} />
+        {taxLines.map((l) => (
+          <Row key={l.label} label={l.label} value={money(l.amount)} />
+        ))}
         <div className="mt-1 flex justify-between border-t border-[var(--color-divider)] pt-2 text-[15px] font-semibold">
           <span>Total</span>
-          <span className="num">{fmtMoney(inv.total, { decimals: 2 })}</span>
+          <span className="num">{money(inv.total)}</span>
         </div>
-        <div className="text-muted text-end text-[12px]">{rupeesInWords(Math.round(inv.total))}</div>
+        {cur === "INR" ? <div className="text-muted text-end text-[12px]">{rupeesInWords(Math.round(inv.total))}</div> : null}
+        {qr ? <div className="ms-auto mt-2 w-[110px]" aria-label="ZATCA QR code" dangerouslySetInnerHTML={{ __html: qr }} /> : null}
       </div>
       <div className="grid gap-4 border-t border-[var(--color-divider)] pt-3 sm:grid-cols-2">
         <div>

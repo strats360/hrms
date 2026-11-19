@@ -69,15 +69,15 @@ controlRoutes.get("/revenue", async (c) => {
   const rows = await db
     .select({
       period: invoices.period,
+      currency: invoices.currency,
       invoiced: sql<number>`coalesce(sum(${invoices.total}), 0)::float`,
       collected: sql<number>`coalesce(sum(${invoices.total}) filter (where ${invoices.status} = 'paid'), 0)::float`,
       count: sql<number>`count(*)::int`,
     })
     .from(invoices)
     .where(sql`${invoices.status} <> 'void'`)
-    .groupBy(invoices.period)
+    .groupBy(invoices.period, invoices.currency)
     .orderBy(sql`${invoices.period} desc`)
     .limit(24);
-  // invoices are in INR until billing is per country (phase 3.4)
-  return c.json({ site: site(c.env), months: rows.map((r) => ({ ...r, currency: "INR" })) });
+  return c.json({ site: site(c.env), months: rows });
 });

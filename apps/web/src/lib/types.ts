@@ -641,6 +641,8 @@ export interface Plan {
 export interface InvoiceParty {
   name: string;
   legalName?: string | null;
+  country?: string | null;
+  taxNumber?: string | null;
   gstin: string | null;
   address: string | null;
   state: string | null;
@@ -665,7 +667,10 @@ export interface Invoice {
   cgst: number;
   sgst: number;
   igst: number;
+  /** Tax lines as printed; empty on older invoices (use cgst, sgst, igst). */
+  taxLines?: { code: string; label: string; rate: number; amount: number }[];
   total: number;
+  currency?: string;
   seller: InvoiceParty;
   buyer: InvoiceParty;
   status: "issued" | "paid" | "void";
@@ -678,6 +683,9 @@ export interface Invoice {
 }
 export interface InvoicingEntity {
   legalName: string;
+  country?: string;
+  currency?: string;
+  taxNumber?: string | null;
   gstin: string | null;
   pan: string | null;
   address: string | null;

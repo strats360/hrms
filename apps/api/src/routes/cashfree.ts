@@ -80,6 +80,8 @@ tenantPayRoutes.post("/invoices/:id/pay", requirePerm("billing", "view"), async 
   const [inv] = await db.select().from(invoices).where(and(eq(invoices.id, c.req.param("id")), eq(invoices.tenantId, tid(c))));
   if (!inv) throw notFound("Invoice");
   if (inv.status !== "issued") throw badRequest(inv.status === "paid" ? "This invoice is already paid" : "This invoice can't be paid");
+  // Cashfree takes rupees only; other currencies are paid by bank transfer for now
+  if (inv.currency !== "INR") throw badRequest(`Online payment isn't available for ${inv.currency} invoices yet. Please pay by bank transfer using the details on the invoice.`);
   const [t] = await db.select().from(tenants).where(eq(tenants.id, tid(c)));
   const phone = phoneFor(t?.contactPhone);
   if (!phone) throw badRequest("Add your company's contact mobile number in Settings › Organization first. The payment gateway needs it.");

@@ -148,11 +148,11 @@ Cloudflare is one account for all instances. Neon is roughly $19 a month per pro
 4. Backups and restore drills per instance ✅ Neon point in time restore, proven monthly by the **Restore drill** workflow (restore to an hour ago in a branch, check counts, time it, delete). Manual drill steps for other providers in DEPLOY.md.
 5. Golden payroll tests for every pack in CI ✅ `packages/shared/golden/<COUNTRY>.json`: at least five real payslip cases per pack with every line written out, checked on every change and before every deploy. India has 11 cases, waiting for a payroll consultant's sign off.
 
-**Phase 3. Control plane**
+**Phase 3. Control plane** ✅ Done (see the notes on billing)
 1. Company directory ✅ Each site's `/api/control` (company level data only), token derived from one shared key.
 2. Login routing ✅ `apps/control` at `login.saralix.com`: asks each site live, nothing stored, unknown emails see the site list.
 3. Platform console across instances ✅ `/console` behind Cloudflare Access (token verified by the app): sites, versions, companies, revenue, CSV.
-4. Central billing with GST, VAT and ZATCA
+4. Central billing with GST, VAT and ZATCA ✅ for tax: each site's invoicing entity has a country, currency and tax number. India keeps GST (CGST and SGST, or IGST); the UAE and Oman charge 5% VAT, Saudi Arabia 15%, the UK 20%; Qatar, Kuwait and the USA add none; customers in another country are zero rated as an export of services. Saudi invoices carry ZATCA's QR code (e-invoicing phase 1). Still to do: ZATCA phase 2 (clearing invoices through Fatoora), a payment provider for currencies other than rupees (Cashfree is INR only), and confirming every rate and the export treatment with a tax advisor. Invoices stay on each site; the console adds them up by site and currency.
 
 **Phase 4 onward. Country packs**, each with a pilot customer
 1. UAE pack, then the Gulf instance

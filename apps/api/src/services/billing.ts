@@ -1,6 +1,6 @@
 import { and, eq, inArray, like, ne, notInArray, sql } from "drizzle-orm";
-import { employees, invoices, platformSettings, plans, tenants, type Database, type InvoiceParty } from "@hrms/db";
-import { billableSeats, invoiceTax, invoicingEntitySchema, stateCodeOf, todayLocal } from "@hrms/shared";
+import { employees, invoices, legalEntities, platformSettings, plans, tenants, type Database, type InvoiceParty } from "@hrms/db";
+import { billableSeats, COUNTRIES, currencyDecimals, invoiceTaxFor, invoicingEntitySchema, stateCodeOf, todayLocal, type InvoiceTaxLine } from "@hrms/shared";
 import type { z } from "zod";
 
 export type InvoicingEntity = z.infer<typeof invoicingEntitySchema>;
@@ -8,6 +8,8 @@ export type Invoice = typeof invoices.$inferSelect;
 
 export const DEFAULT_ENTITY: InvoicingEntity = {
   legalName: "Saralix Technologies Pvt Ltd",
+  country: "IN",
+  taxNumber: null,
   gstin: "24AAICS7781M1ZK",
   pan: "AAICS7781M",
   address: "4th Floor, Iscon Elegance, SG Highway, Ahmedabad 380015",
@@ -20,9 +22,17 @@ export const DEFAULT_ENTITY: InvoicingEntity = {
   email: "billing@saralix.com",
 };
 
-export async function getEntity(db: Database): Promise<InvoicingEntity> {
+export async function getEntity(db: Database): Promise<InvoicingEntity & { currency: string }> {
   const [row] = await db.select().from(platformSettings).where(eq(platformSettings.key, "invoicing"));
-  return { ...DEFAULT_ENTITY, ...((row?.value ?? {}) as Partial<InvoicingEntity>) };
+  const e = { ...DEFAULT_ENTITY, ...((row?.value ?? {}) as Partial<InvoicingEntity>) };
+  return { ...e, currency: e.currency ?? COUNTRIES[e.country]?.currency ?? "INR" };
+}
+
+/** Where a tenant is billed to: its default legal entity's country and tax number. */
+async function buyerCountries(db: Database, tenantIds: string[]) {
+  if (!tenantIds.length) return new Map<string, { country: string; registrations: Record<string, string | null> }>();
+  const rows = await db.select({ t: legalEntities.tenantId, country: legalEntities.country, registrations: legalEntities.registrations }).from(legalEntities).where(and(inArray(legalEntities.tenantId, tenantIds), eq(legalEntities.isDefault, true)));
+  return new Map(rows.map((r) => [r.t, { country: r.country, registrations: r.registrations }]));
 }
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -53,7 +63,9 @@ export interface DraftInvoice {
   cgst: number;
   sgst: number;
   igst: number;
+  taxLines: InvoiceTaxLine[];
   total: number;
+  currency: string;
   skip: string | null;
 }
 
@@ -64,6 +76,8 @@ export async function draftInvoices(db: Database, period: string, tenantIds?: st
   const ts = await db.select().from(tenants).where(tenantIds ? inArray(tenants.id, tenantIds.length ? tenantIds : ["-"]) : undefined).orderBy(tenants.name);
   const ps = new Map((await db.select().from(plans)).map((p) => [p.key, p]));
   const counts = await activeEmployeeCounts(db, ts.map((t) => t.id));
+  const buyers = await buyerCountries(db, ts.map((t) => t.id));
+  const decimals = currencyDecimals(entity.currency);
   const existing = new Set((await db.select({ t: invoices.tenantId }).from(invoices).where(and(eq(invoices.period, period), ne(invoices.status, "void")))).map((r) => r.t));
   const periodEnd = `${period}-28`;
   return ts.map((t) => {
@@ -71,8 +85,9 @@ export async function draftInvoices(db: Database, period: string, tenantIds?: st
     const active = counts.get(t.id) ?? 0;
     const seats = billableSeats(active, plan?.minSeats ?? 0);
     const rate = Number(t.customPrice ?? plan?.pricePerEmployee ?? 0);
-    const subtotal = Math.round(seats * rate * 100) / 100;
-    const tax = invoiceTax(subtotal, sellerCode, stateCodeOf(t.gstin, t.state));
+    const subtotal = Math.round(seats * rate * 10 ** decimals) / 10 ** decimals;
+    // GST in India, VAT in the Gulf and the UK, zero rated when the customer is in another country
+    const tax = invoiceTaxFor({ subtotal, sellerCountry: entity.country, buyerCountry: buyers.get(t.id)?.country ?? "IN", sellerStateCode: sellerCode, buyerStateCode: stateCodeOf(t.gstin, t.state), decimals });
     let skip: string | null = null;
     if (existing.has(t.id)) skip = "Already invoiced for this period";
     else if (t.status === "cancelled") skip = "Cancelled";
@@ -82,7 +97,7 @@ export async function draftInvoices(db: Database, period: string, tenantIds?: st
     else if (!rate) skip = "No price: set a custom rate for this tenant";
     else if (t.createdAt.toISOString().slice(0, 10) > periodEnd) skip = "Joined after this period";
     else if (!seats) skip = "No active employees";
-    return { tenantId: t.id, tenantName: t.name, tenantCode: t.code, planKey: t.plan, planName: plan?.name ?? t.plan, seats, activeEmployees: active, rate, subtotal, cgst: tax.cgst, sgst: tax.sgst, igst: tax.igst, total: tax.total, skip };
+    return { tenantId: t.id, tenantName: t.name, tenantCode: t.code, planKey: t.plan, planName: plan?.name ?? t.plan, seats, activeEmployees: active, rate, subtotal, cgst: tax.cgst, sgst: tax.sgst, igst: tax.igst, taxLines: tax.lines, total: tax.total, currency: entity.currency, skip };
   });
 }
 
@@ -105,11 +120,13 @@ export async function issueInvoices(db: Database, period: string, userId: string
   const ts = new Map((await db.select().from(tenants).where(inArray(tenants.id, drafts.map((d) => d.tenantId)))).map((t) => [t.id, t]));
   const next = await nextInvoiceNumber(db, entity.invoicePrefix, period);
   const issuedOn = opts.issuedOn ?? todayLocal();
-  const seller: InvoiceParty = { name: entity.legalName, legalName: entity.legalName, gstin: entity.gstin ?? null, address: entity.address ?? null, state: entity.state ?? null, stateCode: stateCodeOf(entity.gstin, entity.state) };
+  const seller: InvoiceParty = { name: entity.legalName, legalName: entity.legalName, country: entity.country, taxNumber: entity.taxNumber ?? null, gstin: entity.gstin ?? null, address: entity.address ?? null, state: entity.state ?? null, stateCode: stateCodeOf(entity.gstin, entity.state) };
+  const buyers = await buyerCountries(db, drafts.map((d) => d.tenantId));
   const created: Invoice[] = [];
   for (const d of drafts) {
     const t = ts.get(d.tenantId)!;
-    const buyer: InvoiceParty = { name: t.name, legalName: t.legalName, gstin: t.gstin, address: t.registeredAddress, state: t.state, stateCode: stateCodeOf(t.gstin, t.state) };
+    const b = buyers.get(t.id);
+    const buyer: InvoiceParty = { name: t.name, legalName: t.legalName, country: b?.country ?? "IN", taxNumber: b && b.country !== "IN" ? (b.registrations.vat ?? b.registrations.trn ?? null) : null, gstin: t.gstin, address: t.registeredAddress, state: t.state, stateCode: stateCodeOf(t.gstin, t.state) };
     const [row] = await db
       .insert(invoices)
       .values({
@@ -127,7 +144,9 @@ export async function issueInvoices(db: Database, period: string, userId: string
         cgst: d.cgst,
         sgst: d.sgst,
         igst: d.igst,
+        taxLines: d.taxLines,
         total: d.total,
+        currency: d.currency,
         seller,
         buyer,
         status: opts.status ?? "issued",

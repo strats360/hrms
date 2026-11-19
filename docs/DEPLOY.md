@@ -151,6 +151,8 @@ One sign in page for every site, and a staff console across all of them. It keep
 
 When you add a site to `deploy/instances.json`, run **Deploy control plane** again so it knows about it.
 
+**Billing on other sites:** each site's platform console › Platform settings › Invoicing entity takes the billing company's country and its VAT or TRN number. That decides the tax and the currency on invoices: GST in India, VAT in the UAE, Oman, Saudi Arabia and the UK, nothing in Qatar, Kuwait and the USA, and 0% for customers in another country. Saudi invoices print ZATCA's QR code. Online payment through Cashfree works for rupee invoices only; other currencies are paid by bank transfer until another payment provider is added. Confirm the rates with a tax advisor in each country before you issue invoices there.
+
 ## Customer demo account
 
 Use this to show Saralix to prospects on the live site. It loads the sample company, Strats360 Technolabs LLP, with 250 employees, payroll history, attendance, leave, claims and payments.

@@ -43,6 +43,27 @@ describe("Billing run", () => {
     expect(oct.body.drafts.find((d: any) => d.tenantCode === "TN-0142").skip).toMatch(/Already invoiced/);
     expect((await platform.post("/platform/billing/run", { period: todayLocal().slice(0, 7) })).status).toBe(400);
   });
+  it("charges VAT in the billing company's currency outside India", async () => {
+    // a Saudi billing company invoicing a Saudi customer: 15% VAT in riyals
+    const [{ id: tid }] = await sql`select id from tenants where code = 'TN-0142'`;
+    const before = await sql`select value from platform_settings where key = 'invoicing'`;
+    await sql`insert into platform_settings (key, value) values ('invoicing', ${sql.json({ legalName: "Saralix Arabia LLC", country: "SA", taxNumber: "300000000000003" })}) on conflict (key) do update set value = excluded.value`;
+    await sql`update legal_entities set country = 'SA' where tenant_id = ${tid} and is_default`;
+    try {
+      const d = (await platform.post("/platform/billing/run/preview", { period: PERIOD })).body.drafts.find((x: any) => x.tenantCode === "TN-0142");
+      expect(d).toMatchObject({ currency: "SAR", cgst: 0, igst: 0, taxLines: [{ label: "VAT 15%" }] });
+      expect(d.total).toBeCloseTo(d.subtotal * 1.15, 2);
+      // a customer in another country is zero rated
+      await sql`update legal_entities set country = 'IN' where tenant_id = ${tid} and is_default`;
+      const x = (await platform.post("/platform/billing/run/preview", { period: PERIOD })).body.drafts.find((x: any) => x.tenantCode === "TN-0142");
+      expect(x).toMatchObject({ total: x.subtotal, taxLines: [{ label: "VAT 0% (export of services)" }] });
+    } finally {
+      await sql`update legal_entities set country = 'IN' where tenant_id = ${tid} and is_default`;
+      if (before.length) await sql`update platform_settings set value = ${sql.json(before[0]!.value)} where key = 'invoicing'`;
+      else await sql`delete from platform_settings where key = 'invoicing'`;
+    }
+  });
+
   it("never bills the customer demo account", async () => {
     await sql`update tenants set settings = settings || '{"demo": true}'::jsonb where code = 'TN-0142'`;
     try {

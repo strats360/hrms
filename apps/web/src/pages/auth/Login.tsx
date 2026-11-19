@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { api, ApiError, setActiveTenant } from "@/lib/api";
@@ -13,14 +13,16 @@ export default function Login() {
   // the Saralix sign in page (control plane) passes the email in the fragment, which never reaches a server
   const [email, setEmail] = useState(() => {
     const m = /(?:^#|&)email=([^&]*)/.exec(window.location.hash);
-    if (!m) return "";
-    history.replaceState(null, "", window.location.pathname + window.location.search);
     try {
-      return decodeURIComponent(m[1]!).slice(0, 254);
+      return m ? decodeURIComponent(m[1]!).slice(0, 254) : "";
     } catch {
       return "";
     }
   });
+  // then tidy the address bar
+  useEffect(() => {
+    if (/(?:^#|&)email=/.test(window.location.hash)) history.replaceState(null, "", window.location.pathname + window.location.search);
+  }, []);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

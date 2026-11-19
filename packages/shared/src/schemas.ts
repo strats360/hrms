@@ -506,6 +506,12 @@ export const planSchema = z.object({
 });
 export const invoicingEntitySchema = z.object({
   legalName: trimmed(120).min(2),
+  /** The billing company's country: decides GST or VAT and the currency (docs/MULTI_COUNTRY.md). */
+  country: z.enum(COUNTRY_CODES).default("IN"),
+  /** Defaults to the country's currency. */
+  currency: z.string().regex(/^[A-Z]{3}$/).optional(),
+  /** VAT or TRN number outside India. In India, GSTIN below. */
+  taxNumber: nullable(trimmed(30)),
   gstin: nullable(gstinSchema),
   pan: nullable(z.string().trim().toUpperCase().regex(/^[A-Z]{5}\d{4}[A-Z]$/, "Enter a valid PAN")),
   address: nullable(trimmed(300)),

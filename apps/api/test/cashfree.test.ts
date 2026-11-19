@@ -124,6 +124,24 @@ describe("Cashfree payments", () => {
   });
 });
 
+describe("currency", () => {
+  it("only takes rupee invoices online", async () => {
+    const kunal = await login("kunal.shah@strats360.com");
+    const sql = postgres(env.DATABASE_URL!, { max: 1, onnotice: () => {} });
+    const [inv] = await sql`select i.id from invoices i join tenants t on t.id = i.tenant_id where t.code = 'TN-0142' and i.status = 'issued' limit 1`;
+    if (!inv) return void (await sql.end());
+    await sql`update invoices set currency = 'AED' where id = ${inv.id}`;
+    try {
+      const r = await kunal.post(`/admin/billing/invoices/${inv.id}/pay`);
+      expect(r.status).toBe(400);
+      expect(r.body.error.message).toMatch(/AED invoices/);
+    } finally {
+      await sql`update invoices set currency = 'INR' where id = ${inv.id}`;
+      await sql.end();
+    }
+  });
+});
+
 describe("webhook timestamp", () => {
   it("rejects a signed webhook whose timestamp isn't a number", async () => {
     const raw = "{}";

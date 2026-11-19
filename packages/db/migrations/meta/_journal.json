@@ -281,6 +281,13 @@
       "when": 1795108768906,
       "tag": "0039_holidays_entity",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1795111124967,
+      "tag": "0040_invoice_currency_tax_lines",
+      "breakpoints": true
     }
   ]
 }
