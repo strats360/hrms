@@ -1,8 +1,8 @@
 import { approvalPolicy } from "../services/approvals";
 import { Hono } from "hono";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
-import { branches, departments, designations, employees, legalEntities, shifts, tenants } from "@hrms/db";
+import { branches, departments, designations, employees, holidays, legalEntities, shifts, tenants } from "@hrms/db";
 import {
   APPROVAL_STEP_LABELS,
   approvalPolicySchema,
@@ -11,6 +11,8 @@ import {
   companySetupSchema,
   COUNTRIES,
   legalEntitySchema,
+  packFor,
+  todayLocal,
   departmentSchema,
   designationSchema,
   shiftSchema,
@@ -131,7 +133,16 @@ orgRoutes.post("/entities", requirePerm("settings", "configure"), v("json", lega
   const tid = c.get("tenant").tenantId;
   const body = c.req.valid("json");
   await listEntities(db, tid); // make sure the default exists first
+  const def = (await listEntities(db, tid)).find((x) => x.isDefault)!;
   const [row] = await db.insert(legalEntities).values({ ...entityValues(c, body), tenantId: tid, code: await nextEntityCode(db, tid), isDefault: false }).returning();
+  // A first entity in another country gets its own holiday calendar: the company's existing
+  // holidays become the default entity's, and the new country's fixed public holidays are added.
+  if (row!.country !== def.country) {
+    await db.update(holidays).set({ entityId: def.id }).where(and(eq(holidays.tenantId, tid), isNull(holidays.entityId)));
+    const y = Number(todayLocal().slice(0, 4));
+    const pack = packFor(row!.country);
+    await db.insert(holidays).values([...pack.publicHolidays(y), ...pack.publicHolidays(y + 1)].map((h) => ({ ...h, tenantId: tid, entityId: row!.id })));
+  }
   await audit(c, { action: "entity.create", entity: "legal_entity", entityId: row!.id, summary: `Added legal entity ${row!.name} (${row!.country})` });
   return c.json(row, 201);
 });

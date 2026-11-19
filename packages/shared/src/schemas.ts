@@ -325,6 +325,8 @@ export const holidaySchema = z.object({
   name: trimmed(120).min(1),
   type: z.enum(["national", "festival", "optional", "company"]).default("festival"),
   branchId: nullable(z.string()),
+  /** Only for this legal entity's employees; empty means everyone. */
+  entityId: nullable(z.string()),
 });
 
 // ---------- onboarding ----------

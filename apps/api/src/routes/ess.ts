@@ -1,6 +1,6 @@
 import { alias } from "drizzle-orm/pg-core";
 import { Hono, type Context } from "hono";
-import { and, asc, desc, eq, gte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, sql, or, isNull } from "drizzle-orm";
 import {
   attendanceCorrections,
   attendanceRecords,
@@ -95,7 +95,9 @@ essRoutes.get("/home", async (c) => {
   const [rec] = await db.select().from(attendanceRecords).where(and(eq(attendanceRecords.tenantId, tid), eq(attendanceRecords.employeeId, eid), eq(attendanceRecords.date, today)));
   const shift = await shiftFor(db, tid, eid, today);
   const balances = await balanceSummary(db, tid, eid, Number(today.slice(0, 4)));
-  const upcoming = await db.select().from(holidays).where(and(eq(holidays.tenantId, tid), gte(holidays.date, today))).orderBy(asc(holidays.date)).limit(4);
+  const [mine] = await db.select({ entityId: employees.entityId }).from(employees).where(eq(employees.id, eid));
+  const ownEntity = (await entityOf(db, tid, mine?.entityId)).id;
+  const upcoming = await db.select().from(holidays).where(and(eq(holidays.tenantId, tid), gte(holidays.date, today), or(isNull(holidays.entityId), eq(holidays.entityId, ownEntity)))).orderBy(asc(holidays.date)).limit(4);
   const requests = await db
     .select({ r: leaveRequests, type: leaveTypes.name })
     .from(leaveRequests)
@@ -347,11 +349,14 @@ essRoutes.post("/leave/:id/cancel", async (c) => {
 
 essRoutes.get("/holidays", async (c) => {
   const year = Number(c.req.query("year") ?? todayLocal().slice(0, 4));
-  const rows = await c
-    .get("db")
+  const { tid, eid } = me(c);
+  const db = c.get("db");
+  const [e] = await db.select({ entityId: employees.entityId }).from(employees).where(eq(employees.id, eid));
+  const own = (await entityOf(db, tid, e?.entityId)).id;
+  const rows = await db
     .select()
     .from(holidays)
-    .where(and(eq(holidays.tenantId, me(c).tid), sql`extract(year from ${holidays.date}) = ${year}`))
+    .where(and(eq(holidays.tenantId, tid), sql`extract(year from ${holidays.date}) = ${year}`, or(isNull(holidays.entityId), eq(holidays.entityId, own))))
     .orderBy(asc(holidays.date));
   return c.json(rows);
 });

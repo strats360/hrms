@@ -1,3 +1,4 @@
+import { defaultEntity } from "./entities";
 import { gte, inArray, lte } from "drizzle-orm";
 import { attendanceRecords, holidays, leaveRequests, shiftRoster } from "@hrms/db";
 import { dateRange, todayLocal, weekday, type AttendanceStatus, zonedDateTime } from "@hrms/shared";
@@ -65,6 +66,8 @@ export interface CalendarEmployee {
   dateOfJoining: string;
   lastWorkingDay: string | null;
   branchId: string | null;
+  /** Legal entity; looked up when not given. Null means the default entity. */
+  entityId?: string | null;
 }
 
 export async function buildCalendar(db: Database, tenantId: string, emps: CalendarEmployee[], from: string, to: string) {
@@ -85,13 +88,19 @@ export async function buildCalendar(db: Database, tenantId: string, emps: Calend
           .where(and(eq(leaveRequests.tenantId, tenantId), eq(leaveRequests.status, "approved"), inArray(leaveRequests.employeeId, ids), lte(leaveRequests.startDate, to), gte(leaveRequests.endDate, from)))
       : Promise.resolve([]),
     db
-      .select({ date: holidays.date, branchId: holidays.branchId })
+      .select({ date: holidays.date, branchId: holidays.branchId, entityId: holidays.entityId })
       .from(holidays)
       .where(and(eq(holidays.tenantId, tenantId), gte(holidays.date, from), lte(holidays.date, to))),
     ids.length
       ? db.select().from(shiftRoster).where(and(eq(shiftRoster.tenantId, tenantId), inArray(shiftRoster.employeeId, ids), gte(shiftRoster.date, from), lte(shiftRoster.date, to)))
       : Promise.resolve([] as (typeof shiftRoster.$inferSelect)[]),
   ]);
+  // each employee follows their own entity's holiday calendar
+  const entityHolidays = hol.some((h) => h.entityId);
+  const defaultEntityId = entityHolidays ? (await defaultEntity(db, tenantId)).id : null;
+  const missing = entityHolidays ? emps.filter((e) => e.entityId === undefined).map((e) => e.id) : [];
+  const looked = missing.length ? new Map((await db.select({ id: employees.id, entityId: employees.entityId }).from(employees).where(inArray(employees.id, missing))).map((r) => [r.id, r.entityId])) : new Map<string, string | null>();
+  const entityOfEmp = (e: CalendarEmployee) => (e.entityId !== undefined ? e.entityId : looked.get(e.id)) ?? defaultEntityId;
   const rosterMap = new Map(roster.map((r) => [`${r.employeeId}|${r.date}`, r]));
   const recMap = new Map(records.map((r) => [`${r.employeeId}|${r.date}`, r]));
   const leaveDays = new Map<string, boolean>();
@@ -103,7 +112,7 @@ export async function buildCalendar(db: Database, tenantId: string, emps: Calend
     const rec = recMap.get(`${e.id}|${d}`);
     if (rec) return rec.status as AttendanceStatus;
     const offs = (e.shiftId && shiftMap.get(e.shiftId)?.weeklyOffs) || def?.weeklyOffs || [0, 6];
-    const isHoliday = hol.some((h) => h.date === d && (!h.branchId || h.branchId === e.branchId));
+    const isHoliday = hol.some((h) => h.date === d && (!h.branchId || h.branchId === e.branchId) && (!h.entityId || h.entityId === entityOfEmp(e)));
     if (isHoliday) return "holiday";
     // the roster overrides the usual weekly offs for that day
     const r = rosterMap.get(`${e.id}|${d}`);

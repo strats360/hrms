@@ -1,3 +1,4 @@
+import { packFor } from "@hrms/shared";
 import { sql } from "drizzle-orm";
 import { holidays, leaveTypes, legalEntities, memberships, roles, shifts, tenants, type Database } from "@hrms/db";
 import { DEFAULT_ROLES } from "@hrms/shared";
@@ -10,11 +11,7 @@ export const DEFAULT_LEAVE_TYPES = [
   { code: "LOP", name: "Unpaid leave", isPaid: false, annualQuota: 0, accrual: "none", carryForwardMax: 0, encashable: false },
 ] as const;
 
-const NATIONAL_HOLIDAYS = (y: number) => [
-  { date: `${y}-01-26`, name: "Republic Day", type: "national" },
-  { date: `${y}-08-15`, name: "Independence Day", type: "national" },
-  { date: `${y}-10-02`, name: "Gandhi Jayanti", type: "national" },
-];
+const NATIONAL_HOLIDAYS = (y: number) => packFor("IN").publicHolidays(y);
 
 async function nextTenantCode(db: Database) {
   const [r] = await db.select({ n: sql<number>`count(*)::int` }).from(tenants);

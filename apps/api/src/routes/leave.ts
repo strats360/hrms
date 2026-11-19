@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import { sendNotification } from "../services/notifications";
 import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
-import { departments, employees, holidays, leaveBalances, leaveRequests, leaveTypes } from "@hrms/db";
+import { departments, employees, holidays, leaveBalances, leaveRequests, leaveTypes, legalEntities } from "@hrms/db";
 import {
   can,
   waitingLabel,
@@ -256,6 +256,10 @@ leaveRoutes.get("/holidays", async (c) => {
 });
 leaveRoutes.post("/holidays", requirePerm("leave", "configure"), v("json", holidaySchema), async (c) => {
   const b = c.req.valid("json");
+  if (b.entityId) {
+    const [ent] = await c.get("db").select({ id: legalEntities.id }).from(legalEntities).where(and(eq(legalEntities.id, b.entityId), eq(legalEntities.tenantId, c.get("tenant").tenantId)));
+    if (!ent) throw badRequest("Legal entity not found");
+  }
   const [row] = await c.get("db").insert(holidays).values({ ...b, tenantId: c.get("tenant").tenantId }).returning();
   await audit(c, { action: "holiday.create", entity: "holiday", entityId: row!.id, summary: `Added holiday ${b.name} on ${fmtDate(b.date)}` });
   return c.json(row, 201);

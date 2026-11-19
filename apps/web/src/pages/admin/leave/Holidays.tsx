@@ -34,6 +34,9 @@ export default function Holidays() {
   const editable = can("leave", "configure");
   const query = useQuery({ queryKey: ["leave", "holidays", String(year)], queryFn: () => api.get<Holiday[]>(`/admin/leave/holidays?year=${year}`) });
   const branchName = (id: string | null) => (id ? (lookups.data?.branches.find((b) => b.id === id)?.name ?? "One branch") : "All branches");
+  const entities = lookups.data?.entities ?? [];
+  // with several legal entities, say whose calendar each holiday is on
+  const appliesTo = (r: { branchId: string | null; entityId?: string | null }) => [entities.length > 1 ? (r.entityId ? (entities.find((x) => x.id === r.entityId)?.name ?? "One entity") : "Every entity") : null, branchName(r.branchId)].filter(Boolean).join(" · ");
   const del = useMutation({
     mutationFn: (id: string) => api.del(`/admin/leave/holidays/${id}`),
     onSuccess: () => {
@@ -49,7 +52,7 @@ export default function Holidays() {
       { id: "day", header: "Day", accessorFn: (r) => weekdayOf(r.date), cell: ({ row }) => DAY_SHORT[weekdayOf(row.original.date)] },
       { id: "name", header: "Holiday", accessorFn: (r) => r.name },
       { id: "type", header: "Type", accessorFn: (r) => r.type, cell: ({ getValue }) => <Tag tone={TYPE[getValue() as string]?.tone ?? "neutral"}>{TYPE[getValue() as string]?.label ?? getValue()}</Tag> },
-      { id: "branch", header: "Applies to", accessorFn: (r) => branchName(r.branchId), cell: ({ getValue }) => <span className="text-muted">{getValue() as string}</span> },
+      { id: "branch", header: "Applies to", accessorFn: (r) => appliesTo(r), cell: ({ getValue }) => <span className="text-muted">{getValue() as string}</span> },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [lookups.data],
@@ -116,7 +119,7 @@ export default function Holidays() {
 function AddHolidayDialog({ year, onClose }: { year: number; onClose: () => void }) {
   const qc = useQueryClient();
   const lookups = useLookups();
-  const [f, setF] = useState({ date: `${year}-01-01` > todayLocal() ? `${year}-01-01` : todayLocal(), name: "", type: "festival", branchId: "" });
+  const [f, setF] = useState({ date: `${year}-01-01` > todayLocal() ? `${year}-01-01` : todayLocal(), name: "", type: "festival", branchId: "", entityId: "" });
   const [err, setErr] = useState<string | null>(null);
   const m = useMutation({
     mutationFn: (body: unknown) => api.post("/admin/leave/holidays", body),
@@ -130,7 +133,7 @@ function AddHolidayDialog({ year, onClose }: { year: number; onClose: () => void
     onError: (e) => setErr(errorMessage(e)),
   });
   const submit = () => {
-    const p = holidaySchema.safeParse({ ...f, branchId: f.branchId || null });
+    const p = holidaySchema.safeParse({ ...f, branchId: f.branchId || null, entityId: f.entityId || null });
     if (!p.success) return setErr(p.error.issues[0]?.message ?? "Check the form");
     setErr(null);
     m.mutate(p.data);
@@ -165,6 +168,18 @@ function AddHolidayDialog({ year, onClose }: { year: number; onClose: () => void
             ))}
           </Select>
         </Field>
+        {(lookups.data?.entities?.length ?? 0) > 1 ? (
+          <Field label="Legal entity" span hint="Each country keeps its own holiday calendar.">
+            <Select value={f.entityId} onChange={(e) => setF((s) => ({ ...s, entityId: e.target.value }))}>
+              <option value="">Every entity</option>
+              {lookups.data!.entities!.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        ) : null}
         <Field label="Applies to" span>
           <Select value={f.branchId} onChange={(e) => setF((s) => ({ ...s, branchId: e.target.value }))}>
             <option value="">All branches</option>

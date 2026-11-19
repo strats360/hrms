@@ -91,6 +91,8 @@ export const holidays = pgTable(
     name: text("name").notNull(),
     type: text("type").notNull().default("festival"),
     branchId: text("branch_id"), // null = all branches
+    /** Legal entity the holiday is for; null = every entity. Lets each country keep its own calendar. */
+    entityId: text("entity_id"),
     ...timestamps,
   },
   (t) => [index("holidays_tenant_date_idx").on(t.tenantId, t.date)],

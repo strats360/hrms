@@ -20,6 +20,8 @@ export interface CountryPack {
   };
   /** Final settlement when someone leaves: end of service pay, leave encashment, notice recovery. */
   settlement(input: FnfInput): FnfResult;
+  /** Public holidays with fixed dates, suggested for a new entity's calendar. Moving holidays (Eid, Diwali) are added by HR. */
+  publicHolidays(year: number): { date: string; name: string; type: "national" }[];
   /** Registration numbers the legal entity form asks for. */
   entityRegistrations: { key: string; label: string }[];
   /** Categories this pack reads from the statutory rule table. */

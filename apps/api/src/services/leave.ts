@@ -1,3 +1,4 @@
+import { defaultEntity } from "./entities";
 import { ApiError, badRequest, notFound } from "../lib/errors";
 import { countLeaveDays } from "@hrms/shared";
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
@@ -54,12 +55,14 @@ export async function pendingDays(db: Tx, tenantId: string, employeeId: string, 
   return Number(r?.d ?? 0);
 }
 
-export async function holidaySet(db: Tx, tenantId: string, from: string, to: string, branchId?: string | null) {
+/** Holiday dates for an employee: their branch's and their legal entity's (null entity = the default). */
+export async function holidaySet(db: Tx, tenantId: string, from: string, to: string, branchId?: string | null, entityId?: string | null) {
   const rows = await db
-    .select({ date: holidays.date, branchId: holidays.branchId })
+    .select({ date: holidays.date, branchId: holidays.branchId, entityId: holidays.entityId })
     .from(holidays)
     .where(and(eq(holidays.tenantId, tenantId), gte(holidays.date, from), lte(holidays.date, to)));
-  return new Set(rows.filter((h) => !h.branchId || h.branchId === branchId).map((h) => h.date));
+  const own = rows.some((h) => h.entityId) ? (entityId ?? (await defaultEntity(db as Database, tenantId)).id) : null;
+  return new Set(rows.filter((h) => (!h.branchId || h.branchId === branchId) && (!h.entityId || h.entityId === own)).map((h) => h.date));
 }
 
 export async function tenantWeeklyOffs(db: Tx, tenantId: string): Promise<number[]> {
@@ -147,7 +150,7 @@ export async function applyLeave(
   if (input.startDate < emp.dateOfJoining) throw badRequest("Leave can't start before the date of joining");
 
   const offs = await tenantWeeklyOffs(db, tenantId);
-  const hol = await holidaySet(db, tenantId, input.startDate, input.endDate, emp.branchId);
+  const hol = await holidaySet(db, tenantId, input.startDate, input.endDate, emp.branchId, emp.entityId);
   const days = countLeaveDays(input.startDate, input.endDate, { halfDay: input.halfDay, weeklyOffs: offs, holidays: hol });
   if (days <= 0) throw badRequest("Those dates are all weekly offs or holidays");
 

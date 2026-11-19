@@ -1,0 +1,1 @@
+ALTER TABLE "holidays" ADD COLUMN "entity_id" text;

@@ -25,7 +25,7 @@ async function compOffType(db: Database, tenantId: string) {
  */
 export async function eligibility(db: Database, tenantId: string, emp: typeof employees.$inferSelect, date: string) {
   const shift = await shiftFor(db, tenantId, emp.id, date);
-  const holiday = (await holidaySet(db, tenantId, date, date, emp.branchId)).has(date);
+  const holiday = (await holidaySet(db, tenantId, date, date, emp.branchId, emp.entityId)).has(date);
   const off = isDayOff(shift, date);
   if (!holiday && !off) return { ok: false as const, reason: "That was a working day. Comp off is for work on a weekly off or holiday." };
   const [rec] = await db.select().from(attendanceRecords).where(and(eq(attendanceRecords.tenantId, tenantId), eq(attendanceRecords.employeeId, emp.id), eq(attendanceRecords.date, date)));

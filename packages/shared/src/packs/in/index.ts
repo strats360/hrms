@@ -14,6 +14,11 @@ export const indiaPack: CountryPack = {
     amountInWords: (n) => rupeesInWords(n),
   },
   settlement: (i) => computeSettlement(i),
+  publicHolidays: (y) => [
+    { date: `${y}-01-26`, name: "Republic Day", type: "national" },
+    { date: `${y}-08-15`, name: "Independence Day", type: "national" },
+    { date: `${y}-10-02`, name: "Gandhi Jayanti", type: "national" },
+  ],
   entityRegistrations: [
     { key: "gstin", label: "GSTIN" },
     { key: "pan", label: "PAN" },

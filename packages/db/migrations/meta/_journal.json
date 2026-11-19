@@ -274,6 +274,13 @@
       "when": 1795108289628,
       "tag": "0038_employee_identities",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1795108768906,
+      "tag": "0039_holidays_entity",
+      "breakpoints": true
     }
   ]
 }

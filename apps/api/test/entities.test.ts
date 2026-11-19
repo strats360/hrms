@@ -93,3 +93,28 @@ describe("statutory rules per country", () => {
     }
   });
 });
+
+describe("holiday calendars per entity", () => {
+  it("shows an entity's holidays only to its own employees", async () => {
+    const priya = await login("priya.vaghela@strats360.com");
+    const nisha = await login("nisha.trivedi@strats360.com");
+    const ent = await kunal.post("/admin/org/entities", { name: "Strats360 Labs Pvt Ltd", country: "IN" });
+    expect(ent.status).toBe(201);
+    const [{ id: priyaId }] = (await sql`select id from employees where work_email = 'priya.vaghela@strats360.com'`) as any;
+    const year = new Date().getFullYear() + 1;
+    const h = await nisha.post("/admin/leave/holidays", { date: `${year}-03-17`, name: "Labs founding day", type: "company", entityId: ent.body.id });
+    expect(h.status).toBe(201);
+    expect((await nisha.post("/admin/leave/holidays", { date: `${year}-03-18`, name: "Nope", entityId: crypto.randomUUID() })).status).toBe(400);
+    try {
+      const names = async () => (await priya.get(`/ess/holidays?year=${year}`)).body.map((x: any) => x.name);
+      expect(await names()).not.toContain("Labs founding day"); // Priya is in the default entity
+      expect(await names()).toContain("Republic Day"); // company wide holidays still show
+      await sql`update employees set entity_id = ${ent.body.id} where id = ${priyaId}`;
+      expect(await names()).toContain("Labs founding day");
+    } finally {
+      await sql`update employees set entity_id = null where id = ${priyaId}`;
+      await sql`delete from holidays where id = ${h.body.id}`;
+      await sql`delete from legal_entities where id = ${ent.body.id}`;
+    }
+  });
+});
