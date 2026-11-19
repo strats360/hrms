@@ -34,7 +34,7 @@ export function InstallCard() {
       <div className="flex items-center gap-3 pr-6">
         <img src="/icons/icon-192.png" alt="" className="h-10 w-10 flex-none rounded-[10px]" />
         <div className="min-w-0">
-          <div className="text-[14px] font-semibold">Install Strats360 on your phone</div>
+          <div className="text-[14px] font-semibold">Install Saralix on your phone</div>
           <div className="text-[12.5px] opacity-85">Open it from your home screen, punch in faster, and check in even when the network drops.</div>
         </div>
       </div>

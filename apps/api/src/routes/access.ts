@@ -105,12 +105,12 @@ async function sendAdminInvite(c: Context<AppEnv>, inv: { email: string; name: s
   const [t] = await c.get("db").select({ name: tenants.name }).from(tenants).where(eq(tenants.id, c.get("tenant").tenantId));
   const url = `${c.env.APP_URL}/invite/admin/${inv.token}`;
   const { html, text } = layout({
-    company: t?.name ?? "Strats360 People",
+    company: t?.name ?? "Saralix",
     heading: `You're invited to ${t?.name ?? "the admin console"}`,
     paragraphs: [`Hi ${inv.name},`, `${c.get("session")!.name} invited you to the admin console as ${inv.roleName}.`, "The link works for 7 days."],
     cta: { label: "Accept invite", url },
   });
-  await c.get("mailer").send({ to: inv.email, subject: `Invitation to ${t?.name ?? "Strats360 People"}`, html, text });
+  await c.get("mailer").send({ to: inv.email, subject: `Invitation to ${t?.name ?? "Saralix"}`, html, text });
 }
 
 accessRoutes.post("/members/invite", requirePerm("users", "edit"), v("json", inviteAdminSchema), async (c) => {

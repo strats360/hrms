@@ -266,7 +266,7 @@ tdsRoutes.post("/declarations/remind", requirePerm("tds", "edit"), v("json", fyQ
     await Promise.all(
       pending.slice(i, i + 10).map(async (e) => {
         const { html, text } = layout({
-          company: t?.name ?? "Strats360 People",
+          company: t?.name ?? "Saralix",
           heading: `Submit your tax declaration for FY ${fy}`,
           paragraphs: [`Hi ${e.firstName},`, "Choose your tax regime and declare your investments (80C, health insurance, rent and so on) so we deduct the right TDS from your salary.", "If you don't submit, TDS is worked out under the new regime with no deductions."],
           cta: { label: "Open tax declaration", url: `${c.env.APP_URL}/me/tax` },

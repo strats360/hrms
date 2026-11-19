@@ -58,7 +58,7 @@ probationRoutes.post("/:employeeId/review", requirePerm("employees", "view"), v(
 async function tell(c: Context<AppEnv>, e: typeof employees.$inferSelect, subject: string, paragraphs: string[]) {
   try {
     const [t] = await c.get("db").select({ name: tenants.name }).from(tenants).where(eq(tenants.id, tid(c)));
-    const { html, text } = layout({ company: t?.name ?? "Strats360 People", heading: subject, paragraphs: [`Hi ${e.firstName},`, ...paragraphs], cta: { label: "Open self-service", url: `${c.env.APP_URL}/me/profile` } });
+    const { html, text } = layout({ company: t?.name ?? "Saralix", heading: subject, paragraphs: [`Hi ${e.firstName},`, ...paragraphs], cta: { label: "Open self-service", url: `${c.env.APP_URL}/me/profile` } });
     await sendNotification(c, "probation_outcome", { to: e.workEmail, subject, html, text });
   } catch (err) {
     console.error("probation email failed", err);

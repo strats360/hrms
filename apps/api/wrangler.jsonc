@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "strats360-hrms",
+  "name": "saralix",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
@@ -17,7 +17,7 @@
   "triggers": { "crons": ["30 4 * * *", "0 * * * *"] },
   "vars": {
     "APP_URL": "https://hrms.example.com",
-    "EMAIL_FROM": "Strats360 People <people@example.com>",
+    "EMAIL_FROM": "Saralix <people@example.com>",
     "ENVIRONMENT": "production"
   },
   // Neon Postgres through Hyperdrive. Create with:

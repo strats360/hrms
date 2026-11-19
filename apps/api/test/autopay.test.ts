@@ -64,7 +64,7 @@ async function hook(type: string, data: Record<string, unknown>) {
 
 beforeAll(async () => {
   await sql`update tenants set contact_phone = '+91 98250 12345' where code = 'TN-0142'`;
-  [kunal, platform] = await Promise.all([login("kunal.shah@strats360.com"), login("platform@strats360people.in")]);
+  [kunal, platform] = await Promise.all([login("kunal.shah@strats360.com"), login("platform@saralix.com")]);
 });
 afterAll(async () => {
   await sql.end();

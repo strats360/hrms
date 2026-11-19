@@ -79,7 +79,7 @@ export default function Login() {
         <form onSubmit={verify} className="card elev-md flex w-full max-w-[420px] flex-col !gap-[18px] !p-9" noValidate>
           <div>
             <h2 className="!mb-1.5 text-[30px]">{useBackup ? "Enter a backup code" : "Enter your code"}</h2>
-            <div className="text-muted text-[14px]">{useBackup ? "Use one of the backup codes you saved when you set up two-factor sign-in. Each works once." : "Open your authenticator app and enter the 6-digit code for Strats360 People."}</div>
+            <div className="text-muted text-[14px]">{useBackup ? "Use one of the backup codes you saved when you set up two-factor sign-in. Each works once." : "Open your authenticator app and enter the 6-digit code for Saralix."}</div>
           </div>
           {error ? <Notice tone="bad">{error}</Notice> : null}
           <Field label={useBackup ? "Backup code" : "6-digit code"} htmlFor="code">

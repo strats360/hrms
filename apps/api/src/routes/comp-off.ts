@@ -130,7 +130,7 @@ essCompOffRoutes.post("/comp-off/:id/cancel", async (c) => {
 
 async function mail(c: Context<AppEnv>, key: NotificationKey, to: typeof employees.$inferSelect, subject: string, paragraphs: string[], path = "/me/leave") {
   try {
-    const { html, text } = layout({ company: "Strats360 People", heading: subject, paragraphs, cta: { label: "Open", url: `${c.env.APP_URL}${path}` } });
+    const { html, text } = layout({ company: "Saralix", heading: subject, paragraphs, cta: { label: "Open", url: `${c.env.APP_URL}${path}` } });
     await sendNotification(c, key, { to: to.workEmail, subject, html, text });
   } catch (err) {
     console.error("comp off email failed", err);

@@ -61,7 +61,7 @@ async function mail(c: Context<AppEnv>, key: "helpdesk_updates" | "helpdesk_queu
     const ok = await allowedRecipients(c.get("db"), tid(c), key, to);
     if (!ok.size) return;
     const [t] = await c.get("db").select({ name: tenants.name }).from(tenants).where(eq(tenants.id, tid(c)));
-    const { html, text } = layout({ company: t?.name ?? "Strats360 People", heading: subject, paragraphs, cta: { label: "Open the ticket", url } });
+    const { html, text } = layout({ company: t?.name ?? "Saralix", heading: subject, paragraphs, cta: { label: "Open the ticket", url } });
     for (const addr of ok) await c.get("mailer").send({ to: addr, subject, html, text });
   } catch (e) {
     console.error("helpdesk email failed", e);

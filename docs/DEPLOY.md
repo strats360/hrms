@@ -81,8 +81,8 @@ On each environment, add:
 | Name | Example | Default |
 | --- | --- | --- |
 | `CUSTOM_DOMAIN` | `hrms.strats360.com` (production), `hrms-staging.strats360.com` | the `workers.dev` address |
-| `EMAIL_FROM` | `Strats360 People <people@strats360.com>` | none (email off) |
-| `WORKER_NAME` | `strats360-hrms` | `strats360-hrms`, or `strats360-hrms-staging` |
+| `EMAIL_FROM` | `Saralix <people@strats360.com>` | none (email off) |
+| `WORKER_NAME` | `saralix` | `saralix`, or `saralix-staging` |
 | `CASHFREE_ENV` | `production` on production, `sandbox` on staging | `sandbox` |
 
 ## 6. Deploy

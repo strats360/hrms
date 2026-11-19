@@ -12,7 +12,7 @@ import { layout, type Mailer } from "./email";
  * Public sign-up is disabled: logins are created only by company signup,
  * employee onboarding invites and admin invites (see services/users.ts).
  */
-export const AUTH_APP_NAME = "Strats360 People";
+export const AUTH_APP_NAME = "Saralix";
 
 /** Tell the user when two-factor sign-in is turned on or off for their account. */
 export async function sendTwoFactorNotice(mailer: Mailer, user: { name: string; email: string }, on: boolean, by?: string) {
@@ -54,7 +54,7 @@ export function createAuth(env: Env, db: Database, mailer: Mailer) {
       resetPasswordTokenExpiresIn: 60 * 60,
       sendResetPassword: async ({ user, url }) => {
         const { html, text } = layout({
-          company: "Strats360 People",
+          company: "Saralix",
           heading: "Reset your password",
           paragraphs: [
             `Hi ${user.name},`,

@@ -54,7 +54,7 @@ async function mail(c: Context<AppEnv>, loan: Loan, subject: string, paragraphs:
   try {
     const [e] = await c.get("db").select({ email: employees.workEmail, first: employees.firstName }).from(employees).where(eq(employees.id, loan.employeeId));
     if (!e) return;
-    const { html, text } = layout({ company: "Strats360 People", heading: subject, paragraphs: [`Hi ${e.first},`, ...paragraphs], cta: { label: "Open self-service", url: `${c.env.APP_URL}/me/payslips?view=loans` } });
+    const { html, text } = layout({ company: "Saralix", heading: subject, paragraphs: [`Hi ${e.first},`, ...paragraphs], cta: { label: "Open self-service", url: `${c.env.APP_URL}/me/payslips?view=loans` } });
     await sendNotification(c, "loan_updates", { to: e.email, subject, html, text });
   } catch (err) {
     console.error("loan email failed", err);

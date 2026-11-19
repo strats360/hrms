@@ -139,7 +139,7 @@ function Shell({ children, company, progress, onSignOut }: { children: React.Rea
       <div className="flex w-[min(720px,100%)] flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <BrandMark size={30} name={company ?? "Strats360 People"} />
+            <BrandMark size={30} name={company ?? "Saralix"} />
             {company ? <span className="text-muted hidden text-[13px] sm:inline">· Joining details</span> : null}
           </div>
           <div className="flex items-center gap-2">

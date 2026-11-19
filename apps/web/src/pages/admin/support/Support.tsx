@@ -47,7 +47,7 @@ export default function Support() {
     <>
       <PageHeader
         title="Product support"
-        sub="Contact the Strats360 People team about the software, billing or your account. Questions from your employees go to Helpdesk instead. P1 is answered within 1 hour, P2 within 4 hours, P3 within 1 business day."
+        sub="Contact the Saralix team about the software, billing or your account. Questions from your employees go to Helpdesk instead. P1 is answered within 1 hour, P2 within 4 hours, P3 within 1 business day."
         actions={
           !readOnly ? (
             <Button variant="primary" onClick={() => setCreating(true)}>
@@ -97,7 +97,7 @@ function NewTicketDialog({ open, onClose, onCreated }: { open: boolean; onClose:
     <Dialog
       open={open}
       onOpenChange={(v) => !v && onClose()}
-      title="New ticket to Strats360 People"
+      title="New ticket to Saralix"
       width={600}
       footer={
         <>

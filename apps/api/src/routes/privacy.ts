@@ -17,7 +17,7 @@ const zipResponse = (c: Context<AppEnv>, zip: Uint8Array, filename: string) =>
 
 async function companyName(c: Context<AppEnv>) {
   const [t] = await c.get("db").select({ name: tenants.name }).from(tenants).where(eq(tenants.id, tid(c)));
-  return t?.name ?? "Strats360 People";
+  return t?.name ?? "Saralix";
 }
 
 async function blockerFor(c: Context<AppEnv>, e: typeof employees.$inferSelect) {

@@ -79,7 +79,7 @@ export async function createSubscription(
     {
       subscription_id: s.subscriptionId,
       customer_details: { customer_name: s.customer.name.slice(0, 100), customer_email: s.customer.email, customer_phone: s.customer.phone },
-      plan_details: { plan_name: `Strats360 People · up to ₹${s.maxAmount.toLocaleString("en-IN")}`.slice(0, 40), plan_type: "ON_DEMAND", plan_currency: "INR", plan_max_amount: s.maxAmount, plan_note: s.note.slice(0, 100) },
+      plan_details: { plan_name: `Saralix · up to ₹${s.maxAmount.toLocaleString("en-IN")}`.slice(0, 40), plan_type: "ON_DEMAND", plan_currency: "INR", plan_max_amount: s.maxAmount, plan_note: s.note.slice(0, 100) },
       authorization_details: { authorization_amount: 1, authorization_amount_refund: true, payment_methods: s.method === "upi" ? ["upi"] : ["enach"] },
       subscription_meta: { return_url: s.returnUrl, notification_channel: ["EMAIL", "SMS"] },
       subscription_expiry_time: expiry,

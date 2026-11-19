@@ -226,7 +226,7 @@ export default function Billing() {
             <Row label="Admin users" value={d.plan.includedAdmins ? `${d.admins} of ${d.plan.includedAdmins} included` : d.admins} />
           </div>
           {d.plan.features.length ? <div className="text-muted mt-1 text-[12.5px]">Your plan includes: {d.plan.features.join(" · ")}</div> : null}
-          <div className="text-muted text-[12.5px]">To change plan, contact billing@strats360people.in.</div>
+          <div className="text-muted text-[12.5px]">To change plan, contact billing@saralix.com.</div>
         </Card>
       </div>
       <InvoiceDialog path={view ? `/admin/billing/invoices/${view}` : null} onClose={() => setView(null)} onPay={readOnly ? undefined : (id) => (setView(null), pay(id))} />

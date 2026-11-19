@@ -38,7 +38,7 @@ beforeAll(async () => {
   const sql = postgres(env.DATABASE_URL!, { max: 1, onnotice: () => {} });
   await sql`update tenants set contact_phone = '+91 98250 12345' where code = 'TN-0142'`;
   await sql.end();
-  [kunal, platform] = await Promise.all([login("kunal.shah@strats360.com"), login("platform@strats360people.in")]);
+  [kunal, platform] = await Promise.all([login("kunal.shah@strats360.com"), login("platform@saralix.com")]);
 });
 afterAll(() => {
   vi.unstubAllGlobals();

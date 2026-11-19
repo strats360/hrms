@@ -13,7 +13,7 @@ function form(data: Record<string, unknown>, files: File[] = []) {
 }
 
 beforeAll(async () => {
-  [platform, kunal, priya] = await Promise.all([login("platform@strats360people.in"), login("kunal.shah@strats360.com"), login("priya.vaghela@strats360.com")]);
+  [platform, kunal, priya] = await Promise.all([login("platform@saralix.com"), login("kunal.shah@strats360.com"), login("priya.vaghela@strats360.com")]);
   tenantId = (await platform.get("/platform/tenants?q=TN-0142")).body[0].id;
 });
 
@@ -24,7 +24,7 @@ describe("Support tickets", () => {
     expect(r.status).toBe(201);
     expect(r.body.number).toBeGreaterThan(4812);
     ticketId = r.body.id;
-    expect(lastEmailTo("platform@strats360people.in")?.subject).toMatch(/^\[P1\] #\d+ Payslips/);
+    expect(lastEmailTo("platform@saralix.com")?.subject).toMatch(/^\[P1\] #\d+ Payslips/);
     const mine = (await kunal.get("/admin/support")).body;
     expect(mine.find((t: any) => t.id === ticketId).sla).toMatch(/1 hour/);
     expect((await priya.get("/admin/support")).status).toBe(403); // self-service only

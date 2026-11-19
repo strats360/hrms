@@ -10,7 +10,7 @@ beforeAll(async () => {
     login("kunal.shah@strats360.com"),
     login("priya.vaghela@strats360.com"),
     login("hardik.mehta@strats360.com"),
-    login("platform@strats360people.in"),
+    login("platform@saralix.com"),
   ]);
 });
 

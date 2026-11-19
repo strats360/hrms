@@ -6,7 +6,7 @@ let platform: Client, kunal: Client;
 const monthStart = todayIST().slice(0, 7) + "-01";
 
 beforeAll(async () => {
-  [platform, kunal] = await Promise.all([login("platform@strats360people.in"), login("kunal.shah@strats360.com")]);
+  [platform, kunal] = await Promise.all([login("platform@saralix.com"), login("kunal.shah@strats360.com")]);
 });
 
 describe("Statutory master", () => {

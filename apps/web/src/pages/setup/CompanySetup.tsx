@@ -118,7 +118,7 @@ export default function CompanySetup() {
           onFinish={async () => {
             await qc.invalidateQueries({ queryKey: ["me"] });
             await qc.invalidateQueries({ queryKey: ["tenant"] });
-            toast.success("You're live. Welcome to Strats360 People.");
+            toast.success("You're live. Welcome to Saralix.");
             nav("/", { replace: true });
           }}
         />

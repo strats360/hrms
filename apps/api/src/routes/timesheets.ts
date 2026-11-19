@@ -48,7 +48,7 @@ async function mailTo(c: Context<AppEnv>, key: "timesheet_decision" | "timesheet
   try {
     if (!(await allowedRecipients(c.get("db"), tid(c), key, [to])).has(to)) return;
     const [t] = await c.get("db").select({ name: tenants.name }).from(tenants).where(eq(tenants.id, tid(c)));
-    const { html, text } = layout({ company: t?.name ?? "Strats360 People", heading: subject, paragraphs, cta: { label: "Open timesheets", url } });
+    const { html, text } = layout({ company: t?.name ?? "Saralix", heading: subject, paragraphs, cta: { label: "Open timesheets", url } });
     await c.get("mailer").send({ to, subject, html, text });
   } catch (e) {
     console.error("timesheet email failed", e);
@@ -256,7 +256,7 @@ timesheetRoutes.post("/approve-all", requirePerm("attendance", "approve"), v("js
       .filter((p) => allowed.has(p.email))
       .map((p) => {
         const subject = `Timesheet approved: week of ${fmtDate(week)}`;
-        const { html, text } = layout({ company: t?.name ?? "Strats360 People", heading: subject, paragraphs: [`Hi ${p.first},`, `${by} approved your timesheet for the week of ${fmtDate(week)} (${hoursLabel(mins.get(p.id) ?? 0)}).`], cta: { label: "Open timesheets", url: `${c.env.APP_URL}/me/timesheets?week=${week}` } });
+        const { html, text } = layout({ company: t?.name ?? "Saralix", heading: subject, paragraphs: [`Hi ${p.first},`, `${by} approved your timesheet for the week of ${fmtDate(week)} (${hoursLabel(mins.get(p.id) ?? 0)}).`], cta: { label: "Open timesheets", url: `${c.env.APP_URL}/me/timesheets?week=${week}` } });
         return c.get("mailer").send({ to: p.email, subject, html, text });
       }),
   );

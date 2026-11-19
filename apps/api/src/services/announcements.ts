@@ -43,7 +43,7 @@ export async function emailAnnouncement(db: Database, env: Env, a: Announcement)
     await Promise.all(
       queue.slice(i, i + 10).map(async (p) => {
         try {
-          const { html, text } = layout({ company: t?.name ?? "Strats360 People", heading: a.title, paragraphs: [`Hi ${p.first},`, ...excerpt(a.body, 1200).split(/\n{2,}/), ...(a.requireAck ? ["Please read it in self-service and confirm you have."] : [])], cta: { label: a.requireAck ? "Read and confirm" : "Read it in self-service", url: `${env.APP_URL}/me/announcements/${a.id}` } });
+          const { html, text } = layout({ company: t?.name ?? "Saralix", heading: a.title, paragraphs: [`Hi ${p.first},`, ...excerpt(a.body, 1200).split(/\n{2,}/), ...(a.requireAck ? ["Please read it in self-service and confirm you have."] : [])], cta: { label: a.requireAck ? "Read and confirm" : "Read it in self-service", url: `${env.APP_URL}/me/announcements/${a.id}` } });
           await mailer.send({ to: p.email, subject: `${urgent ? "Urgent: " : label === "News" ? "" : `${label}: `}${a.title}`, html, text });
           sent++;
         } catch (e) {

@@ -59,7 +59,7 @@ describe("Two-factor sign-in", () => {
     expect(r.status).toBe(400);
     const ok = await kunal.post("/auth/two-factor/enable", { password: PASSWORD });
     expect(ok.status).toBe(200);
-    expect(ok.body.totpURI).toMatch(/^otpauth:\/\/totp\/Strats360%20People:/);
+    expect(ok.body.totpURI).toMatch(/^otpauth:\/\/totp\/Saralix:/);
     expect(ok.body.backupCodes).toHaveLength(10);
     // not on until a code is confirmed
     expect((await kunal.get("/me")).body.user.twoFactorEnabled).toBe(false);

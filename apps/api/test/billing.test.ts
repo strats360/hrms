@@ -8,7 +8,7 @@ const sql = postgres(env.DATABASE_URL!, { max: 1, onnotice: () => {} });
 const PERIOD = "2026-03"; // before the seeded invoices
 
 beforeAll(async () => {
-  [platform, kunal, nisha] = await Promise.all([login("platform@strats360people.in"), login("kunal.shah@strats360.com"), login("nisha.trivedi@strats360.com")]);
+  [platform, kunal, nisha] = await Promise.all([login("platform@saralix.com"), login("kunal.shah@strats360.com"), login("nisha.trivedi@strats360.com")]);
 });
 afterAll(async () => {
   await sql`update tenants set status = 'active' where code = 'TN-0142'`;

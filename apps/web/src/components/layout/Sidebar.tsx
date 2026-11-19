@@ -20,7 +20,7 @@ export function Brand({ collapsed, subtitle }: { collapsed?: boolean; subtitle?:
       </div>
       {!collapsed ? (
         <div className="min-w-0 leading-tight">
-          <div className="whitespace-nowrap text-[17px] font-medium">Strats360 People</div>
+          <div className="whitespace-nowrap text-[17px] font-medium">Saralix</div>
           {subtitle ? <div className="text-[10.5px] uppercase tracking-[0.1em]" style={{ color: "var(--sel-fg)" }}>{subtitle}</div> : null}
         </div>
       ) : null}

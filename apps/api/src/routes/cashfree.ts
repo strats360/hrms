@@ -183,7 +183,7 @@ tenantPayRoutes.post("/autopay", requirePerm("billing", "edit"), v("json", setup
       customer: { name: t?.legalName ?? t?.name ?? "Customer", email: t?.billingEmail ?? t?.contactEmail ?? c.get("session")!.email, phone },
       returnUrl: `${c.env.APP_URL}/settings/billing?autopay=${subscriptionId}`,
       notifyUrl: `${c.env.APP_URL}/api/public/payments/cashfree/webhook`,
-      note: `Strats360 People invoices for ${t?.name}`,
+      note: `Saralix invoices for ${t?.name}`,
     });
     if (!s.sessionId) throw new CashfreeError("Cashfree didn't return a session", 502);
     await db.update(billingMandates).set({ sessionId: s.sessionId, gatewaySubscriptionId: s.cfSubscriptionId, gatewayStatus: s.status }).where(eq(billingMandates.id, m!.id));

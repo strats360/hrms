@@ -301,10 +301,10 @@ function TurnOffDialog({ onClose }: { onClose: () => void }) {
 function CodeList({ codes }: { codes: string[] }) {
   const text = codes.join("\n");
   const save = () => {
-    const url = URL.createObjectURL(new Blob([`Strats360 People backup codes\nEach code works once.\n\n${text}\n`], { type: "text/plain" }));
+    const url = URL.createObjectURL(new Blob([`Saralix backup codes\nEach code works once.\n\n${text}\n`], { type: "text/plain" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = "strats360-backup-codes.txt";
+    a.download = "saralix-backup-codes.txt";
     a.click();
     URL.revokeObjectURL(url);
   };

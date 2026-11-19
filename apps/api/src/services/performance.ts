@@ -57,7 +57,7 @@ export async function notifyMany(c: Context<AppEnv>, key: NotificationKey | null
     await Promise.all(
       queue.slice(i, i + 10).map(async (m) => {
         try {
-          const { html, text } = layout({ company: t?.name ?? "Strats360 People", heading: m.heading, paragraphs: m.paragraphs, cta: m.cta });
+          const { html, text } = layout({ company: t?.name ?? "Saralix", heading: m.heading, paragraphs: m.paragraphs, cta: m.cta });
           await c.get("mailer").send({ to: m.to, subject: m.subject, html, text });
           sent++;
         } catch (e) {

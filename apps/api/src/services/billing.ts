@@ -7,7 +7,7 @@ export type InvoicingEntity = z.infer<typeof invoicingEntitySchema>;
 export type Invoice = typeof invoices.$inferSelect;
 
 export const DEFAULT_ENTITY: InvoicingEntity = {
-  legalName: "Strats360 People Technologies Pvt Ltd",
+  legalName: "Saralix Technologies Pvt Ltd",
   gstin: "24AAICS7781M1ZK",
   pan: "AAICS7781M",
   address: "4th Floor, Iscon Elegance, SG Highway, Ahmedabad 380015",
@@ -16,8 +16,8 @@ export const DEFAULT_ENTITY: InvoicingEntity = {
   invoicePrefix: "INV-P-",
   dueDays: 7,
   bankDetails: "HDFC Bank · A/c 50200098765432 · IFSC HDFC0000123",
-  upiId: "strats360people@hdfcbank",
-  email: "billing@strats360people.in",
+  upiId: "saralix@hdfcbank",
+  email: "billing@saralix.com",
 };
 
 export async function getEntity(db: Database): Promise<InvoicingEntity> {

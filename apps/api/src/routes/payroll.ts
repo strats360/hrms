@@ -453,7 +453,7 @@ payrollRoutes.post("/runs/:id/publish", requirePerm("payroll", "approve"), async
     await Promise.all(
       queue.slice(i, i + 10).map(async (it) => {
         const { html, text } = layout({
-          company: t?.name ?? "Strats360 People",
+          company: t?.name ?? "Saralix",
           heading: `Your payslip for ${monthName} is ready`,
           paragraphs: [`Hi ${it.first},`, `Your payslip for ${monthName} is now available in self-service.`, "For your security the payslip isn't attached to this email."],
           cta: { label: "View payslip", url: `${c.env.APP_URL}/me/payslips` },

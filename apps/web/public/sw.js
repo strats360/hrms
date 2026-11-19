@@ -1,4 +1,4 @@
-/* Strats360 People service worker.
+/* Saralix service worker.
  * Keeps the app shell (HTML, scripts, styles, icons, fonts) so the app opens with a weak
  * or no connection. API responses are never stored: personal data stays on the server.
  */

@@ -31,7 +31,7 @@ export function PlatformLayout() {
         </D.Portal>
       </D.Root>
       <div className="flex min-w-0 flex-1 flex-col">
-        <Header crumb={crumbFor(loc.pathname, PLATFORM_NAV)} org="Strats360 People · Platform" searchPlaceholder="Search tenants…" onMenu={() => setDrawer(true)} roleLabel={me.platformRole.replace("_", " ")} palette={false} />
+        <Header crumb={crumbFor(loc.pathname, PLATFORM_NAV)} org="Saralix · Platform" searchPlaceholder="Search tenants…" onMenu={() => setDrawer(true)} roleLabel={me.platformRole.replace("_", " ")} palette={false} />
         <main className="flex w-full max-w-[1440px] flex-col gap-5 px-4 pb-12 pt-6 sm:px-7">
           <Outlet />
         </main>

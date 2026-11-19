@@ -8,4 +8,4 @@ ENCRYPTION_KEY=change-me
 ENVIRONMENT=development
 # Optional: send real email in dev
 # RESEND_API_KEY=
-# EMAIL_FROM=Strats360 People <people@yourdomain.in>
+# EMAIL_FROM=Saralix <people@yourdomain.in>

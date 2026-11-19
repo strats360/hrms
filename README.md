@@ -1,4 +1,4 @@
-# Strats360 People (HRMS)
+# Saralix (HRMS)
 
 A multi-tenant HRMS for Indian companies. It runs on Cloudflare Workers with Neon Postgres.
 
@@ -210,7 +210,7 @@ Generate the two secrets with `openssl rand -base64 32`.
 | krupa.joshi@strats360.com | Payroll admin |
 | hardik.mehta@strats360.com | Manager (Engineering) |
 | priya.vaghela@strats360.com | Employee (self-service only) |
-| platform@strats360people.in | Platform super admin |
+| platform@saralix.com | Platform super admin |
 
 The seed prints an onboarding invite link for a new joiner, so you can try the self-onboarding flow.
 

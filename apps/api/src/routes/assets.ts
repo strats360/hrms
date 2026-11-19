@@ -51,7 +51,7 @@ async function tell(c: Context<AppEnv>, employeeId: string, subject: string, par
     const [e] = await db.select({ email: employees.workEmail, first: employees.firstName }).from(employees).where(eq(employees.id, employeeId));
     const [t] = await db.select({ name: tenants.name }).from(tenants).where(eq(tenants.id, tid(c)));
     if (!e) return;
-    const { html, text } = layout({ company: t?.name ?? "Strats360 People", heading: subject, paragraphs: paragraphs(e.first), cta: { label: "See my assets", url: `${c.env.APP_URL}/me/profile?tab=assets` } });
+    const { html, text } = layout({ company: t?.name ?? "Saralix", heading: subject, paragraphs: paragraphs(e.first), cta: { label: "See my assets", url: `${c.env.APP_URL}/me/profile?tab=assets` } });
     await sendNotification(c, "asset_updates", { to: e.email, subject, html, text });
   } catch (err) {
     console.error("asset email failed", err);
@@ -290,7 +290,7 @@ essAssetRoutes.post("/:id/report", v("json", reportIssueSchema), async (c) => {
     const [t] = await db.select({ name: tenants.name }).from(tenants).where(eq(tenants.id, tid(c)));
     const to = [...new Set(keepers.filter((k) => (k.perms as Record<string, string[]>)?.assets?.includes("edit")).map((k) => k.email))];
     const subject = `${ISSUE_LABEL[b.kind]}: ${a.tag} ${a.name}`;
-    const { html, text } = layout({ company: t?.name ?? "Strats360 People", heading: subject, paragraphs: [`${e?.name} reported a problem with ${a.name} (${a.tag}).`, b.note], cta: { label: "Open the asset", url: `${c.env.APP_URL}/assets/${a.id}` } });
+    const { html, text } = layout({ company: t?.name ?? "Saralix", heading: subject, paragraphs: [`${e?.name} reported a problem with ${a.name} (${a.tag}).`, b.note], cta: { label: "Open the asset", url: `${c.env.APP_URL}/assets/${a.id}` } });
     for (const addr of to) await c.get("mailer").send({ to: addr, subject, html, text });
   } catch (err) {
     console.error("asset report email failed", err);

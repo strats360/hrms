@@ -94,7 +94,7 @@ async function main() {
   }
 
   // ---- logins ----
-  const platformUser = await upsertLogin(db, { email: "platform@strats360people.in", name: "Meera Iyer", password: PASSWORD, verified: true });
+  const platformUser = await upsertLogin(db, { email: "platform@saralix.com", name: "Meera Iyer", password: PASSWORD, verified: true });
   await db.insert(platformStaff).values({ userId: platformUser, role: "super_admin" });
   const kunal = await upsertLogin(db, { email: "kunal.shah@strats360.com", name: "Kunal Shah", password: PASSWORD, verified: true });
 
@@ -413,7 +413,7 @@ async function main() {
     { login: "krupa.joshi@strats360.com", role: "Payroll admin" },
     { login: "hardik.mehta@strats360.com", role: "Manager (Engineering)" },
     { login: "priya.vaghela@strats360.com", role: "Employee (self-service only)" },
-    { login: "platform@strats360people.in", role: "Platform super admin" },
+    { login: "platform@saralix.com", role: "Platform super admin" },
   ]);
   console.log("Try employee self-onboarding with:", links[0]);
   await db.$client.end();
@@ -655,7 +655,7 @@ async function seedBilling(tid: string) {
   if (!anyTicket) {
     const [nishaU] = await db.select({ id: user.id }).from(user).where(eq(user.email, "nisha.trivedi@strats360.com"));
     const [krupaU] = await db.select({ id: user.id }).from(user).where(eq(user.email, "krupa.joshi@strats360.com"));
-    const [meera] = await db.select({ id: user.id }).from(user).where(eq(user.email, "platform@strats360people.in"));
+    const [meera] = await db.select({ id: user.id }).from(user).where(eq(user.email, "platform@saralix.com"));
     const ago = (h: number) => new Date(Date.now() - h * 3600_000);
     const [open] = await db
       .insert(supportTickets)

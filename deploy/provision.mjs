@@ -7,10 +7,10 @@
  *   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID   Cloudflare credentials
  *   DATABASE_URL                                  Neon *direct* connection string (sslmode=require)
  *   DEPLOY_ENV                                    production | staging (default production)
- *   WORKER_NAME                                   default strats360-hrms, or strats360-hrms-staging
+ *   WORKER_NAME                                   default saralix, or saralix-staging
  *   CUSTOM_DOMAIN                                 optional, e.g. hrms.strats360.com (zone must be on this account)
  *   APP_URL                                       optional; defaults to https://CUSTOM_DOMAIN or the workers.dev URL
- *   EMAIL_FROM                                    optional, e.g. "Strats360 People <people@strats360.com>"
+ *   EMAIL_FROM                                    optional, e.g. "Saralix <people@strats360.com>"
  *   CASHFREE_ENV                                  sandbox | production (default sandbox)
  *
  *   node deploy/provision.mjs [--dry-run]
@@ -26,7 +26,7 @@ const dry = process.argv.includes("--dry-run");
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const env = process.env;
 const deployEnv = env.DEPLOY_ENV === "staging" ? "staging" : "production";
-const worker = env.WORKER_NAME || (deployEnv === "staging" ? "strats360-hrms-staging" : "strats360-hrms");
+const worker = env.WORKER_NAME || (deployEnv === "staging" ? "saralix-staging" : "saralix");
 const bucket = env.R2_BUCKET || `${worker}-files`;
 const hyperdriveName = `${worker}-db`;
 const account = env.CLOUDFLARE_ACCOUNT_ID;

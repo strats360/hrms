@@ -69,7 +69,7 @@ export class PdfWriter {
     const doc = await PDFDocument.create();
     doc.setTitle(pdfSafe(meta.title));
     if (meta.author) doc.setAuthor(pdfSafe(meta.author));
-    doc.setProducer("Strats360 People");
+    doc.setProducer("Saralix");
     doc.setCreationDate(new Date());
     const w = new PdfWriter(doc, await doc.embedFont(StandardFonts.Helvetica), await doc.embedFont(StandardFonts.HelveticaBold));
     w.addPage();

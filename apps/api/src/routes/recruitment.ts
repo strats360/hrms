@@ -61,7 +61,7 @@ const editOnly = (c: Context<AppEnv>, job: Job) => {
 async function mail(c: Context<AppEnv>, to: string, subject: string, heading: string, paragraphs: string[], cta?: { label: string; url: string }) {
   try {
     const [t] = await c.get("db").select({ name: tenants.name }).from(tenants).where(eq(tenants.id, tid(c)));
-    const { html, text } = layout({ company: t?.name ?? "Strats360 People", heading, paragraphs, cta });
+    const { html, text } = layout({ company: t?.name ?? "Saralix", heading, paragraphs, cta });
     await c.get("mailer").send({ to, subject, html, text });
   } catch (e) {
     console.error("recruitment email failed", e);

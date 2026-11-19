@@ -10,7 +10,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
           <div className="grid h-10 w-10 place-items-center rounded-[var(--radius-md)] text-[20px] font-semibold" style={{ background: "var(--color-accent)", color: "#161826" }}>
             S
           </div>
-          <div className="text-[22px] font-medium">Strats360 People</div>
+          <div className="text-[22px] font-medium">Saralix</div>
         </div>
         <div className="max-w-[520px]">
           <h1 className="!mb-4 text-[44px]" style={{ color: "var(--color-neutral-100)" }}>

@@ -6,7 +6,7 @@ let tenantId = "";
 let flags: any[] = [];
 
 beforeAll(async () => {
-  [platform, kunal, priya] = await Promise.all([login("platform@strats360people.in"), login("kunal.shah@strats360.com"), login("priya.vaghela@strats360.com")]);
+  [platform, kunal, priya] = await Promise.all([login("platform@saralix.com"), login("kunal.shah@strats360.com"), login("priya.vaghela@strats360.com")]);
   tenantId = (await platform.get("/platform/tenants?q=TN-0142")).body[0].id;
   flags = (await platform.get("/platform/flags")).body.flags;
 });
