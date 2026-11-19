@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { fmtDate, inr } from "@hrms/shared";
+import { fmtDate, fmtMoney } from "@hrms/shared";
 import { api } from "@/lib/api";
 import type { PaymentBatch, PaymentType } from "@/lib/types";
 import { TableCard } from "@/components/ui/card";
@@ -16,7 +16,7 @@ export function batchColumns(): ColumnDef<PaymentBatch, any>[] {
     { id: "code", header: "Batch", accessorFn: (b) => b.code, cell: ({ getValue }) => <span className="font-semibold">{getValue<string>()}</span> },
     { id: "label", header: "Description", accessorFn: (b) => b.label },
     { id: "count", header: "Payments", accessorFn: (b) => b.count, meta: { align: "right" } },
-    { id: "amount", header: "Amount", accessorFn: (b) => b.amount, meta: { align: "right" }, cell: ({ getValue }) => <span className="font-semibold">{inr(getValue<number>())}</span> },
+    { id: "amount", header: "Amount", accessorFn: (b) => b.amount, meta: { align: "right" }, cell: ({ getValue }) => <span className="font-semibold">{fmtMoney(getValue<number>())}</span> },
     { id: "bank", header: "Bank account", accessorFn: (b) => b.bank ?? "", cell: ({ row: { original: b } }) => <div>{b.bank ?? "—"}<div className="text-muted text-[11.5px]">{b.formatLabel}</div></div> },
     { id: "date", header: "Date", accessorFn: (b) => b.paymentDate, cell: ({ getValue }) => fmtDate(getValue<string>()) },
     {

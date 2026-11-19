@@ -9,7 +9,7 @@ import {
   reimbursementClaims,
   type Database,
 } from "@hrms/db";
-import { BONUS, daysInMonth, decryptField, statutoryBonus, todayIST } from "@hrms/shared";
+import { BONUS, daysInMonth, decryptField, statutoryBonus, todayLocal, zonedDateTime } from "@hrms/shared";
 import { fyMonths } from "./tax";
 import { exitPaymentEffects } from "./exits";
 import { getTemplate, resolveStructure, structuresAsOf } from "./payroll";
@@ -118,7 +118,7 @@ export async function reimbursementLines(db: Database, tenantId: string, claimId
  * months the employee was in service.
  */
 export async function bonusLines(db: Database, tenantId: string, fy: string, percent: number) {
-  const months = fyMonths(fy).filter((m) => m <= todayIST().slice(0, 7));
+  const months = fyMonths(fy).filter((m) => m <= todayLocal().slice(0, 7));
   const emps = await db.select().from(employees).where(and(eq(employees.tenantId, tenantId), notInArray(employees.status, ["onboarding"])));
   const items = await db
     .select({ employeeId: payrollItems.employeeId, month: payrollRuns.month, earnings: payrollItems.earnings, paidDays: payrollItems.paidDays })
@@ -214,7 +214,7 @@ export async function completeSalaryRun(db: Database, batch: Batch, userId: stri
   if (!run || run.status !== "approved") return;
   await db
     .update(payrollRuns)
-    .set({ status: "paid", paidAt: new Date(batch.paymentDate + "T12:00:00+05:30"), paidBy: userId, paymentReference: batch.code, publishedAt: run.publishedAt ?? new Date() })
+    .set({ status: "paid", paidAt: zonedDateTime(batch.paymentDate, "12:00"), paidBy: userId, paymentReference: batch.code, publishedAt: run.publishedAt ?? new Date() })
     .where(eq(payrollRuns.id, run.id));
   // salaries on hold in payroll release their claims to the next run
   const held = (await db.select({ e: payrollItems.employeeId }).from(payrollItems).where(and(eq(payrollItems.runId, run.id), eq(payrollItems.onHold, true)))).map((r) => r.e);

@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Download, Plus } from "lucide-react";
-import { addWeeks, fmtDate, hoursLabel, TIMESHEET_STATUS_LABEL, todayIST, weekDates, type TimesheetStatus } from "@hrms/shared";
+import { addWeeks, fmtDate, hoursLabel, TIMESHEET_STATUS_LABEL, todayLocal, weekDates, type TimesheetStatus } from "@hrms/shared";
 import { api, download, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
@@ -143,8 +143,8 @@ function SheetDialog({ row, canApprove, onClose }: { row: TeamRow; canApprove: b
 
 function Report() {
   const { can } = useSession();
-  const [from, setFrom] = useState(addWeeks(todayIST().slice(0, 8) + "01", 0));
-  const [to, setTo] = useState(todayIST());
+  const [from, setFrom] = useState(addWeeks(todayLocal().slice(0, 8) + "01", 0));
+  const [to, setTo] = useState(todayLocal());
   const q = useQuery({ queryKey: ["timesheets", "report", from, to], queryFn: () => api.get<{ projects: { projectId: string; code: string; name: string; client: string | null; minutes: number; billable: number; people: number }[]; people: { employeeId: string; name: string; code: string; minutes: number; billable: number }[] }>(`/admin/attendance/timesheets/report?from=${from}&to=${to}`) });
   const total = q.data?.projects.reduce((a, p) => a + p.minutes, 0) ?? 0;
   const max = Math.max(1, ...(q.data?.projects.map((p) => p.minutes) ?? []));

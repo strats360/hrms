@@ -4,7 +4,7 @@ import { useNavigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Upload } from "lucide-react";
-import { inr, todayIST } from "@hrms/shared";
+import { fmtMoney, todayLocal } from "@hrms/shared";
 import { api, errorMessage } from "@/lib/api";
 import type { BatchPreview, BatchStatus, DebitAccount, Payment, PaymentStatus, PaymentsSummary, PaymentType } from "@/lib/types";
 import { Dialog } from "@/components/ui/dialog";
@@ -60,11 +60,11 @@ export function GenerateBatchDialog({ open, onClose, initialType = "salary", ini
   const [runId, setRunId] = useState(initialRunId ?? "");
   const [bankAccountId, setBank] = useState("");
   const [fileFormat, setFormat] = useState("");
-  const [paymentDate, setDate] = useState(todayIST());
+  const [paymentDate, setDate] = useState(todayLocal());
   const [label, setLabel] = useState("");
   const [paste, setPaste] = useState("");
   const [fy, setFy] = useState(() => {
-    const [y, m] = todayIST().split("-").map(Number) as [number, number];
+    const [y, m] = todayLocal().split("-").map(Number) as [number, number];
     const s = (m >= 4 ? y : y - 1) - 1;
     return `${s}-${String((s + 1) % 100).padStart(2, "0")}`;
   });
@@ -107,7 +107,7 @@ export function GenerateBatchDialog({ open, onClose, initialType = "salary", ini
     meta: { silent: true },
     mutationFn: () => api.post<{ id: string; code: string; summary: BatchPreview["summary"] }>("/admin/payments/batches", body),
     onSuccess: (r) => {
-      toast.success(`${r.code} created as a draft: ${r.summary.count} payments, ${inr(r.summary.amount)}. It needs approval before the bank file.`);
+      toast.success(`${r.code} created as a draft: ${r.summary.count} payments, ${fmtMoney(r.summary.amount)}. It needs approval before the bank file.`);
       qc.invalidateQueries({ queryKey: ["payments"] });
       qc.invalidateQueries({ queryKey: ["payroll"] });
       qc.invalidateQueries({ queryKey: ["claims"] });
@@ -117,7 +117,7 @@ export function GenerateBatchDialog({ open, onClose, initialType = "salary", ini
     onError: (e) => setError(errorMessage(e)),
   });
   const p = preview.data;
-  const fyStart = Number(todayIST().slice(0, 4)) - (Number(todayIST().slice(5, 7)) >= 4 ? 0 : 1);
+  const fyStart = Number(todayLocal().slice(0, 4)) - (Number(todayLocal().slice(5, 7)) >= 4 ? 0 : 1);
 
   return (
     <Dialog
@@ -149,7 +149,7 @@ export function GenerateBatchDialog({ open, onClose, initialType = "salary", ini
             {!summary.data?.readySalary.length ? <option value="">Nothing ready</option> : null}
             {summary.data?.readySalary.map((r) => (
               <option key={r.runId} value={r.runId}>
-                {r.label} · {r.employees} employees · {inr(r.net)}
+                {r.label} · {r.employees} employees · {fmtMoney(r.net)}
               </option>
             ))}
           </Select>
@@ -210,11 +210,11 @@ export function GenerateBatchDialog({ open, onClose, initialType = "salary", ini
       {p ? (
         <div className="flex flex-col gap-1 rounded-[var(--radius-md)] px-3.5 py-3 text-[13.5px]" style={{ background: "var(--tint-1)" }}>
           <Row label="Payments" value={<strong>{p.summary.count}</strong>} />
-          <Row label="Total amount" value={<strong className="num">{inr(p.summary.amount)}</strong>} />
+          <Row label="Total amount" value={<strong className="num">{fmtMoney(p.summary.amount)}</strong>} />
           <Row label="Duplicate check" value={<Tag tone={p.duplicates ? "bad" : "ok"}>{p.duplicates ? `${p.duplicates} duplicate${p.duplicates === 1 ? "" : "s"}` : "0 duplicates"}</Tag>} />
-          <Row label="Bank details missing" value={<Tag tone={p.summary.missingBank ? "warn" : "ok"}>{p.summary.missingBank ? `${p.summary.missingBank} held · ${inr(p.summary.missingBankAmount)}` : "0"}</Tag>} />
+          <Row label="Bank details missing" value={<Tag tone={p.summary.missingBank ? "warn" : "ok"}>{p.summary.missingBank ? `${p.summary.missingBank} held · ${fmtMoney(p.summary.missingBankAmount)}` : "0"}</Tag>} />
           {type === "bonus" && p.skipped ? <Row label="Not eligible" value={`${p.skipped} employees`} /> : null}
-          {account && account.balance !== null && p.summary.amount > Number(account.balance) ? <Row label="Account balance" value={<Tag tone="bad">{inr(account.balance)} is less than the batch</Tag>} /> : null}
+          {account && account.balance !== null && p.summary.amount > Number(account.balance) ? <Row label="Account balance" value={<Tag tone="bad">{fmtMoney(account.balance)} is less than the batch</Tag>} /> : null}
         </div>
       ) : null}
       {p?.warnings.length ? (
@@ -246,11 +246,11 @@ export function PaymentActionDialog({ action, items, onClose }: { action: Paymen
   const qc = useQueryClient();
   const [utr, setUtr] = useState("");
   const [reason, setReason] = useState("");
-  const [paidOn, setPaidOn] = useState(todayIST());
+  const [paidOn, setPaidOn] = useState(todayLocal());
   useEffect(() => {
     setUtr("");
     setReason("");
-    setPaidOn(todayIST());
+    setPaidOn(todayLocal());
   }, [action, items]);
   const run = useMutation({
     mutationFn: () => api.post<{ done: number; errors: { id: string; message: string }[] }>("/admin/payments/payments/bulk", { ids: items.map((p) => p.id), status: action, utr: utr.trim() || null, reason: reason.trim() || null, paidOn }),
@@ -272,7 +272,7 @@ export function PaymentActionDialog({ action, items, onClose }: { action: Paymen
       open={!!action}
       onOpenChange={(v) => !v && onClose()}
       title={ACTION_TITLE[action]}
-      description={items.length === 1 ? `${items[0]!.reference} · ${items[0]!.employeeName} · ${inr(items[0]!.amount)}` : `${items.length} payments · ${inr(total)}`}
+      description={items.length === 1 ? `${items[0]!.reference} · ${items[0]!.employeeName} · ${fmtMoney(items[0]!.amount)}` : `${items.length} payments · ${fmtMoney(total)}`}
       footer={
         <>
           <Button onClick={onClose}>Cancel</Button>

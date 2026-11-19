@@ -3,7 +3,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { employeeLoans, employees, loanRepayments, payrollRuns, tenants } from "@hrms/db";
 import {
   addMonths,
-  inr,
+  fmtMoney,
   LOAN_STATUS_LABEL,
   LOAN_TYPE_LABEL,
   loanApproveSchema,
@@ -14,7 +14,7 @@ import {
   loanRepaymentSchema,
   loanRequestSchema,
   PERQUISITE_LOAN_LIMIT,
-  todayIST,
+  todayLocal,
   type LoanStatus,
   type LoanType,
 } from "@hrms/shared";
@@ -31,7 +31,7 @@ import { sendNotification } from "../services/notifications";
 
 const tid = (c: Context<AppEnv>) => c.get("tenant").tenantId;
 const uid = (c: Context<AppEnv>) => c.get("session")!.userId;
-const thisMonth = () => todayIST().slice(0, 7);
+const thisMonth = () => todayLocal().slice(0, 7);
 
 /** The month after the last locked payroll: the earliest a recovery can start or be paused. */
 async function firstOpenMonth(c: Context<AppEnv>) {
@@ -112,7 +112,7 @@ loanRoutes.get("/:id", requirePerm("payroll", "view"), async (c) => {
     .from(employeeLoans)
     .where(and(eq(employeeLoans.employeeId, l.employeeId), inArray(employeeLoans.status, ["approved", "active"])));
   const warnings: string[] = [];
-  if ((others?.s ?? 0) > PERQUISITE_LOAN_LIMIT && Number(l.interestPct) < 9) warnings.push(`This person's loans add up to more than ${inr(PERQUISITE_LOAN_LIMIT)} at a concessional rate. The interest saved is a taxable perquisite (Rule 3(7)(i)); add it to their taxable salary.`);
+  if ((others?.s ?? 0) > PERQUISITE_LOAN_LIMIT && Number(l.interestPct) < 9) warnings.push(`This person's loans add up to more than ${fmtMoney(PERQUISITE_LOAN_LIMIT)} at a concessional rate. The interest saved is a taxable perquisite (Rule 3(7)(i)); add it to their taxable salary.`);
   if (e?.status === "notice") warnings.push("This employee is serving notice. What's left is recovered in their full and final settlement.");
   return c.json({ loan: summary, employee: e, schedule: s.schedule.map((x) => ({ ...x, recovered: rec.payroll.find((p) => p.month === x.month) ?? null })), payroll: rec.payroll, repayments: rec.repayments, warnings, firstOpenMonth: await firstOpenMonth(c) });
 });
@@ -128,7 +128,7 @@ loanRoutes.post("/", requirePerm("payroll", "edit"), v("json", loanCreateSchema.
     .insert(employeeLoans)
     .values({ tenantId: tid(c), employeeId: e.id, code: await nextLoanCode(db, tid(c), b.type), type: b.type, status: b.paid ? "active" : "approved", amount: b.amount, interestPct: b.interestPct, months: b.months, startMonth: b.startMonth, reason: b.reason, requestedBy: uid(c), decidedBy: uid(c), decidedAt: new Date(), ...(b.paid ? { paidOn: b.paid.paidOn, paidMethod: b.paid.method, paidReference: b.paid.reference ?? null } : {}) })
     .returning();
-  await audit(c, { action: "loans.create", entity: "employee_loan", entityId: row!.id, summary: `${LOAN_TYPE_LABEL[b.type]} ${row!.code} of ${inr(b.amount)} for ${e.name}, ${b.months} months from ${b.startMonth}` });
+  await audit(c, { action: "loans.create", entity: "employee_loan", entityId: row!.id, summary: `${LOAN_TYPE_LABEL[b.type]} ${row!.code} of ${fmtMoney(b.amount)} for ${e.name}, ${b.months} months from ${b.startMonth}` });
   return c.json(row, 201);
 });
 
@@ -139,11 +139,11 @@ loanRoutes.post("/:id/decision", requirePerm("payroll", "approve"), v("json", z.
   const db = c.get("db");
   if (b.decision === "rejected") {
     await db.update(employeeLoans).set({ status: "rejected", decidedBy: uid(c), decidedAt: new Date(), decisionNote: b.note }).where(eq(employeeLoans.id, l.id));
-    await mail(c, l, `${LOAN_TYPE_LABEL[l.type as LoanType]} request not approved`, [`Your request ${l.code} for ${inr(Number(l.amount))} wasn't approved: ${b.note}`]);
+    await mail(c, l, `${LOAN_TYPE_LABEL[l.type as LoanType]} request not approved`, [`Your request ${l.code} for ${fmtMoney(Number(l.amount))} wasn't approved: ${b.note}`]);
   } else {
     if (b.startMonth < (await firstOpenMonth(c))) throw badRequest("Payroll for that month is already locked. Start the recovery from a later month.");
     await db.update(employeeLoans).set({ status: "approved", amount: b.amount, months: b.months, interestPct: b.interestPct, startMonth: b.startMonth, decidedBy: uid(c), decidedAt: new Date(), decisionNote: b.note ?? null }).where(eq(employeeLoans.id, l.id));
-    await mail(c, l, `${LOAN_TYPE_LABEL[l.type as LoanType]} approved`, [`Your request ${l.code} is approved for ${inr(b.amount)}, recovered over ${b.months} month${b.months === 1 ? "" : "s"} from your ${b.startMonth} salary.`, "You'll get another email when it's paid out."]);
+    await mail(c, l, `${LOAN_TYPE_LABEL[l.type as LoanType]} approved`, [`Your request ${l.code} is approved for ${fmtMoney(b.amount)}, recovered over ${b.months} month${b.months === 1 ? "" : "s"} from your ${b.startMonth} salary.`, "You'll get another email when it's paid out."]);
   }
   await audit(c, { action: `loans.${b.decision}`, entity: "employee_loan", entityId: l.id, summary: `${b.decision === "approved" ? "Approved" : "Rejected"} ${l.code}` });
   return c.json({ ok: true });
@@ -154,8 +154,8 @@ loanRoutes.post("/:id/disburse", requirePerm("payroll", "edit"), v("json", loanD
   if (l.status !== "approved") throw conflict(l.status === "active" ? "This has already been paid out" : "Approve it first");
   const b = c.req.valid("json");
   await c.get("db").update(employeeLoans).set({ status: "active", paidOn: b.paidOn, paidMethod: b.method, paidReference: b.reference ?? null }).where(eq(employeeLoans.id, l.id));
-  await mail(c, l, `${LOAN_TYPE_LABEL[l.type as LoanType]} paid out`, [`${inr(Number(l.amount))} (${l.code}) was paid to you on ${b.paidOn}. Recovery starts with your ${l.startMonth} salary.`]);
-  await audit(c, { action: "loans.disburse", entity: "employee_loan", entityId: l.id, summary: `Paid out ${l.code}: ${inr(Number(l.amount))} on ${b.paidOn} (${b.method.replace("_", " ")}${b.reference ? `, ${b.reference}` : ""})` });
+  await mail(c, l, `${LOAN_TYPE_LABEL[l.type as LoanType]} paid out`, [`${fmtMoney(Number(l.amount))} (${l.code}) was paid to you on ${b.paidOn}. Recovery starts with your ${l.startMonth} salary.`]);
+  await audit(c, { action: "loans.disburse", entity: "employee_loan", entityId: l.id, summary: `Paid out ${l.code}: ${fmtMoney(Number(l.amount))} on ${b.paidOn} (${b.method.replace("_", " ")}${b.reference ? `, ${b.reference}` : ""})` });
   return c.json({ ok: true });
 });
 
@@ -179,10 +179,10 @@ loanRoutes.post("/:id/repayment", requirePerm("payroll", "edit"), v("json", loan
   const b = c.req.valid("json");
   const db = c.get("db");
   const s = loanSummary(l, (await recoveredFor(db, [l.id])).get(l.id)!);
-  if (b.amount > s.afterOpenPayroll) throw badRequest(`That's more than what's left (${inr(s.afterOpenPayroll)}${s.pending ? ` after ${inr(s.pending)} in payroll not yet locked` : ""})`);
+  if (b.amount > s.afterOpenPayroll) throw badRequest(`That's more than what's left (${fmtMoney(s.afterOpenPayroll)}${s.pending ? ` after ${fmtMoney(s.pending)} in payroll not yet locked` : ""})`);
   await db.insert(loanRepayments).values({ tenantId: tid(c), loanId: l.id, amount: b.amount, paidOn: b.paidOn, source: "manual", note: b.note ?? null, createdBy: uid(c) });
   const closed = await closeRepaidLoans(db, tid(c), [l.id]);
-  await audit(c, { action: "loans.repayment", entity: "employee_loan", entityId: l.id, summary: `Recorded ${inr(b.amount)} repaid on ${l.code}${closed ? " (now fully repaid)" : ""}` });
+  await audit(c, { action: "loans.repayment", entity: "employee_loan", entityId: l.id, summary: `Recorded ${fmtMoney(b.amount)} repaid on ${l.code}${closed ? " (now fully repaid)" : ""}` });
   return c.json({ ok: true, closed: closed > 0 }, 201);
 });
 
@@ -191,8 +191,8 @@ loanRoutes.post("/:id/write-off", requirePerm("payroll", "approve"), v("json", z
   if (l.status !== "active") throw badRequest("Only a loan being recovered can be written off");
   const db = c.get("db");
   const s = loanSummary(l, (await recoveredFor(db, [l.id])).get(l.id)!);
-  await db.update(employeeLoans).set({ status: "written_off", closedOn: todayIST(), decisionNote: c.req.valid("json").note }).where(eq(employeeLoans.id, l.id));
-  await audit(c, { action: "loans.write_off", entity: "employee_loan", entityId: l.id, summary: `Wrote off ${inr(s.outstanding)} on ${l.code}: ${c.req.valid("json").note}` });
+  await db.update(employeeLoans).set({ status: "written_off", closedOn: todayLocal(), decisionNote: c.req.valid("json").note }).where(eq(employeeLoans.id, l.id));
+  await audit(c, { action: "loans.write_off", entity: "employee_loan", entityId: l.id, summary: `Wrote off ${fmtMoney(s.outstanding)} on ${l.code}: ${c.req.valid("json").note}` });
   return c.json({ ok: true, writtenOff: s.outstanding });
 });
 
@@ -215,7 +215,7 @@ essLoanRoutes.get("/", async (c) => {
   const eid = c.get("tenant").employeeId!;
   const loans = await db.select().from(employeeLoans).where(and(eq(employeeLoans.tenantId, tid(c)), eq(employeeLoans.employeeId, eid))).orderBy(desc(employeeLoans.createdAt));
   const policy = await loanPolicy(db, tid(c));
-  const gross = (await monthlyPay(db, tid(c), [eid], todayIST())).get(eid)?.gross ?? 0;
+  const gross = (await monthlyPay(db, tid(c), [eid], todayLocal())).get(eid)?.gross ?? 0;
   const rows = (await view(c, loans)).map(({ requestedBy, decidedBy, ...l }) => (void requestedBy, void decidedBy, l));
   return c.json({
     rows,
@@ -233,14 +233,14 @@ essLoanRoutes.post("/", v("json", loanRequestSchema), async (c) => {
   if (e && ["notice", "exited", "inactive"].includes(e.status)) throw badRequest("Loans and advances aren't available during the notice period");
   const [open] = await db.select({ code: employeeLoans.code }).from(employeeLoans).where(and(eq(employeeLoans.employeeId, eid), eq(employeeLoans.type, b.type), inArray(employeeLoans.status, ["requested", "approved"])));
   if (open) throw conflict(`You already have ${open.code} waiting. Wait for it to be decided or paid out first.`);
-  const gross = (await monthlyPay(db, tid(c), [eid], todayIST())).get(eid)?.gross ?? 0;
+  const gross = (await monthlyPay(db, tid(c), [eid], todayLocal())).get(eid)?.gross ?? 0;
   const err = loanLimitError(policy, b.type, b.amount, b.months, gross);
   if (err) throw badRequest(err);
   const [row] = await db
     .insert(employeeLoans)
     .values({ tenantId: tid(c), employeeId: eid, code: await nextLoanCode(db, tid(c), b.type), type: b.type, status: "requested", amount: b.amount, interestPct: b.type === "loan" ? policy.loanInterestPct : 0, months: b.months, startMonth: await firstOpenMonth(c), reason: b.reason, requestedBy: uid(c) })
     .returning();
-  await audit(c, { action: "loans.request", entity: "employee_loan", entityId: row!.id, summary: `${e?.name} asked for a ${LOAN_TYPE_LABEL[b.type].toLowerCase()} of ${inr(b.amount)} over ${b.months} months` });
+  await audit(c, { action: "loans.request", entity: "employee_loan", entityId: row!.id, summary: `${e?.name} asked for a ${LOAN_TYPE_LABEL[b.type].toLowerCase()} of ${fmtMoney(b.amount)} over ${b.months} months` });
   return c.json(row, 201);
 });
 

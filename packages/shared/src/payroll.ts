@@ -1,6 +1,7 @@
 import type { TaxDeclarationData, Verified } from "./tax";
 import type { CountryCode } from "./countries";
 import { packFor } from "./packs";
+import { roundMoney } from "./format";
 
 /**
  * Payroll engine: pure functions shared by the API (and previews in the web app).
@@ -483,6 +484,9 @@ export interface PayslipResult {
 }
 
 export function computePayslip(input: PayslipInput): PayslipResult {
+  const pack = packFor(input.country);
+  // payslip lines round the way the country pays: whole rupees in India, fils or baisa in the Gulf
+  const r = (n: number) => roundMoney(n, pack.payroll.roundingDecimals);
   const t = input.template ?? DEFAULT_SALARY_TEMPLATE;
   const R = input.rules ?? DEFAULT_RULES;
   const month1 = Number(input.month.slice(5, 7));
@@ -504,7 +508,7 @@ export function computePayslip(input: PayslipInput): PayslipResult {
   const fullNonTaxable = (c.extras ?? []).filter((x) => x.taxable === false).reduce((s, x) => s + x.amount, 0);
 
   // Statutory deductions, employer contributions and income tax come from the country pack.
-  const stat = packFor(input.country).payroll.statutory({
+  const stat = pack.payroll.statutory({
     input,
     template: t,
     rules: R,

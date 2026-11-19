@@ -1,7 +1,7 @@
 import { runHelpdeskAutoClose } from "./helpdesk";
 import { and, eq, isNotNull, lte } from "drizzle-orm";
 import { auditLogs, createDb, invoicePayments, invoices, tenants, type Database } from "@hrms/db";
-import { inr } from "@hrms/shared";
+import { fmtMoney } from "@hrms/shared";
 import type { Env } from "../env";
 import { mailerFor } from "../lib/context";
 import { layout } from "../lib/email";
@@ -52,7 +52,7 @@ export async function runAutopayRetries(env: Env, now = new Date()) {
         continue;
       }
       out.scheduled++;
-      await log(db, inv.tenantId, "billing.autopay_retry", inv.id, `Retrying the autopay debit for ${inv.number} (${inr(Number(inv.total))})`);
+      await log(db, inv.tenantId, "billing.autopay_retry", inv.id, `Retrying the autopay debit for ${inv.number} (${fmtMoney(Number(inv.total))})`);
       try {
         const [t] = await db.select().from(tenants).where(eq(tenants.id, inv.tenantId));
         const to = t?.billingEmail ?? t?.contactEmail;
@@ -62,7 +62,7 @@ export async function runAutopayRetries(env: Env, now = new Date()) {
           const { html, text } = layout({
             company: entity.legalName,
             heading: `Trying autopay again for ${inv.number}`,
-            paragraphs: [`We'll debit ${inr(Number(inv.total))} again on ${when}, after your bank's pre-debit notice. This is the only automatic retry.`, "If you pay online before then, we'll cancel the debit, as long as it hasn't reached your bank yet. You can also skip it under Settings › Billing & invoices."],
+            paragraphs: [`We'll debit ${fmtMoney(Number(inv.total))} again on ${when}, after your bank's pre-debit notice. This is the only automatic retry.`, "If you pay online before then, we'll cancel the debit, as long as it hasn't reached your bank yet. You can also skip it under Settings › Billing & invoices."],
             cta: { label: "View invoice", url: `${env.APP_URL}/settings/billing` },
           });
           await mailer.send({ to, subject: `Autopay retry for ${inv.number}`, html, text });

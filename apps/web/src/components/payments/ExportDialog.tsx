@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowDown, ArrowUp, Download } from "lucide-react";
-import { BANK_FORMAT_LABEL, EXPORT_COLUMNS, EXPORT_DATE_FORMATS, EXPORT_FILE_TYPE_LABEL, EXPORT_FILE_TYPES, inr, type BankFileFormat, type ExportColumnKey, type ExportLayout } from "@hrms/shared";
+import { BANK_FORMAT_LABEL, EXPORT_COLUMNS, EXPORT_DATE_FORMATS, EXPORT_FILE_TYPE_LABEL, EXPORT_FILE_TYPES, fmtMoney, type BankFileFormat, type ExportColumnKey, type ExportLayout } from "@hrms/shared";
 import { api, download, errorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -162,7 +162,7 @@ export function ExportDialog({ batch, onClose, onDone }: { batch: { id: string; 
 
         <div>
           <div className="text-muted mb-1 text-[12px]">
-            {preview.data ? `Preview (first ${Math.min(3, preview.data.total)} of ${preview.data.total} · ${inr(preview.data.amount)}). Account numbers are masked here, not in the file.` : "Preview"}
+            {preview.data ? `Preview (first ${Math.min(3, preview.data.total)} of ${preview.data.total} · ${fmtMoney(preview.data.amount)}). Account numbers are masked here, not in the file.` : "Preview"}
           </div>
           <pre className="scroll-thin !m-0 max-h-[180px] overflow-auto rounded-[var(--radius-md)] p-3 text-[11.5px] leading-relaxed" style={{ background: "var(--inverse-bg)", color: "var(--inverse-fg)" }} data-testid="file-preview">
             {preview.error ? errorMessage(preview.error) : preview.data ? preview.data.preview.join("\n") : "Loading…"}

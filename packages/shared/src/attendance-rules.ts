@@ -1,5 +1,5 @@
 import type { AttendanceStatus } from "./constants";
-import { istMinutes } from "./format";
+import { localMinutes } from "./format";
 
 export interface ShiftRule {
   startTime: string; // HH:MM IST
@@ -40,7 +40,8 @@ export function evaluateAttendance(
   shift: ShiftRule,
   checkIn: Date | null,
   checkOut: Date | null,
-  opts: { wfh?: boolean } = {},
+  /** timeZone: the employee's zone (their entity's), for reading shift times. Defaults to the site's. */
+  opts: { wfh?: boolean; timeZone?: string } = {},
 ): AttendanceEvaluation {
   if (!checkIn) {
     return { status: "absent", workMinutes: 0, lateMinutes: 0, earlyMinutes: 0, overtimeMinutes: 0 };
@@ -48,7 +49,7 @@ export function evaluateAttendance(
   const start = hhmmToMinutes(shift.startTime);
   let end = hhmmToMinutes(shift.endTime);
   if (end <= start) end += 24 * 60; // overnight shift
-  const inMin = istMinutes(checkIn);
+  const inMin = localMinutes(checkIn, opts.timeZone);
   const lateMinutes = Math.max(0, inMin - start - shift.graceMinutes) > 0 ? inMin - start : 0;
 
   if (!checkOut) {
@@ -62,7 +63,7 @@ export function evaluateAttendance(
   }
 
   const workMinutes = Math.max(0, Math.round((checkOut.getTime() - checkIn.getTime()) / 60000));
-  let outMin = istMinutes(checkOut);
+  let outMin = localMinutes(checkOut, opts.timeZone);
   if (outMin < inMin) outMin += 24 * 60;
   const earlyMinutes = Math.max(0, end - outMin);
   const scheduled = end - start;

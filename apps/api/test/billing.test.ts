@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import postgres from "postgres";
-import { todayIST } from "@hrms/shared";
+import { todayLocal } from "@hrms/shared";
 import { Client, env, lastEmailTo, login } from "./helpers";
 
 let platform: Client, kunal: Client, nisha: Client;
@@ -41,7 +41,7 @@ describe("Billing run", () => {
     expect(demo.total).toBeCloseTo(demo.subtotal * 1.18, 1);
     const oct = await platform.post("/platform/billing/run/preview", { period: "2026-10" });
     expect(oct.body.drafts.find((d: any) => d.tenantCode === "TN-0142").skip).toMatch(/Already invoiced/);
-    expect((await platform.post("/platform/billing/run", { period: todayIST().slice(0, 7) })).status).toBe(400);
+    expect((await platform.post("/platform/billing/run", { period: todayLocal().slice(0, 7) })).status).toBe(400);
   });
   it("never bills the customer demo account", async () => {
     await sql`update tenants set settings = settings || '{"demo": true}'::jsonb where code = 'TN-0142'`;
@@ -71,7 +71,7 @@ describe("Billing run", () => {
   });
 
   it("exports GSTR-1 for invoices issued in a month", async () => {
-    const r = await platform.get(`/platform/billing/gstr1.csv?period=${todayIST().slice(0, 7)}`);
+    const r = await platform.get(`/platform/billing/gstr1.csv?period=${todayLocal().slice(0, 7)}`);
     expect(r.status).toBe(200);
     expect(r.body).toContain("B2B");
     expect(r.body).toContain("24-Gujarat");
@@ -92,7 +92,7 @@ describe("Collections and dunning", () => {
     const mine = (await kunal.get("/admin/billing")).body;
     expect(mine.status).toBe("past_due");
     expect(mine.overdue).toBeGreaterThan(0);
-    const paid = await platform.post(`/platform/billing/invoices/${inv!.id}/payment`, { paidOn: todayIST(), method: "neft", reference: "UTR123" });
+    const paid = await platform.post(`/platform/billing/invoices/${inv!.id}/payment`, { paidOn: todayLocal(), method: "neft", reference: "UTR123" });
     expect(paid.body.status).toBe("paid");
     expect(paid.body.restored).toBe(true);
     expect((await kunal.get("/admin/billing")).body.status).toBe("active");

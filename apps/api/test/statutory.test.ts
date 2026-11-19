@@ -1,9 +1,9 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { todayIST } from "@hrms/shared";
+import { todayLocal } from "@hrms/shared";
 import { Client, login } from "./helpers";
 
 let platform: Client, kunal: Client;
-const monthStart = todayIST().slice(0, 7) + "-01";
+const monthStart = todayLocal().slice(0, 7) + "-01";
 
 beforeAll(async () => {
   [platform, kunal] = await Promise.all([login("platform@saralix.com"), login("kunal.shah@strats360.com")]);

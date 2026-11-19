@@ -1,6 +1,6 @@
 import { and, asc, eq, lte } from "drizzle-orm";
 import { branches, employees, salaryStructures, tenants, type Database } from "@hrms/db";
-import { computePayslip, fyOfMonth, templateFor, todayIST, type CountryCode, type Regime } from "@hrms/shared";
+import { computePayslip, fyOfMonth, templateFor, todayLocal, type CountryCode, type Regime } from "@hrms/shared";
 import { entityOf } from "./entities";
 import { getTemplate, resolveStructure, yearToDate } from "./payroll";
 import { declarationsFor } from "./tax";
@@ -15,7 +15,7 @@ export const essSalaryVisible = (settings: unknown) => (settings as { essSalaryV
  * far. Revisions dated in the future stay hidden until they take effect.
  */
 export async function mySalary(db: Database, tenantId: string, employeeId: string) {
-  const today = todayIST();
+  const today = todayLocal();
   const month = today.slice(0, 7);
   const [row] = await db
     .select({ e: employees, state: branches.state })

@@ -1,10 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import postgres from "postgres";
-import { todayIST } from "@hrms/shared";
+import { todayLocal } from "@hrms/shared";
 import { Client, env, login } from "./helpers";
 
 const sql = postgres(env.DATABASE_URL!, { max: 1, onnotice: () => {} });
-const today = todayIST();
+const today = todayLocal();
 let month = "";
 let otDay = "";
 const year = Number(today.slice(0, 4));

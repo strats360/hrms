@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { inr, todayIST } from "@hrms/shared";
+import { fmtMoney, todayLocal } from "@hrms/shared";
 import { api } from "@/lib/api";
 import type { PayrollRun } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ export const RUN_STATUS_LABEL: Record<string, string> = { draft: "Draft · input
 export function PayrollCard() {
   const nav = useNavigate();
   const q = useQuery({ queryKey: ["payroll", "runs"], queryFn: () => api.get<PayrollRun[]>("/admin/payroll/runs") });
-  const month = todayIST().slice(0, 7);
+  const month = todayLocal().slice(0, 7);
   const runs = q.data ?? [];
   const current = runs.find((r) => r.month === month);
   const last = runs.find((r) => r.status === "paid");
@@ -27,7 +27,7 @@ export function PayrollCard() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="card-kicker">{current ? "Current month payroll" : last ? "Last payroll" : "Payroll"}</div>
-          <div className="stat-value mt-0.5">{t ? inr(t.net) : "Not started"}</div>
+          <div className="stat-value mt-0.5">{t ? fmtMoney(t.net) : "Not started"}</div>
           <div className="card-meta">{shown && t ? `${t.employees} employees · net payable · ${monthLabel(shown.month)}` : `${monthLabel(month)} payroll hasn't been started`}</div>
         </div>
         {current ? <Tag tone={current.status === "paid" ? "ok" : "warn"}>{current.status === "paid" ? "Paid" : `Step ${Math.min(step, 7)} of 7 · ${RUN_STATUS_LABEL[current.status]}`}</Tag> : last ? <Tag tone="ok">Paid</Tag> : null}
@@ -61,7 +61,7 @@ function Fig({ label, v }: { label: string; v: number }) {
   return (
     <div>
       <div className="text-muted text-[11.5px]">{label}</div>
-      <div className="num font-semibold">{inr(v)}</div>
+      <div className="num font-semibold">{fmtMoney(v)}</div>
     </div>
   );
 }

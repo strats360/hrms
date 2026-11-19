@@ -1,8 +1,8 @@
-import { inr } from "@hrms/shared";
+import { fmtMoney } from "@hrms/shared";
 import type { TaxStatement } from "@/lib/types";
 
 const pct = (r: number) => `${Math.round(r * 100)}%`;
-const range = (from: number, to: number | null) => (to === null ? `Above ${inr(from)}` : `${inr(from)} – ${inr(to)}`);
+const range = (from: number, to: number | null) => (to === null ? `Above ${fmtMoney(from)}` : `${fmtMoney(from)} – ${fmtMoney(to)}`);
 
 function Row({ label, value, minus, bold, muted }: { label: React.ReactNode; value: number; minus?: boolean; bold?: boolean; muted?: boolean }) {
   return (
@@ -10,7 +10,7 @@ function Row({ label, value, minus, bold, muted }: { label: React.ReactNode; val
       <span>{label}</span>
       <span className="num whitespace-nowrap">
         {minus && value ? "– " : ""}
-        {inr(Math.abs(value))}
+        {fmtMoney(Math.abs(value))}
       </span>
     </div>
   );
@@ -63,8 +63,8 @@ export function TaxStatementView({ s, compact }: { s: TaxStatement; compact?: bo
                 <tr key={sl.from}>
                   <td className="whitespace-nowrap">{range(sl.from, sl.to)}</td>
                   <td>{pct(sl.rate)}</td>
-                  <td className="num text-right">{inr(sl.amount)}</td>
-                  <td className="num text-right">{inr(sl.tax)}</td>
+                  <td className="num text-right">{fmtMoney(sl.amount)}</td>
+                  <td className="num text-right">{fmtMoney(sl.tax)}</td>
                 </tr>
               ))}
             </tbody>

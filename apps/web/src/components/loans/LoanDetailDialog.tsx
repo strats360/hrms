@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { fmtDate, inr, todayIST } from "@hrms/shared";
+import { fmtDate, fmtMoney, todayLocal } from "@hrms/shared";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ export function LoanDetailDialog({ id, onClose }: { id: string; onClose: () => v
   const { can } = useSession();
   const q = useQuery({ queryKey: ["loans", "detail", id], queryFn: () => api.get<LoanDetail>(`/admin/payroll/loans/${id}`) });
   const [mode, setMode] = useState<Mode>(null);
-  const [f, setF] = useState({ amount: "", months: "", interestPct: "", startMonth: "", note: "", paidOn: todayIST(), method: "bank_transfer", reference: "" });
+  const [f, setF] = useState({ amount: "", months: "", interestPct: "", startMonth: "", note: "", paidOn: todayLocal(), method: "bank_transfer", reference: "" });
   const refresh = () => qc.invalidateQueries({ queryKey: ["loans"] });
   const act = useMutation({
     mutationFn: ({ path, body }: { path: string; body: unknown }) => api.post(`/admin/payroll/loans/${id}/${path}`, body),
@@ -89,8 +89,8 @@ export function LoanDetailDialog({ id, onClose }: { id: string; onClose: () => v
           </Notice>
         ))}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <KV label="Amount">{inr(l.amount)}</KV>
-          <KV label="Monthly">{inr(l.emi)}</KV>
+          <KV label="Amount">{fmtMoney(l.amount)}</KV>
+          <KV label="Monthly">{fmtMoney(l.emi)}</KV>
           <KV label="Interest">{l.interestPct ? `${l.interestPct}% a year` : "Interest-free"}</KV>
           <KV label="Recovery">{`${monthLabel(l.startMonth)} to ${monthLabel(l.endMonth)}`}</KV>
           {l.paidOn ? <KV label="Paid out">{`${fmtDate(l.paidOn)} · ${METHOD_LABEL[l.paidMethod ?? ""] ?? l.paidMethod}${l.paidReference ? ` · ${l.paidReference}` : ""}`}</KV> : null}
@@ -100,10 +100,10 @@ export function LoanDetailDialog({ id, onClose }: { id: string; onClose: () => v
           <div>
             <div className="mb-1 flex justify-between text-[12.5px]">
               <span>
-                Recovered {inr(l.recovered)} of {inr(l.payable)}
-                {l.pending ? <span className="text-muted"> · {inr(l.pending)} in payroll not yet locked</span> : null}
+                Recovered {fmtMoney(l.recovered)} of {fmtMoney(l.payable)}
+                {l.pending ? <span className="text-muted"> · {fmtMoney(l.pending)} in payroll not yet locked</span> : null}
               </span>
-              <span className="font-semibold">{inr(l.outstanding)} left</span>
+              <span className="font-semibold">{fmtMoney(l.outstanding)} left</span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-[var(--tint-1)]">
               <div className="h-full rounded-full bg-[var(--ok-fg)]" style={{ width: `${progress}%` }} />
@@ -123,7 +123,7 @@ export function LoanDetailDialog({ id, onClose }: { id: string; onClose: () => v
             ) : null}
             {mode === "payout" ? (
               <div className="grid gap-3 sm:grid-cols-3">
-                <Field label="Paid on"><Input type="date" max={todayIST()} value={f.paidOn} onChange={(e) => setF({ ...f, paidOn: e.target.value })} /></Field>
+                <Field label="Paid on"><Input type="date" max={todayLocal()} value={f.paidOn} onChange={(e) => setF({ ...f, paidOn: e.target.value })} /></Field>
                 <Field label="How">
                   <Select value={f.method} onChange={(e) => setF({ ...f, method: e.target.value })}>
                     {Object.entries(METHOD_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -134,13 +134,13 @@ export function LoanDetailDialog({ id, onClose }: { id: string; onClose: () => v
             ) : null}
             {mode === "repay" ? (
               <div className="grid gap-3 sm:grid-cols-3">
-                <Field label="Amount (₹)" hint={`Up to ${inr(Math.max(0, l.outstanding - l.pending))}`}><Input type="number" min={1} value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></Field>
-                <Field label="Paid on"><Input type="date" max={todayIST()} value={f.paidOn} onChange={(e) => setF({ ...f, paidOn: e.target.value })} /></Field>
+                <Field label="Amount (₹)" hint={`Up to ${fmtMoney(Math.max(0, l.outstanding - l.pending))}`}><Input type="number" min={1} value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></Field>
+                <Field label="Paid on"><Input type="date" max={todayLocal()} value={f.paidOn} onChange={(e) => setF({ ...f, paidOn: e.target.value })} /></Field>
                 <Field label="Note"><Input value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder="e.g. Paid back in cash" /></Field>
               </div>
             ) : null}
             {mode === "reject" || mode === "writeoff" || mode === "approve" ? (
-              <Field label={mode === "approve" ? "Note (optional)" : mode === "reject" ? "Reason (the employee sees this)" : `Why ${inr(l.outstanding)} won't be recovered`}>
+              <Field label={mode === "approve" ? "Note (optional)" : mode === "reject" ? "Reason (the employee sees this)" : `Why ${fmtMoney(l.outstanding)} won't be recovered`}>
                 <Input value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} />
               </Field>
             ) : null}
@@ -191,9 +191,9 @@ export function LoanDetailDialog({ id, onClose }: { id: string; onClose: () => v
                     <tr key={s.month}>
                       <td>{s.n}</td>
                       <td>{monthLabel(s.month)}</td>
-                      <td className="num text-right">{inr(s.emi)}</td>
-                      {l.interestPct ? <td className="num text-right">{inr(s.interest)}</td> : null}
-                      <td className="num text-right">{inr(s.balance)}</td>
+                      <td className="num text-right">{fmtMoney(s.emi)}</td>
+                      {l.interestPct ? <td className="num text-right">{fmtMoney(s.interest)}</td> : null}
+                      <td className="num text-right">{fmtMoney(s.balance)}</td>
                       <td>{s.recovered ? <Tag tone={s.recovered.locked ? "ok" : "warn"}>{s.recovered.locked ? "Recovered" : "In payroll"}</Tag> : <span className="text-muted">Upcoming</span>}</td>
                       <td className="text-right">{canPause ? <Button size="sm" variant="ghost" onClick={() => act.mutate({ path: "pause", body: { month: s.month, paused: true } })}>Skip month</Button> : null}</td>
                     </tr>
@@ -222,7 +222,7 @@ export function LoanDetailDialog({ id, onClose }: { id: string; onClose: () => v
                 <span>
                   {fmtDate(r.paidOn)} · {r.source === "fnf" ? "Full and final settlement" : (r.note ?? "Repayment")}
                 </span>
-                <span className="num">{inr(r.amount)}</span>
+                <span className="num">{fmtMoney(r.amount)}</span>
               </div>
             ))}
           </div>

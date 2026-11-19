@@ -1,3 +1,4 @@
+import { localTimeZone, toLocalDate, zonedDateTime } from "./format";
 import type { AttendanceStatus } from "./constants";
 
 /**
@@ -108,9 +109,9 @@ export function matchImportColumns(header: string[]) {
 
 /**
  * A biometric punch time: ISO with an offset, or a local "YYYY-MM-DD HH:MM[:SS]" which is
- * taken as IST (devices in India keep local time).
+ * taken as local time in `tz` (devices keep local time). Defaults to the site's time zone.
  */
-export function parsePunchTime(raw: string): Date | null {
+export function parsePunchTime(raw: string, tz: string = localTimeZone()): Date | null {
   const s = raw.trim();
   if (/[zZ]|[+-]\d{2}:?\d{2}$/.test(s)) {
     const d = new Date(s);
@@ -118,9 +119,9 @@ export function parsePunchTime(raw: string): Date | null {
   }
   const m = s.match(/^(\d{4}-\d{2}-\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2}))?$/);
   if (!m) return null;
-  const d = new Date(`${m[1]}T${m[2]}:${m[3]}:${m[4] ?? "00"}+05:30`);
+  const d = zonedDateTime(m[1]!, `${m[2]}:${m[3]}:${m[4] ?? "00"}`, tz);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** The IST calendar date of an instant. */
-export const istDateOf = (d: Date) => new Date(d.getTime() + 5.5 * 3600_000).toISOString().slice(0, 10);
+/** The local calendar date of an instant (site time zone unless `tz` is given). */
+export const localDateOf = (d: Date, tz?: string) => toLocalDate(d, tz);

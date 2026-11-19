@@ -2,7 +2,7 @@ import { Outlet, useNavigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Download, Play } from "lucide-react";
-import { fmtDate, todayIST } from "@hrms/shared";
+import { fmtDate, todayLocal } from "@hrms/shared";
 import { api, ApiError, download } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { PayrollRun } from "@/lib/types";
@@ -20,7 +20,7 @@ export function useStartCurrentRun() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const runs = usePayrollRuns();
-  const month = todayIST().slice(0, 7);
+  const month = todayLocal().slice(0, 7);
   return useMutation({
     mutationFn: async () => {
       const existing = runs.data?.find((r) => r.month === month);

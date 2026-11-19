@@ -1,3 +1,4 @@
+import { setLocalDefaults } from "@hrms/shared";
 import { essHelpdeskRoutes, helpdeskRoutes } from "./routes/helpdesk";
 import { announcementRoutes, essAnnouncementRoutes } from "./routes/announcements";
 import { essTimesheetRoutes, timesheetRoutes } from "./routes/timesheets";
@@ -73,6 +74,11 @@ export function buildApp() {
 
   const api = new Hono<AppEnv>();
   api.use("*", secureHeaders());
+  // the site's default time zone and currency (see docs/MULTI_COUNTRY.md)
+  api.use("*", async (c, next) => {
+    setLocalDefaults({ timeZone: c.env.DEFAULT_TIME_ZONE, currency: c.env.DEFAULT_CURRENCY });
+    await next();
+  });
   api.use("*", async (c, next) => {
     await next();
     // responses that set their own caching (profile photos) keep it

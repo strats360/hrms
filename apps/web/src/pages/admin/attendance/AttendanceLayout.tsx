@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Download, Plus, Upload } from "lucide-react";
 import { UploadDialog } from "@/components/attendance/UploadDialog";
 import { toast } from "sonner";
-import { ATTENDANCE_STATUSES, ATTENDANCE_STATUS_LABELS, todayIST, type AttendanceStatus } from "@hrms/shared";
+import { ATTENDANCE_STATUSES, ATTENDANCE_STATUS_LABELS, todayLocal, type AttendanceStatus } from "@hrms/shared";
 import { api, download, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { PageHeader } from "@/components/ui/page";
@@ -33,7 +33,7 @@ export default function AttendanceLayout() {
             {can("attendance", "export") ? (
               <Button
                 onClick={() =>
-                  download(`/admin/attendance/monthly.csv?month=${todayIST().slice(0, 7)}`, "attendance.csv").catch((e) => toast.error(errorMessage(e)))
+                  download(`/admin/attendance/monthly.csv?month=${todayLocal().slice(0, 7)}`, "attendance.csv").catch((e) => toast.error(errorMessage(e)))
                 }
               >
                 <Download size={16} />
@@ -75,7 +75,7 @@ export default function AttendanceLayout() {
 function ManualEntryDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const qc = useQueryClient();
   const lookups = useLookups();
-  const empty = { employeeId: "", date: todayIST(), status: "present" as AttendanceStatus, checkIn: "09:00", checkOut: "18:00", note: "" };
+  const empty = { employeeId: "", date: todayLocal(), status: "present" as AttendanceStatus, checkIn: "09:00", checkOut: "18:00", note: "" };
   const [f, setF] = useState(empty);
   const [err, setErr] = useState<string | null>(null);
   const needsTimes = ["present", "late", "half_day", "wfh"].includes(f.status);
@@ -124,7 +124,7 @@ function ManualEntryDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           <SearchSelect value={f.employeeId} onChange={(v) => set("employeeId")({ target: { value: v } })} placeholder="Select an employee" searchPlaceholder="Search by name or employee ID" options={(lookups.data?.employees ?? []).map((e) => ({ value: e.id, label: e.name, hint: e.code }))} />
         </Field>
         <Field label="Date">
-          <Input type="date" max={todayIST()} value={f.date} onChange={set("date")} />
+          <Input type="date" max={todayLocal()} value={f.date} onChange={set("date")} />
         </Field>
         <Field label="Status">
           <Select value={f.status} onChange={set("status")}>

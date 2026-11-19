@@ -1,4 +1,4 @@
-import { fmtDate, inr, rupeesInWords } from "@hrms/shared";
+import { fmtDate, fmtMoney, rupeesInWords } from "@hrms/shared";
 
 export interface Company {
   name: string;
@@ -67,7 +67,7 @@ export function SettlementStatement({ company, exit }: { company: Company; exit:
                   {l.label}
                   {l.note ? <div className="text-muted text-[11.5px]">{l.note}</div> : null}
                 </td>
-                <td className="num py-1.5 text-right">{inr(l.amount)}</td>
+                <td className="num py-1.5 text-right">{fmtMoney(l.amount)}</td>
               </tr>
             ))
           ) : (
@@ -77,7 +77,7 @@ export function SettlementStatement({ company, exit }: { company: Company; exit:
           )}
           <tr className="font-medium">
             <td className="py-1.5">Total</td>
-            <td className="num py-1.5 text-right">{inr(total)}</td>
+            <td className="num py-1.5 text-right">{fmtMoney(total)}</td>
           </tr>
         </tbody>
       </table>
@@ -103,7 +103,7 @@ export function SettlementStatement({ company, exit }: { company: Company; exit:
       </div>
       <div className="flex flex-wrap items-baseline justify-between gap-2 rounded-[var(--radius-md)] px-3.5 py-3" style={{ background: "var(--ok-bg)", color: "var(--ok-fg)" }}>
         <div className="font-medium">{s.net >= 0 ? "Net amount payable to the employee" : "Net amount recoverable from the employee"}</div>
-        <div className="num text-[18px] font-semibold">{inr(Math.abs(s.net))}</div>
+        <div className="num text-[18px] font-semibold">{fmtMoney(Math.abs(s.net))}</div>
         <div className="w-full text-[12px]">{rupeesInWords(Math.abs(s.net))}</div>
       </div>
       <div className="text-muted text-[12px]">The salary for the last month is paid separately through payroll, up to the last working day.{exit.settledOn ? ` Settled on ${fmtDate(exit.settledOn)}${exit.settlementReference ? `, reference ${exit.settlementReference}` : ""}.` : ""}</div>

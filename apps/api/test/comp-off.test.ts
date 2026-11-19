@@ -1,13 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import postgres from "postgres";
 import { createDb } from "@hrms/db";
-import { todayIST } from "@hrms/shared";
+import { todayLocal } from "@hrms/shared";
 import { Client, env, lastEmailTo, login } from "./helpers";
 import { expireCompOff } from "../src/services/comp-off";
 
 const sql = postgres(env.DATABASE_URL!, { max: 1, onnotice: () => {} });
 const db = createDb(env.DATABASE_URL!, { max: 1 });
-const today = todayIST();
+const today = todayLocal();
 const year = Number(today.slice(0, 4));
 let priya: Client, hardik: Client, nisha: Client;
 let priyaId = "";

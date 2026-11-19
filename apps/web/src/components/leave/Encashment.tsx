@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { inr } from "@hrms/shared";
+import { fmtMoney } from "@hrms/shared";
 import { monthLabel } from "@/components/payroll/Payslip";
 import { CardHeader, TableCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -63,7 +63,7 @@ export function EncashDialog({ row, onClose }: { row: { employeeId: string; name
   const m = useMutation({
     mutationFn: () => api.post<{ amount: number }>("/admin/leave/encashments", { employeeId: row.employeeId, leaveTypeId: tid, days: Number(days) }),
     onSuccess: (r) => {
-      toast.success(`${inr(r.amount)} will be paid with the next payroll`);
+      toast.success(`${fmtMoney(r.amount)} will be paid with the next payroll`);
       qc.invalidateQueries({ queryKey: ["leave"] });
       onClose();
     },
@@ -157,7 +157,7 @@ export function YearCloseDialog({ year, onClose }: { year: number; onClose: () =
             <Tag tone="neutral">{preview.employees} employees</Tag>
             <Tag tone="ok">{preview.carriedDays} days carried</Tag>
             <Tag tone="warn">{preview.lapsedDays} days lapse</Tag>
-            {preview.encashDays ? <Tag tone="accent">{preview.encashDays} days encashed · {inr(preview.encashAmount)}</Tag> : null}
+            {preview.encashDays ? <Tag tone="accent">{preview.encashDays} days encashed · {fmtMoney(preview.encashAmount)}</Tag> : null}
           </div>
           <div className="scroll-thin max-h-[300px] min-w-0 overflow-auto">
             <table className="table text-[13px]">
@@ -233,7 +233,7 @@ export function EncashmentsCard() {
                   {e.reason === "year_end" ? <span className="text-muted"> · lapsed {e.year}</span> : null}
                 </td>
                 <td className="num text-right">{e.days}</td>
-                <td className="num text-right">{inr(e.amount)}</td>
+                <td className="num text-right">{fmtMoney(e.amount)}</td>
                 <td>
                   <Tag tone={STATE[e.state].tone}>{STATE[e.state].label}</Tag>
                   {e.payrollMonth ? <span className="text-muted"> {monthLabel(e.payrollMonth)}</span> : null}

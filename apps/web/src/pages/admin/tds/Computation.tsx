@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Download, FileText, Repeat } from "lucide-react";
-import { inr } from "@hrms/shared";
+import { fmtMoney } from "@hrms/shared";
 import { api, download, errorMessage, qs } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { EmployeeTax, Form16Data } from "@/lib/types";
@@ -109,12 +109,12 @@ function EmployeeComputation({ id, fy }: { id: string; fy: string }) {
           <Line label="Remaining liability" value={d.remaining} />
           {d.excess ? (
             <div className="rounded-[var(--radius-md)] px-3 py-2 text-[12.5px]" style={{ background: "var(--warn-bg)", color: "var(--warn-fg)" }}>
-              {inr(d.excess)} more than this year's tax has already been deducted, so no further TDS is due. The employee can claim the excess as a refund in their income tax return.
+              {fmtMoney(d.excess)} more than this year's tax has already been deducted, so no further TDS is due. The employee can claim the excess as a refund in their income tax return.
             </div>
           ) : null}
           <div className="mt-1 flex justify-between border-t border-[var(--color-divider)] pt-2 font-semibold">
             <span>Estimated TDS · next {d.projectedMonths} month{d.projectedMonths === 1 ? "" : "s"}</span>
-            <span className="num">{inr(d.monthlyEstimate)}</span>
+            <span className="num">{fmtMoney(d.monthlyEstimate)}</span>
           </div>
         </Card>
         <Card className="!gap-2">
@@ -122,7 +122,7 @@ function EmployeeComputation({ id, fy }: { id: string; fy: string }) {
           <Line label="New regime" value={d.comparison.new} bold={d.comparison.better === "new"} />
           <Line label="Old regime (with declarations)" value={d.comparison.old} bold={d.comparison.better === "old"} />
           <div className="text-[13px]" style={{ color: "var(--ok-fg)" }}>
-            {d.comparison.saving ? `The ${d.comparison.better} regime saves ${inr(d.comparison.saving)} this year.` : "Both regimes come to the same tax."}
+            {d.comparison.saving ? `The ${d.comparison.better} regime saves ${fmtMoney(d.comparison.saving)} this year.` : "Both regimes come to the same tax."}
           </div>
         </Card>
         <Card className="!gap-2">
@@ -142,8 +142,8 @@ function EmployeeComputation({ id, fy }: { id: string; fy: string }) {
                   <tr key={m.month}>
                     <td className="whitespace-nowrap">{monthLabel(m.month)}</td>
                     <td>{m.status === "locked" ? <Tag tone="ok">Locked</Tag> : <Tag tone="neutral">Projected</Tag>}</td>
-                    <td className="num text-right">{inr(m.gross)}</td>
-                    <td className="num text-right">{m.status === "locked" ? inr(m.tds) : "—"}</td>
+                    <td className="num text-right">{fmtMoney(m.gross)}</td>
+                    <td className="num text-right">{m.status === "locked" ? fmtMoney(m.tds) : "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -195,7 +195,7 @@ function Line({ label, value, bold }: { label: string; value: number; bold?: boo
   return (
     <div className={`flex justify-between text-[13.5px] ${bold ? "font-semibold" : ""}`}>
       <span>{label}</span>
-      <span className="num">{inr(value)}</span>
+      <span className="num">{fmtMoney(value)}</span>
     </div>
   );
 }

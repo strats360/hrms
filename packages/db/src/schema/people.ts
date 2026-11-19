@@ -12,7 +12,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { tenantIdColumn as tenantId } from "./org";
-import { id, timestamps } from "./_helpers";
+import { id, timestamps, money } from "./_helpers";
 
 export const employees = pgTable(
   "employees",
@@ -58,7 +58,7 @@ export const employees = pgTable(
     probationRemindedFor: date("probation_reminded_for", { mode: "string" }),
     resignationDate: date("resignation_date", { mode: "string" }),
     lastWorkingDay: date("last_working_day", { mode: "string" }),
-    annualCtc: numeric("annual_ctc", { precision: 14, scale: 2, mode: "number" }).notNull().default(0),
+    annualCtc: money("annual_ctc").notNull().default(0),
     /** Salary template (company settings); null is the default template. */
     salaryTemplateId: text("salary_template_id"),
     /** Skill category under the state minimum wage notification. */

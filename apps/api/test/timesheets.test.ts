@@ -1,12 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import postgres from "postgres";
-import { addWeeks, todayIST, weekDates, weekStart } from "@hrms/shared";
+import { addWeeks, todayLocal, weekDates, weekStart } from "@hrms/shared";
 import { Client, env, lastEmailTo, login, mailer } from "./helpers";
 
 const sql = postgres(env.DATABASE_URL!, { max: 1, onnotice: () => {} });
 let nisha: Client, hardik: Client, amit: Client, priya: Client;
 let tenantId = "", priyaId = "", web = "", internal = "", sheetId = "";
-const week = addWeeks(weekStart(todayIST()), -1);
+const week = addWeeks(weekStart(todayLocal()), -1);
 const [mon, tue, wed] = weekDates(week);
 
 beforeAll(async () => {

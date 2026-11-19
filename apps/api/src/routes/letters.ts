@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import { eq, sql } from "drizzle-orm";
 import { employeeDocuments, tenants } from "@hrms/db";
-import { can, letterGenerateSchema, letterSettingsSchema, letterTemplateSchema, renderLetter, SALARY_TABLE, todayIST, type LetterTemplate } from "@hrms/shared";
+import { can, letterGenerateSchema, letterSettingsSchema, letterTemplateSchema, renderLetter, SALARY_TABLE, todayLocal, type LetterTemplate } from "@hrms/shared";
 import type { AppEnv } from "../env";
 import { requirePerm } from "../lib/context";
 import { v } from "../lib/validate";
@@ -83,7 +83,7 @@ letterRoutes.post("/pdf", requirePerm("employees", "edit"), v("json", letterGene
   const b = c.req.valid("json");
   const p = await prepare(c, b.employeeId, b.templateId, b.text);
   const title = b.title ?? p.t.name;
-  const today = todayIST();
+  const today = todayLocal();
   const reference = `${p.data.employee.code}/${(title.split(/\s+/)[0] ?? "").replace(/[^A-Za-z]/g, "").slice(0, 8).toUpperCase() || "LTR"}/${today.replace(/-/g, "")}`;
   const pdf = await letterPdf({ title: `${title} · ${p.data.employee.name}`, text: p.text, reference, company: p.data.company, salary: p.data.salary, signatory: p.settings });
   let documentId: string | null = null;

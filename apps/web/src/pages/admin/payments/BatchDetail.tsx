@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { ArrowLeft, CheckCheck, Download, FileCheck2, Plus, Upload } from "lucide-react";
-import { fmtDate, inr } from "@hrms/shared";
+import { fmtDate, fmtMoney } from "@hrms/shared";
 import { api, errorMessage } from "@/lib/api";
 import { ExportDialog } from "@/components/payments/ExportDialog";
 import { useSession } from "@/lib/session";
@@ -27,7 +27,7 @@ export function paymentColumns(opts: { batch?: boolean } = {}): ColumnDef<Paymen
     ...(opts.batch ? [{ id: "batch", header: "Batch", accessorFn: (p: Payment) => p.batchCode, cell: ({ row: { original: p } }: { row: { original: Payment } }) => <Link to={`/payments/batches/${p.batchId}`}>{p.batchCode}</Link> } as ColumnDef<Payment, any>] : []),
     { id: "employee", header: "Employee", accessorFn: (p) => p.employeeName, cell: ({ row: { original: p } }) => <PersonCell employeeId={p.employeeId} name={p.employeeName} sub={p.employeeCode} /> },
     { id: "bank", header: "Bank", accessorFn: (p) => p.bankName ?? "", cell: ({ row: { original: p } }) => (p.accountLast4 ? <div>{p.bankName}<div className="text-muted text-[11.5px]">····{p.accountLast4} · {p.ifsc}</div></div> : <span className="text-muted">Not on file</span>) },
-    { id: "amount", header: "Amount", accessorFn: (p) => Number(p.amount), meta: { align: "right" }, cell: ({ getValue }) => <span className="font-semibold">{inr(getValue<number>())}</span> },
+    { id: "amount", header: "Amount", accessorFn: (p) => Number(p.amount), meta: { align: "right" }, cell: ({ getValue }) => <span className="font-semibold">{fmtMoney(getValue<number>())}</span> },
     { id: "status", header: "Status", accessorFn: (p) => p.status, cell: ({ row: { original: p } }) => <PaymentStatusTag status={p.status} /> },
     {
       id: "detail",
@@ -136,8 +136,8 @@ export default function BatchDetail() {
       {b.status === "draft" && !can("payments", "approve") ? <Notice tone="sel">A finance approver needs to approve this batch before the bank file can be downloaded.</Notice> : null}
       {b.type === "bonus" ? <Notice tone="warn">Bonus is taxable salary. This batch doesn't deduct TDS, so include it in the employee's TDS computation, or pay it through payroll as a one-time earning instead.</Notice> : null}
       <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(170px, 100%), 1fr))" }}>
-        <StatCard label="Total" value={inr(b.amount)} meta={`${b.count} payments`} />
-        <StatCard label="Paid" value={inr(b.paidAmount)} meta={`${b.paid} payments`} onClick={() => setFilter("paid")} />
+        <StatCard label="Total" value={fmtMoney(b.amount)} meta={`${b.count} payments`} />
+        <StatCard label="Paid" value={fmtMoney(b.paidAmount)} meta={`${b.paid} payments`} onClick={() => setFilter("paid")} />
         <StatCard label="Pending" value={b.pending} meta={sent ? "waiting for the bank's result" : "in the next bank file"} onClick={() => setFilter("pending")} />
         <StatCard label="Failed / held" value={`${b.failed} / ${b.held}`} meta="retry, hold or pay another way" onClick={() => setFilter(b.failed ? "failed" : "held")} />
       </div>

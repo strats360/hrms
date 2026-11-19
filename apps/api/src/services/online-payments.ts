@@ -1,3 +1,4 @@
+import { toLocalDate } from "@hrms/shared";
 import { and, desc, eq } from "drizzle-orm";
 import { invoicePayments, invoices, type Database } from "@hrms/db";
 import { getPayments, methodOf, type CashfreeConfig, type CfPayment } from "./cashfree";
@@ -34,7 +35,7 @@ export async function applyPayment(db: Database, attempt: Attempt, p: CfPayment 
       .set({ status: "paid", gatewayPaymentId: String(p.cf_payment_id), method: methodOf(p.payment_group), bankReference: p.bank_reference ?? null, paidAt, failureReason: null, raw: p as unknown as Record<string, unknown> })
       .where(eq(invoicePayments.id, attempt.id))
       .returning();
-    const paidOn = new Date(paidAt.getTime() + 5.5 * 3600_000).toISOString().slice(0, 10);
+    const paidOn = toLocalDate(paidAt);
     const [inv] = await db
       .update(invoices)
       .set({ status: "paid", paidOn, paymentMethod: methodOf(p.payment_group), paymentReference: `Cashfree ${p.cf_payment_id}${p.bank_reference ? ` · ${p.bank_reference}` : ""}` })

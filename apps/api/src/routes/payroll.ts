@@ -14,24 +14,7 @@ import {
   branches,
   user,
 } from "@hrms/db";
-import {
-  can,
-  decryptField,
-  markPaidSchema,
-  payrollAdjustmentSchema,
-  payrollItemPatchSchema,
-  payrollRunCreateSchema,
-  reopenSchema,
-  structureFromComponents,
-  templateFor,
-  minimumWageShortfall,
-  structureFromCtc,
-  structureRevisionSchema,
-  tenantPayrollSettingsSchema,
-  todayIST,
-  fmtDate,
-  inr,
-} from "@hrms/shared";
+import { can, decryptField, markPaidSchema, payrollAdjustmentSchema, payrollItemPatchSchema, payrollRunCreateSchema, reopenSchema, structureFromComponents, templateFor, minimumWageShortfall, structureFromCtc, structureRevisionSchema, tenantPayrollSettingsSchema, todayLocal, fmtDate, fmtMoney, zonedDateTime } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
 import { requirePerm } from "../lib/context";
@@ -162,7 +145,7 @@ payrollRoutes.post(
 /** Current structure for every active employee. */
 payrollRoutes.get("/structures", requirePerm("payroll", "view"), v("query", z.object({ q: z.string().optional() })), async (c) => {
   const db = c.get("db");
-  const today = todayIST();
+  const today = todayLocal();
   const emps = (await payableEmployees(db, tid(c), today, today)).filter((x) => {
     const q = c.req.valid("query").q?.toLowerCase();
     return !q || x.e.fullName.toLowerCase().includes(q) || x.e.employeeCode.toLowerCase().includes(q);
@@ -186,7 +169,7 @@ payrollRoutes.get("/structures/:employeeId", requirePerm("payroll", "view"), asy
   if (!e) throw notFound("Employee");
   const template = await getTemplate(db, tid(c));
   const history = await db.select().from(salaryStructures).where(and(eq(salaryStructures.tenantId, tid(c)), eq(salaryStructures.employeeId, e.id))).orderBy(desc(salaryStructures.effectiveFrom));
-  const current = (await structuresAsOf(db, tid(c), [e.id], todayIST())).get(e.id);
+  const current = (await structuresAsOf(db, tid(c), [e.id], todayLocal())).get(e.id);
   return c.json({
     employee: { id: e.id, name: e.fullName, code: e.employeeCode, dateOfJoining: e.dateOfJoining, pfApplicable: e.pfApplicable, esiApplicable: e.esiApplicable, taxRegime: e.taxRegime, templateId: e.salaryTemplateId },
     template: templateFor(template, e.salaryTemplateId),
@@ -216,15 +199,15 @@ payrollRoutes.post("/structures/:employeeId", requirePerm("payroll", "edit"), v(
     .values({ tenantId: tid(c), employeeId: e.id, effectiveFrom: b.effectiveFrom, annualCtc, components: b.components ?? null, reason: b.reason ?? null, createdBy: uid(c) })
     .onConflictDoUpdate({ target: [salaryStructures.tenantId, salaryStructures.employeeId, salaryStructures.effectiveFrom], set: { annualCtc, components: b.components ?? null, reason: b.reason ?? null } })
     .returning();
-  if (b.effectiveFrom <= todayIST()) await db.update(employees).set({ annualCtc }).where(eq(employees.id, e.id));
+  if (b.effectiveFrom <= todayLocal()) await db.update(employees).set({ annualCtc }).where(eq(employees.id, e.id));
   // warn (not block) when the new salary is under the state's minimum wage
   const [br] = e.branchId ? await db.select({ state: branches.state }).from(branches).where(eq(branches.id, e.branchId)) : [];
   const [tn] = await db.select({ state: tenants.state, settings: tenants.settings }).from(tenants).where(eq(tenants.id, tid(c)));
   const state = br?.state ?? tn?.state ?? null;
   const st = resolveStructure(e, { annualCtc, components: b.components ?? null }, template);
   const mw = state ? minimumWageShortfall((await rulesFor(db, b.effectiveFrom.slice(0, 7))).minWage[state], { basic: st.components.basic, gross: st.gross }, { category: e.wageCategory, basis: (tn?.settings as { minWageBasis?: "basic" | "gross" } | null)?.minWageBasis }) : null;
-  const warning = mw ? `This is below the ${state} minimum wage${mw.label ? ` for ${mw.label.toLowerCase()} work` : ""}: monthly ${mw.basis} ${inr(mw.paid)} against ${inr(mw.required)}.` : null;
-  await audit(c, { action: "payroll.structure", entity: "salary_structure", entityId: row!.id, summary: `Set ${e.fullName}'s CTC to ${inr(annualCtc)} from ${fmtDate(b.effectiveFrom)}${warning ? " (below minimum wage)" : ""}`, data: { reason: b.reason } });
+  const warning = mw ? `This is below the ${state} minimum wage${mw.label ? ` for ${mw.label.toLowerCase()} work` : ""}: monthly ${mw.basis} ${fmtMoney(mw.paid)} against ${fmtMoney(mw.required)}.` : null;
+  await audit(c, { action: "payroll.structure", entity: "salary_structure", entityId: row!.id, summary: `Set ${e.fullName}'s CTC to ${fmtMoney(annualCtc)} from ${fmtDate(b.effectiveFrom)}${warning ? " (below minimum wage)" : ""}`, data: { reason: b.reason } });
   return c.json({ ...row, warning }, 201);
 });
 
@@ -379,7 +362,7 @@ payrollRoutes.post("/runs/:id/adjustments", requirePerm("payroll", "edit"), v("j
   if (!e) throw notFound("Employee");
   const [row] = await db.insert(payrollAdjustments).values({ ...b, tenantId: tid(c), runId: run.id, createdBy: uid(c) }).returning();
   if (run.status === "calculated") await calculateRun(db, tid(c), run.id, uid(c));
-  await audit(c, { action: "payroll.adjustment", entity: "payroll_adjustment", entityId: row!.id, summary: `Added ${b.kind} "${b.label}" ${inr(b.amount)} for ${e.name} (${run.month})` });
+  await audit(c, { action: "payroll.adjustment", entity: "payroll_adjustment", entityId: row!.id, summary: `Added ${b.kind} "${b.label}" ${fmtMoney(b.amount)} for ${e.name} (${run.month})` });
   return c.json(row, 201);
 });
 
@@ -411,7 +394,7 @@ payrollRoutes.post("/runs/:id/approve", requirePerm("payroll", "approve"), async
   if ((corr?.n ?? 0) > 0) throw badRequest(`Resolve ${corr!.n} pending attendance correction(s) for this month first, then recalculate`);
   const [updated] = await db.update(payrollRuns).set({ status: "approved", approvedBy: uid(c), approvedAt: new Date() }).where(and(eq(payrollRuns.id, run.id), eq(payrollRuns.status, "calculated"))).returning();
   if (!updated) throw badRequest("This payroll changed. Reload and try again.");
-  await audit(c, { action: "payroll.approve", entity: "payroll_run", entityId: run.id, summary: `Approved and locked ${run.month} payroll (net ${inr(run.totals?.net ?? 0)})` });
+  await audit(c, { action: "payroll.approve", entity: "payroll_run", entityId: run.id, summary: `Approved and locked ${run.month} payroll (net ${fmtMoney(run.totals?.net ?? 0)})` });
   await closeRepaidLoans(db, tid(c));
   return c.json(updated);
 });
@@ -533,7 +516,7 @@ payrollRoutes.post("/runs/:id/mark-paid", requirePerm("payroll", "approve"), v("
   const [row] = await c
     .get("db")
     .update(payrollRuns)
-    .set({ status: "paid", paidAt: new Date(b.paidOn + "T12:00:00+05:30"), paidBy: uid(c), paymentReference: b.reference ?? null, publishedAt: run.publishedAt ?? new Date() })
+    .set({ status: "paid", paidAt: zonedDateTime(b.paidOn, "12:00"), paidBy: uid(c), paymentReference: b.reference ?? null, publishedAt: run.publishedAt ?? new Date() })
     .where(eq(payrollRuns.id, run.id))
     .returning();
   const held = (await c.get("db").select({ e: payrollItems.employeeId }).from(payrollItems).where(and(eq(payrollItems.runId, run.id), eq(payrollItems.onHold, true)))).map((r) => r.e);

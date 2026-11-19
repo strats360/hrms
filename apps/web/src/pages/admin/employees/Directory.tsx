@@ -4,7 +4,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Search } from "lucide-react";
-import { EMPLOYEE_STATUS_LABELS, EMPLOYMENT_TYPE_LABELS, fmtDate, inrCompact, type EmployeeStatus } from "@hrms/shared";
+import { EMPLOYEE_STATUS_LABELS, EMPLOYMENT_TYPE_LABELS, fmtDate, fmtMoneyCompact, type EmployeeStatus } from "@hrms/shared";
 import { DataTable } from "@/components/ui/data-table";
 import { TableCard } from "@/components/ui/card";
 import { Input, Segmented, Select } from "@/components/ui/field";
@@ -104,7 +104,7 @@ export default function Directory() {
       { id: "dateOfJoining", accessorKey: "dateOfJoining", header: "Joined", cell: ({ getValue }) => fmtDate(getValue() as string) },
     ];
     if (list.data?.rows.some((r) => r.annualCtc !== null)) {
-      cols.push({ id: "annualCtc", accessorKey: "annualCtc", header: "Annual CTC", meta: { align: "right" }, cell: ({ getValue }) => (getValue() === null ? "—" : inrCompact(getValue() as number)) });
+      cols.push({ id: "annualCtc", accessorKey: "annualCtc", header: "Annual CTC", meta: { align: "right" }, cell: ({ getValue }) => (getValue() === null ? "—" : fmtMoneyCompact(getValue() as number)) });
     }
     cols.push({ id: "status", accessorKey: "status", header: "Status", cell: ({ getValue }) => <StatusTag status={getValue() as string} label={EMPLOYEE_STATUS_LABELS[getValue() as EmployeeStatus]} /> });
     return cols;

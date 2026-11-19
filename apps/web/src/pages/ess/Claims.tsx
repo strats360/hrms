@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, Plus } from "lucide-react";
-import { fmtDate, inr } from "@hrms/shared";
+import { fmtDate, fmtMoney } from "@hrms/shared";
 import { api } from "@/lib/api";
 import type { MyClaims } from "@/lib/types";
 import { Card } from "@/components/ui/card";
@@ -36,12 +36,12 @@ export default function EssClaims() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Card className="!gap-1">
           <div className="card-kicker">Waiting for approval</div>
-          <div className="num text-[22px] font-medium">{inr(sum(waiting))}</div>
+          <div className="num text-[22px] font-medium">{fmtMoney(sum(waiting))}</div>
           <div className="card-meta">{waiting.length} claim{waiting.length === 1 ? "" : "s"}</div>
         </Card>
         <Card className="!gap-1">
           <div className="card-kicker">Approved, to be paid</div>
-          <div className="num text-[22px] font-medium">{inr(sum(unpaid))}</div>
+          <div className="num text-[22px] font-medium">{fmtMoney(sum(unpaid))}</div>
           <div className="card-meta">with your next salary</div>
         </Card>
         {d.usage.slice(0, 2).map((u) => (
@@ -49,9 +49,9 @@ export default function EssClaims() {
             <div className="card-kicker">
               {u.name} · {monthLabel(d.month)}
             </div>
-            <div className="num text-[22px] font-medium">{inr(u.used)}</div>
+            <div className="num text-[22px] font-medium">{fmtMoney(u.used)}</div>
             <div className="card-meta">
-              of {inr(u.limit)} {u.used > u.limit ? <Tag tone="warn">over limit</Tag> : null}
+              of {fmtMoney(u.limit)} {u.used > u.limit ? <Tag tone="warn">over limit</Tag> : null}
             </div>
           </Card>
         ))}
@@ -83,7 +83,7 @@ export default function EssClaims() {
                 <span className="hidden sm:inline">
                   <ClaimStatusTag status={c.status} />
                 </span>
-                <span className="num font-semibold">{inr(c.amount)}</span>
+                <span className="num font-semibold">{fmtMoney(c.amount)}</span>
                 <ChevronRight size={16} style={{ color: "var(--muted)" }} />
               </div>
             </button>

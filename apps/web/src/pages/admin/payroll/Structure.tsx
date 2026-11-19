@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { fmtDate, inr } from "@hrms/shared";
+import { fmtDate, fmtMoney } from "@hrms/shared";
 import { api, errorMessage, qs } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { ExtraComponentDef, SalaryTemplate, Structure, TemplateRow } from "@/lib/types";
@@ -123,10 +123,10 @@ export default function StructurePage() {
       { id: "name", header: "Employee", accessorKey: "name", cell: ({ row: { original: r } }) => <div><div className="font-medium">{r.name}</div><div className="text-muted text-[12px]">{r.code}{r.designation ? ` · ${r.designation}` : ""}</div></div> },
       { id: "department", header: "Department", accessorFn: (r) => r.department ?? "" },
       { id: "template", header: "Template", accessorFn: (r) => r.templateName },
-      { id: "ctc", header: "Annual CTC", accessorKey: "annualCtc", cell: ({ getValue }) => inr(getValue<number>()), meta: { align: "right" } },
-      { id: "gross", header: "Monthly gross", accessorKey: "monthlyGross", cell: ({ getValue }) => inr(getValue<number>()), meta: { align: "right" } },
-      { id: "basic", header: "Basic", accessorKey: "basic", cell: ({ getValue }) => inr(getValue<number>()), meta: { align: "right" } },
-      { id: "pf", header: "Employer PF", accessorKey: "employerPf", cell: ({ getValue }) => inr(getValue<number>()), meta: { align: "right" } },
+      { id: "ctc", header: "Annual CTC", accessorKey: "annualCtc", cell: ({ getValue }) => fmtMoney(getValue<number>()), meta: { align: "right" } },
+      { id: "gross", header: "Monthly gross", accessorKey: "monthlyGross", cell: ({ getValue }) => fmtMoney(getValue<number>()), meta: { align: "right" } },
+      { id: "basic", header: "Basic", accessorKey: "basic", cell: ({ getValue }) => fmtMoney(getValue<number>()), meta: { align: "right" } },
+      { id: "pf", header: "Employer PF", accessorKey: "employerPf", cell: ({ getValue }) => fmtMoney(getValue<number>()), meta: { align: "right" } },
       { id: "esi", header: "ESI", accessorKey: "esiApplicable", cell: ({ getValue }) => (getValue<boolean>() ? <Tag tone="accent">Covered</Tag> : <span className="text-muted">No</span>) },
       { id: "source", header: "Source", accessorKey: "source", cell: ({ getValue }) => (getValue<string>() === "custom" ? <Tag tone="accent">Custom</Tag> : <span className="text-muted">Template</span>) },
       { id: "effective", header: "Effective from", accessorKey: "effectiveFrom", cell: ({ getValue }) => fmtDate(getValue<string>()) },
@@ -240,10 +240,10 @@ export default function StructurePage() {
               <Input inputMode="numeric" value={ctc} onChange={(e) => setCtc(e.target.value)} />
             </Field>
             <Field label="Monthly gross">
-              <Input value={s ? inr(s.gross) : "…"} readOnly />
+              <Input value={s ? fmtMoney(s.gross) : "…"} readOnly />
             </Field>
             <Field label="Employer contributions">
-              <Input value={s ? inr(s.employer.pf + s.employer.esi) : "…"} readOnly />
+              <Input value={s ? fmtMoney(s.employer.pf + s.employer.esi) : "…"} readOnly />
             </Field>
           </div>
           <div className="scroll-thin min-w-0 overflow-x-auto">
@@ -261,7 +261,7 @@ export default function StructurePage() {
                   <tr key={c}>
                     <td className="font-medium">{c}</td>
                     <td>{rule}</td>
-                    <td className="num" style={{ textAlign: "right" }}>{inr(amt)}</td>
+                    <td className="num" style={{ textAlign: "right" }}>{fmtMoney(amt)}</td>
                     <td className="text-muted text-[12.5px]">{note}</td>
                   </tr>
                 ))}
@@ -376,7 +376,7 @@ function Line({ l, v, bold }: { l: string; v: number | undefined; bold?: boolean
   return (
     <div className={`flex justify-between text-[13.5px] ${bold ? "border-t border-[var(--color-divider)] pt-1.5 font-semibold" : ""}`}>
       <span>{l}</span>
-      <span className="num">{v === undefined ? "…" : inr(v)}</span>
+      <span className="num">{v === undefined ? "…" : fmtMoney(v)}</span>
     </div>
   );
 }

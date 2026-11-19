@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Check, Plus } from "lucide-react";
-import { inr } from "@hrms/shared";
+import { fmtMoney } from "@hrms/shared";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { Plan } from "@/lib/types";
@@ -40,7 +40,7 @@ export default function Plans() {
               <div className="card-kicker">{p.name}</div>
               {!p.active ? <Tag>Inactive</Tag> : <Tag tone="accent">{p.tenants ?? 0} tenants</Tag>}
             </div>
-            <div className="text-[30px] font-medium leading-tight">{p.pricePerEmployee === null ? "Custom" : inr(p.pricePerEmployee)}</div>
+            <div className="text-[30px] font-medium leading-tight">{p.pricePerEmployee === null ? "Custom" : fmtMoney(p.pricePerEmployee)}</div>
             <div className="text-muted text-[13px]">{p.description}</div>
             <div className="text-muted text-[12.5px]">
               Minimum {p.minSeats} seats{p.maxEmployees ? ` · up to ${p.maxEmployees.toLocaleString("en-IN")} employees` : ""}

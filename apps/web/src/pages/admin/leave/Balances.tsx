@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { todayIST } from "@hrms/shared";
+import { todayLocal } from "@hrms/shared";
 import { api, errorMessage, qs } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { LeaveBalance } from "@/lib/types";
@@ -35,7 +35,7 @@ const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 export default function Balances() {
   const { can } = useSession();
   const lookups = useLookups();
-  const thisYear = Number(todayIST().slice(0, 4));
+  const thisYear = Number(todayLocal().slice(0, 4));
   const [year, setYear] = useState(thisYear);
   const [departmentId, setDept] = useState("");
   const [search, setSearch] = useState("");

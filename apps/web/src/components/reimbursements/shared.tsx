@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { FileText, Paperclip, Upload, X } from "lucide-react";
-import { fmtDate, inr, todayIST } from "@hrms/shared";
+import { fmtDate, fmtMoney, todayLocal } from "@hrms/shared";
 import { api, errorMessage, openFile, qs } from "@/lib/api";
 import type { Claim, ClaimDetail, ClaimStatus, ExpenseCategory } from "@/lib/types";
 import { Dialog } from "@/components/ui/dialog";
@@ -37,9 +37,9 @@ const PERIOD: Record<string, string> = { claim: "per claim", day: "per day", mon
 
 /** "₹500 / day", "₹8 / km", "No limit". */
 export function limitText(c: Pick<ExpenseCategory, "limitAmount" | "limitPeriod" | "ratePerKm">) {
-  if (c.limitPeriod === "km") return `${inr(c.ratePerKm ?? 0)} per km`;
+  if (c.limitPeriod === "km") return `${fmtMoney(c.ratePerKm ?? 0)} per km`;
   if (c.limitAmount === null || c.limitAmount === undefined) return "No limit";
-  return `${inr(c.limitAmount)} ${PERIOD[c.limitPeriod] ?? ""}`;
+  return `${fmtMoney(c.limitAmount)} ${PERIOD[c.limitPeriod] ?? ""}`;
 }
 
 export const APPROVAL_TEXT: Record<string, string> = {
@@ -64,7 +64,7 @@ interface EmpHit {
 export function ClaimDialog({ open, onClose, categories, pickEmployee, endpoint }: { open: boolean; onClose: () => void; categories: ExpenseCategory[]; pickEmployee?: boolean; endpoint: string }) {
   const qc = useQueryClient();
   const active = useMemo(() => categories.filter((c) => c.active), [categories]);
-  const blank = () => ({ categoryId: active[0]?.id ?? "", expenseDate: todayIST(), amount: "", km: "", vendor: "", gstin: "", gstAmount: "", project: "", description: "" });
+  const blank = () => ({ categoryId: active[0]?.id ?? "", expenseDate: todayLocal(), amount: "", km: "", vendor: "", gstin: "", gstAmount: "", project: "", description: "" });
   const [f, setF] = useState(blank);
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -119,7 +119,7 @@ export function ClaimDialog({ open, onClose, categories, pickEmployee, endpoint 
       if (!cat) throw new Error("Pick a category");
       if (perKm ? !Number(f.km) : !Number(f.amount)) throw new Error(perKm ? "Enter the distance in km" : "Enter the amount");
       if (f.description.trim().length < 3) throw new Error("Say what the expense was for");
-      if (needsReceipt && !files.length) throw new Error(`Attach a receipt for ${cat.name} claims above ${inr(cat.receiptRequiredAbove)}`);
+      if (needsReceipt && !files.length) throw new Error(`Attach a receipt for ${cat.name} claims above ${fmtMoney(cat.receiptRequiredAbove)}`);
       const data = {
         employeeId: emp?.id,
         categoryId: cat.id,
@@ -199,10 +199,10 @@ export function ClaimDialog({ open, onClose, categories, pickEmployee, endpoint 
           </Select>
         </Field>
         <Field label="Expense date">
-          <Input type="date" max={todayIST()} value={f.expenseDate} onChange={(e) => set("expenseDate", e.target.value)} />
+          <Input type="date" max={todayLocal()} value={f.expenseDate} onChange={(e) => set("expenseDate", e.target.value)} />
         </Field>
         {perKm ? (
-          <Field label="Distance (km)" hint={`${inr(cat?.ratePerKm ?? 0)} per km = ${inr(amount)}`}>
+          <Field label="Distance (km)" hint={`${fmtMoney(cat?.ratePerKm ?? 0)} per km = ${fmtMoney(amount)}`}>
             <Input inputMode="decimal" value={f.km} onChange={(e) => set("km", e.target.value.replace(/[^\d.]/g, ""))} placeholder="120" />
           </Field>
         ) : (
@@ -330,7 +330,7 @@ export function ClaimDetailDialog({ id, onClose, mode }: { id: string | null; on
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-md)] px-4 py-3" style={{ background: "var(--tint-1)" }}>
               <div>
                 <div className="text-muted text-[12px]">Amount</div>
-                <div className="num text-[24px] font-medium">{inr(c.amount)}</div>
+                <div className="num text-[24px] font-medium">{fmtMoney(c.amount)}</div>
               </div>
               <div className="flex flex-col items-end gap-1">
                 <ClaimStatusTag status={c.status} />
@@ -343,7 +343,7 @@ export function ClaimDetailDialog({ id, onClose, mode }: { id: string | null; on
               <KV label="Vendor">{c.vendor}</KV>
               <KV label="Project / client">{c.project}</KV>
               {c.gstin ? <KV label="GSTIN">{c.gstin}</KV> : null}
-              {c.gstin ? <KV label="GST amount">{c.gstAmount ? inr(c.gstAmount) : "—"}</KV> : null}
+              {c.gstin ? <KV label="GST amount">{c.gstAmount ? fmtMoney(c.gstAmount) : "—"}</KV> : null}
               <KV label="Description" span>{c.description}</KV>
               {mode === "admin" ? <KV label="Reporting manager">{c.managerName}</KV> : null}
               <KV label="Approval">{APPROVAL_TEXT[c.approval]}{c.overLimit && c.approval === "manager" ? ", then finance (over limit)" : ""}</KV>

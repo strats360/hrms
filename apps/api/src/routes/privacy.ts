@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { employees, memberships, privacyRequests, roles, tenants, user } from "@hrms/db";
-import { addDaysIso, ERASED_DATA, erasureBlocker, erasureRequestSchema, eraseSchema, fmtDate, KEPT_DATA, privacyDecisionSchema, privacySettingsSchema, todayIST } from "@hrms/shared";
+import { addDaysIso, ERASED_DATA, erasureBlocker, erasureRequestSchema, eraseSchema, fmtDate, KEPT_DATA, privacyDecisionSchema, privacySettingsSchema, todayLocal } from "@hrms/shared";
 import type { AppEnv } from "../env";
 import { requireEmployee, requirePerm } from "../lib/context";
 import { v } from "../lib/validate";
@@ -22,7 +22,7 @@ async function companyName(c: Context<AppEnv>) {
 
 async function blockerFor(c: Context<AppEnv>, e: typeof employees.$inferSelect) {
   const s = await erasureState(c.get("db"), tid(c), e.id);
-  return erasureBlocker(e, todayIST(), s.openLoans, s.fnfOpen);
+  return erasureBlocker(e, todayLocal(), s.openLoans, s.fnfOpen);
 }
 
 /* ---------------- self-service ---------------- */
@@ -62,7 +62,7 @@ essPrivacyRoutes.post("/erasure", v("json", erasureRequestSchema), async (c) => 
   const [e] = await db.select().from(employees).where(eq(employees.id, eid));
   if (!e || e.erasedAt) throw badRequest("Your personal data has already been erased");
   const settings = await privacySettings(db, tid(c));
-  const due = addDaysIso(todayIST(), settings.responseDays);
+  const due = addDaysIso(todayLocal(), settings.responseDays);
   const { reason } = c.req.valid("json");
   const [r] = await db.insert(privacyRequests).values({ tenantId: tid(c), employeeId: eid, reason: reason || null, dueDate: due }).returning();
   await audit(c, { action: "privacy.request", entity: "employee", entityId: eid, summary: `${e.fullName} asked for their personal data to be erased` });
@@ -119,7 +119,7 @@ privacyRoutes.get("/", async (c) => {
     .where(eq(privacyRequests.tenantId, tid(c)))
     .orderBy(sql`${privacyRequests.status} = 'pending' desc`, desc(privacyRequests.createdAt))
     .limit(500);
-  const today = todayIST();
+  const today = todayLocal();
   const out = [];
   for (const { r, e } of rows) {
     out.push({

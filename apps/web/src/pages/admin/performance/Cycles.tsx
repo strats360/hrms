@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
-import { CYCLE_STATUS_LABEL, DEFAULT_COMPETENCIES, fmtDate, todayIST, type CycleStatus } from "@hrms/shared";
+import { CYCLE_STATUS_LABEL, DEFAULT_COMPETENCIES, fmtDate, todayLocal, type CycleStatus } from "@hrms/shared";
 import { api, errorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { CardHeader, TableCard } from "@/components/ui/card";
@@ -74,7 +74,7 @@ export default function Cycles() {
 
 function defaults(): Omit<CycleRow, "id" | "status" | "scope"> & { departmentIds: string[]; branchIds: string[]; joinedBy: string } {
   // the Indian financial year: April to March
-  const today = todayIST();
+  const today = todayLocal();
   const y = Number(today.slice(0, 4)) - (today.slice(5, 7) < "04" ? 1 : 0);
   const plus = (n: number) => new Date(Date.parse(`${today}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
   return { name: `Annual review ${y}-${String(y + 1).slice(2)}`, periodStart: `${y}-04-01`, periodEnd: `${y + 1}-03-31`, selfDue: plus(14), managerDue: plus(28), competencies: DEFAULT_COMPETENCIES, departmentIds: [], branchIds: [], joinedBy: "" };

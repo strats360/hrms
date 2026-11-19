@@ -3,21 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ChevronLeft, FileText, Mail, Phone } from "lucide-react";
-import {
-  CLOSED_STAGES,
-  fmtDate,
-  inr,
-  INTERVIEW_MODE_LABEL,
-  INTERVIEW_MODES,
-  PIPELINE,
-  RECOMMENDATION_LABEL,
-  SOURCE_LABEL,
-  STAGE_LABEL,
-  todayIST,
-  type Recommendation,
-  type Source,
-  type Stage,
-} from "@hrms/shared";
+import { CLOSED_STAGES, fmtDate, fmtMoney, INTERVIEW_MODE_LABEL, INTERVIEW_MODES, PIPELINE, RECOMMENDATION_LABEL, SOURCE_LABEL, STAGE_LABEL, todayLocal, type Recommendation, type Source, type Stage, zonedDateTime } from "@hrms/shared";
 import { api, errorMessage, getActiveTenant } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
@@ -169,7 +155,7 @@ function ApplicationCard({ app, onAction, onMove }: { app: AppRow; onAction: (k:
           </>
         }
       />
-      {app.stage === "offer" && app.offeredCtc ? <Notice tone="sel">Offered {inr(app.offeredCtc)} a year, joining {app.joiningDate ? fmtDate(app.joiningDate) : "—"}. Once they accept, use Hire to set up their employee record and onboarding.</Notice> : null}
+      {app.stage === "offer" && app.offeredCtc ? <Notice tone="sel">Offered {fmtMoney(app.offeredCtc)} a year, joining {app.joiningDate ? fmtDate(app.joiningDate) : "—"}. Once they accept, use Hire to set up their employee record and onboarding.</Notice> : null}
       {app.interviews.length ? (
         <div className="flex flex-col gap-2">
           <div className="text-[13.5px] font-medium">Interviews</div>
@@ -243,11 +229,11 @@ function CloseDialog({ action, name, onClose, onDone }: { action: Action; name: 
 
 function InterviewDialog({ app, name, onClose, onDone }: { app: AppRow; name: string; onClose: () => void; onDone: () => void }) {
   const L = useLookups();
-  const [f, setF] = useState({ round: app.interviews.length ? "Second round" : "First round", date: todayIST(), time: "11:00", durationMinutes: "45", mode: "video" as (typeof INTERVIEW_MODES)[number], location: "" });
+  const [f, setF] = useState({ round: app.interviews.length ? "Second round" : "First round", date: todayLocal(), time: "11:00", durationMinutes: "45", mode: "video" as (typeof INTERVIEW_MODES)[number], location: "" });
   const [panel, setPanel] = useState<string[]>([]);
   const [find, setFind] = useState("");
   const save = useMutation({
-    mutationFn: () => api.post(`/admin/recruitment/applications/${app.id}/interviews`, { round: f.round, scheduledAt: `${f.date}T${f.time}:00+05:30`, durationMinutes: Number(f.durationMinutes), mode: f.mode, location: f.location || null, interviewerIds: panel }),
+    mutationFn: () => api.post(`/admin/recruitment/applications/${app.id}/interviews`, { round: f.round, scheduledAt: zonedDateTime(f.date, f.time).toISOString(), durationMinutes: Number(f.durationMinutes), mode: f.mode, location: f.location || null, interviewerIds: panel }),
     onSuccess: () => (toast.success(`Interview scheduled. ${name} and the panel have been emailed.`), onDone()),
     onError: (e) => toast.error(errorMessage(e)),
   });
@@ -285,7 +271,7 @@ function OfferDialog({ app, name, expected, onClose, onDone }: { app: AppRow; na
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()} title={`Offer for ${name}`} description="Recorded here for the team. Send the offer letter itself from the letter generator once they're hired, or by your usual route." footer={<><Button onClick={onClose}>Cancel</Button><Button variant="primary" disabled={!(Number(f.offeredCtc) > 0) || !f.joiningDate} loading={save.isPending} onClick={() => save.mutate()}>Save offer</Button></>}>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Annual CTC (₹)" hint={Number(f.offeredCtc) > 0 ? inr(Number(f.offeredCtc)) : undefined}><Input type="number" min={0} value={f.offeredCtc} onChange={(e) => setF({ ...f, offeredCtc: e.target.value })} /></Field>
+        <Field label="Annual CTC (₹)" hint={Number(f.offeredCtc) > 0 ? fmtMoney(Number(f.offeredCtc)) : undefined}><Input type="number" min={0} value={f.offeredCtc} onChange={(e) => setF({ ...f, offeredCtc: e.target.value })} /></Field>
         <Field label="Joining date"><Input type="date" value={f.joiningDate} onChange={(e) => setF({ ...f, joiningDate: e.target.value })} /></Field>
         <Field label="Designation (if not the job's)" span><Select value={f.designationId} onChange={(e) => setF({ ...f, designationId: e.target.value })}><option value="">As on the job</option>{L.data?.designations.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</Select></Field>
         <Field label="Note (optional)" span><Textarea rows={2} value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} /></Field>
@@ -297,7 +283,7 @@ function OfferDialog({ app, name, expected, onClose, onDone }: { app: AppRow; na
 function HireDialog({ app, name, onClose, onDone }: { app: AppRow; name: string; onClose: () => void; onDone: () => void }) {
   const nav = useNavigate();
   const code = useQuery({ queryKey: ["next-employee-code"], queryFn: () => api.get<{ code: string }>("/admin/recruitment/next-employee-code") });
-  const [f, setF] = useState({ employeeCode: "", workEmail: "", dateOfJoining: app.joiningDate ?? todayIST(), sendOnboardingInvite: true });
+  const [f, setF] = useState({ employeeCode: "", workEmail: "", dateOfJoining: app.joiningDate ?? todayLocal(), sendOnboardingInvite: true });
   const employeeCode = f.employeeCode || code.data?.code || "";
   const save = useMutation({
     mutationFn: () => api.post<{ employeeId: string; jobClosed: boolean }>(`/admin/recruitment/applications/${app.id}/hire`, { ...f, employeeCode }),

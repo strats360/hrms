@@ -13,7 +13,7 @@ import {
   feedbackSchema,
   fmtDate,
   hireSchema,
-  inr,
+  fmtMoney,
   INTERVIEW_MODE_LABEL,
   interviewSchema,
   jobSchema,
@@ -366,9 +366,9 @@ recruitmentRoutes.post("/applications/:id/offer", v("json", offerSchema), async 
   editOnly(c, job);
   if (CLOSED_STAGES.includes(a.stage as Stage)) throw badRequest("This application is closed");
   const b = c.req.valid("json");
-  await setStage(c, a, "offer", `Offer: ${inr(b.offeredCtc)} a year, joining ${fmtDate(b.joiningDate)}${b.note ? `. ${b.note}` : ""}`, { offeredCtc: b.offeredCtc, joiningDate: b.joiningDate, offerDesignationId: b.designationId ?? job.designationId });
+  await setStage(c, a, "offer", `Offer: ${fmtMoney(b.offeredCtc)} a year, joining ${fmtDate(b.joiningDate)}${b.note ? `. ${b.note}` : ""}`, { offeredCtc: b.offeredCtc, joiningDate: b.joiningDate, offerDesignationId: b.designationId ?? job.designationId });
   const [cand] = await c.get("db").select().from(candidates).where(eq(candidates.id, a.candidateId));
-  await audit(c, { action: "recruitment.offer", entity: "application", entityId: a.id, summary: `Offer to ${cand?.name} for ${job.code}: ${inr(b.offeredCtc)} a year, joining ${fmtDate(b.joiningDate)}` });
+  await audit(c, { action: "recruitment.offer", entity: "application", entityId: a.id, summary: `Offer to ${cand?.name} for ${job.code}: ${fmtMoney(b.offeredCtc)} a year, joining ${fmtDate(b.joiningDate)}` });
   return c.json({ ok: true });
 });
 

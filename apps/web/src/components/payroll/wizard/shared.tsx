@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { inr } from "@hrms/shared";
+import { fmtMoney } from "@hrms/shared";
 import type { PayrollRun, RunTotals } from "@/lib/types";
 import { Tag, type Tone } from "@/components/ui/tag";
 
@@ -33,7 +33,7 @@ export function Money({ label, value, meta, accent }: { label: string; value: nu
   return (
     <div className="card min-w-0 !gap-1 !px-4 !py-3.5" style={accent ? { background: "var(--ok-bg)", color: "var(--ok-fg)" } : { background: "var(--tint-1)" }}>
       <div className="card-kicker" style={accent ? { color: "var(--ok-fg)" } : undefined}>{label}</div>
-      <div className="num text-[22px] font-medium tracking-tight">{inr(value)}</div>
+      <div className="num text-[22px] font-medium tracking-tight">{fmtMoney(value)}</div>
       {meta ? <div className="card-meta" style={accent ? { color: "var(--ok-fg)" } : undefined}>{meta}</div> : null}
     </div>
   );

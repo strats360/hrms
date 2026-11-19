@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { fmtDate, inr, todayIST } from "@hrms/shared";
+import { fmtDate, fmtMoney, todayLocal } from "@hrms/shared";
 import { api } from "@/lib/api";
 import type { Challan, Obligation } from "@/lib/types";
 import { Dialog } from "@/components/ui/dialog";
@@ -16,7 +16,7 @@ const REF_LABEL: Record<string, string> = { epf: "TRRN", esi: "Challan number", 
 export function RecordPaymentDialog({ obligation, onClose }: { obligation: Obligation | null; onClose: () => void }) {
   const qc = useQueryClient();
   const existing = obligation?.challan ?? null;
-  const [form, setForm] = useState({ amountPaid: "", reference: "", paidOn: todayIST(), notes: "" });
+  const [form, setForm] = useState({ amountPaid: "", reference: "", paidOn: todayLocal(), notes: "" });
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -26,7 +26,7 @@ export function RecordPaymentDialog({ obligation, onClose }: { obligation: Oblig
     setForm(
       existing
         ? { amountPaid: String(existing.amountPaid), reference: existing.reference ?? "", paidOn: existing.paidOn, notes: existing.notes ?? "" }
-        : { amountPaid: String(obligation.amount), reference: "", paidOn: todayIST(), notes: "" },
+        : { amountPaid: String(obligation.amount), reference: "", paidOn: todayLocal(), notes: "" },
     );
   }, [obligation, existing]);
 
@@ -79,12 +79,12 @@ export function RecordPaymentDialog({ obligation, onClose }: { obligation: Oblig
             {o.breakup.map((b) => (
               <div key={b.label} className="flex justify-between py-0.5">
                 <span>{b.label}</span>
-                <span className="num">{inr(b.amount)}</span>
+                <span className="num">{fmtMoney(b.amount)}</span>
               </div>
             ))}
             <div className="mt-1 flex justify-between border-t border-[var(--color-divider)] pt-1.5 font-semibold">
               <span>Payable for {o.employees} employees</span>
-              <span className="num">{inr(o.amount)}</span>
+              <span className="num">{fmtMoney(o.amount)}</span>
             </div>
           </div>
           {error ? <Notice tone="bad">{error}</Notice> : null}
@@ -93,7 +93,7 @@ export function RecordPaymentDialog({ obligation, onClose }: { obligation: Oblig
               <Input inputMode="decimal" value={form.amountPaid} onChange={(e) => setForm({ ...form, amountPaid: e.target.value })} />
             </Field>
             <Field label="Paid on" hint={late ? "After the due date: interest may apply" : undefined}>
-              <Input type="date" max={todayIST()} value={form.paidOn} onChange={(e) => setForm({ ...form, paidOn: e.target.value })} />
+              <Input type="date" max={todayLocal()} value={form.paidOn} onChange={(e) => setForm({ ...form, paidOn: e.target.value })} />
             </Field>
             <Field label={REF_LABEL[o.statute] ?? "Reference"} span>
               <Input value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} />

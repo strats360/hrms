@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Check, Download, Lock, Send, Unlock, Wallet } from "lucide-react";
-import { fmtDate, inr, todayIST } from "@hrms/shared";
+import { fmtDate, fmtMoney, todayLocal } from "@hrms/shared";
 import { api, ApiError, download, errorMessage, qs } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { PayrollInputs, PayrollItem, PayrollRun } from "@/lib/types";
@@ -82,7 +82,7 @@ export function StepMonth({ run }: { run: PayrollRun }) {
           <>
             <span className="font-medium" style={{ color: "var(--color-text)" }}>{monthLabel(prev.month)}</span>
             {prev.status === "paid" || prev.status === "approved"
-              ? ` was locked${prev.approvedAt ? ` on ${fmtDate(prev.approvedAt.slice(0, 10), false)}` : ""} · ${prev.totals?.employees ?? 0} employees · ${inr(prev.totals?.net ?? 0)} net · `
+              ? ` was locked${prev.approvedAt ? ` on ${fmtDate(prev.approvedAt.slice(0, 10), false)}` : ""} · ${prev.totals?.employees ?? 0} employees · ${fmtMoney(prev.totals?.net ?? 0)} net · `
               : ` is still open (${prev.status}) · `}
             <Link to={`/payroll/run/${prev.id}`}>view</Link>
           </>
@@ -114,7 +114,7 @@ export function StepInputs({ run }: { run: PayrollRun }) {
       >
         {d.exits.length ? <div className="text-muted text-[12px]">Full and final settlement is handled separately.</div> : null}
       </Row>
-      <Row title="One-time earnings and deductions" sub={d.adjustments.count ? `${d.adjustments.count} item(s) · net ${inr(d.adjustments.net)}` : "None added yet. Add incentives, arrears or recoveries in Review & approve."} tag="Ready" />
+      <Row title="One-time earnings and deductions" sub={d.adjustments.count ? `${d.adjustments.count} item(s) · net ${fmtMoney(d.adjustments.net)}` : "None added yet. Add incentives, arrears or recoveries in Review & approve."} tag="Ready" />
       <Row
         title="Bank details"
         sub={d.missingBank.length ? `${d.missingBank.length} missing · ${names(d.missingBank)}. They'll be left out of the bank file, not out of payroll.` : "Every employee has a bank account on file"}
@@ -360,8 +360,8 @@ export function StepReview({ run }: { run: PayrollRun }) {
             {rows.map(([label, now, before]) => (
               <tr key={label}>
                 <td className="font-medium">{label}</td>
-                <td className="num" style={{ textAlign: "right" }}>{label === "Employees" ? now : inr(now)}</td>
-                <td className="num text-muted" style={{ textAlign: "right" }}>{before === undefined ? "—" : label === "Employees" ? before : inr(before)}</td>
+                <td className="num" style={{ textAlign: "right" }}>{label === "Employees" ? now : fmtMoney(now)}</td>
+                <td className="num text-muted" style={{ textAlign: "right" }}>{before === undefined ? "—" : label === "Employees" ? before : fmtMoney(before)}</td>
                 <td className="num" style={{ textAlign: "right" }}>{pctChange(now, before)?.replace(" vs last month", "") ?? "—"}</td>
               </tr>
             ))}
@@ -379,7 +379,7 @@ export function StepReview({ run }: { run: PayrollRun }) {
                 <span className="font-medium">{i.snapshot.name}</span> <span className="text-muted">{i.snapshot.code}</span>
                 <span className="text-muted block text-[12px]">{[i.onHold ? `On hold${i.holdReason ? `: ${i.holdReason}` : ""}` : null, ...i.warnings].filter(Boolean).join(" · ")}</span>
               </span>
-              <span className="num font-semibold">{inr(i.net)}</span>
+              <span className="num font-semibold">{fmtMoney(i.net)}</span>
             </button>
           ))}
           {q.data.length > 10 ? <div className="text-muted text-[12.5px]">and {q.data.length - 10} more</div> : null}
@@ -502,7 +502,7 @@ export function StepApprove({ run }: { run: PayrollRun }) {
       >
         <div className="grid gap-2 text-[13.5px]">
           <div className="flex justify-between"><span>Employees</span><span className="num">{t.employees}</span></div>
-          <div className="flex justify-between"><span>Net payable</span><span className="num font-semibold">{inr(t.net)}</span></div>
+          <div className="flex justify-between"><span>Net payable</span><span className="num font-semibold">{fmtMoney(t.net)}</span></div>
           <div className="flex justify-between"><span>Salaries on hold</span><span className="num">{t.onHold}</span></div>
         </div>
       </Dialog>
@@ -535,7 +535,7 @@ export function StepPayout({ run }: { run: PayrollRun }) {
   const { can } = useSession();
   const invalidate = useInvalidate();
   const [paidOpen, setPaidOpen] = useState(false);
-  const [paidOn, setPaidOn] = useState(todayIST());
+  const [paidOn, setPaidOn] = useState(todayLocal());
   const [reference, setReference] = useState("");
   const [exporting, setExporting] = useState(false);
   const locked = isLocked(run);
@@ -592,7 +592,7 @@ export function StepPayout({ run }: { run: PayrollRun }) {
           ) : can("payments", "edit") ? (
             <>
               <div className="text-muted text-[13px]">
-                {inr(t?.net ?? 0)} · builds a payment batch for approval, the bank's upload file, and tracks failed transfers. Held salaries and missing bank details are held back.
+                {fmtMoney(t?.net ?? 0)} · builds a payment batch for approval, the bank's upload file, and tracks failed transfers. Held salaries and missing bank details are held back.
               </div>
               <div className="mt-auto flex flex-wrap gap-2">
                 <Link to={locked && run.status === "approved" ? `/payments?generate=salary&run=${run.id}` : "#"} aria-disabled={!locked || run.status !== "approved"} className={`btn btn-primary self-start ${!locked || run.status !== "approved" ? "pointer-events-none opacity-45" : ""}`}>
@@ -606,7 +606,7 @@ export function StepPayout({ run }: { run: PayrollRun }) {
           ) : (
             <>
               <div className="text-muted text-[13px]">
-                CSV · {inr(t?.net ?? 0)} · held salaries and missing bank details are skipped, duplicate account and amount pairs are blocked
+                CSV · {fmtMoney(t?.net ?? 0)} · held salaries and missing bank details are skipped, duplicate account and amount pairs are blocked
               </div>
               {run.bankFileExportedAt ? <Tag tone="ok" className="self-start">Exported {when(run.bankFileExportedAt)}</Tag> : null}
               <Button variant="primary" className="mt-auto self-start" disabled={!locked || !can("payroll", "export")} loading={exporting} onClick={exportBank}>

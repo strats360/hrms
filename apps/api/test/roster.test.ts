@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import postgres from "postgres";
-import { todayIST } from "@hrms/shared";
+import { todayLocal } from "@hrms/shared";
 import { Client, env, login } from "./helpers";
 
 const sql = postgres(env.DATABASE_URL!, { max: 1, onnotice: () => {} });
@@ -21,7 +21,7 @@ beforeAll(async () => {
 });
 afterAll(async () => {
   await sql`delete from shift_roster where tenant_id = ${tenantId}`;
-  await sql`delete from attendance_records where employee_id = ${priyaId} and date >= ${plus(todayIST(), -1)}`;
+  await sql`delete from attendance_records where employee_id = ${priyaId} and date >= ${plus(todayLocal(), -1)}`;
   await sql`delete from shifts where id = ${night}`;
   await sql.end();
 });
@@ -68,7 +68,7 @@ describe("Shift roster", () => {
     // other tests may leave a holiday or leave in the next fortnight, so pick a plain working day
     const before = (await priya.get("/ess/roster")).body.days;
     expect(before).toHaveLength(14);
-    const day = before.find((d: any) => d.status === "work" && d.date > todayIST()).date;
+    const day = before.find((d: any) => d.status === "work" && d.date > todayLocal()).date;
     // written directly: other tests may have approved this month's payroll, which locks it for planning
     await sql`insert into shift_roster (id, tenant_id, employee_id, date, shift_id, is_off) values (gen_random_uuid()::text, ${tenantId}, ${priyaId}, ${day}, null, true) on conflict (employee_id, date) do update set shift_id = null, is_off = true`;
     const mine = (await priya.get("/ess/roster")).body.days;
@@ -82,7 +82,7 @@ describe("Shift roster", () => {
     const end = hm(new Date(now.getTime() - 3_600_000));
     const start = hm(new Date(now.getTime() + 3_600_000));
     if (start <= end) return; // within an hour of midnight IST the shift wouldn't cross it; nothing to test
-    const today = todayIST();
+    const today = todayLocal();
     const yesterday = plus(today, -1);
     await sql`update shifts set start_time = ${start}, end_time = ${end} where id = ${night}`;
     await sql`insert into shift_roster (id, tenant_id, employee_id, date, shift_id, is_off) values (gen_random_uuid()::text, ${tenantId}, ${priyaId}, ${yesterday}, ${night}, false) on conflict (employee_id, date) do update set shift_id = ${night}, is_off = false`;

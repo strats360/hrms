@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import { and, desc, eq } from "drizzle-orm";
 import { employees, leaveEncashments, leaveTypes, payrollRuns, tenants } from "@hrms/db";
-import { inr, todayIST } from "@hrms/shared";
+import { fmtMoney, todayLocal } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
 import { requirePerm } from "../lib/context";
@@ -42,7 +42,7 @@ payrollExtrasRoutes.put("/runs/:id/overtime", requirePerm("payroll", "edit"), v(
   const db = c.get("db");
   const r = await setOvertime(db, run, c.req.valid("json").rows, uid(c));
   await calculateRun(db, tid(c), run.id, uid(c));
-  await audit(c, { action: "payroll.overtime", entity: "payroll_run", entityId: run.id, summary: `Added overtime for ${r.employees} employee${r.employees === 1 ? "" : "s"} to ${monthLabel(run.month)} payroll (${inr(r.total)})` });
+  await audit(c, { action: "payroll.overtime", entity: "payroll_run", entityId: run.id, summary: `Added overtime for ${r.employees} employee${r.employees === 1 ? "" : "s"} to ${monthLabel(run.month)} payroll (${fmtMoney(r.total)})` });
   return c.json(r);
 });
 
@@ -53,7 +53,7 @@ payrollExtrasRoutes.post("/runs/:id/encashments", requirePerm("payroll", "edit")
   const r = await addEncashmentsToRun(db, run, uid(c));
   if (!r.added) throw badRequest("No leave encashments are waiting for anyone in this payroll");
   await calculateRun(db, tid(c), run.id, uid(c));
-  await audit(c, { action: "payroll.encashment", entity: "payroll_run", entityId: run.id, summary: `Added ${r.added} leave encashment${r.added === 1 ? "" : "s"} to ${monthLabel(run.month)} payroll (${inr(r.total)})` });
+  await audit(c, { action: "payroll.encashment", entity: "payroll_run", entityId: run.id, summary: `Added ${r.added} leave encashment${r.added === 1 ? "" : "s"} to ${monthLabel(run.month)} payroll (${fmtMoney(r.total)})` });
   return c.json(r);
 });
 
@@ -95,7 +95,7 @@ leaveExtrasRoutes.post("/encashments", requirePerm("leave", "configure"), v("jso
   } catch (e) {
     throw badRequest((e as Error).message);
   }
-  await audit(c, { action: "leave.encash", entity: "leave_encashment", entityId: r.row.id, summary: `Encashed ${b.days} day${b.days === 1 ? "" : "s"} of ${r.type.name} for ${r.employee.fullName} (${inr(Number(r.row.amount))}), to be paid with the next payroll` });
+  await audit(c, { action: "leave.encash", entity: "leave_encashment", entityId: r.row.id, summary: `Encashed ${b.days} day${b.days === 1 ? "" : "s"} of ${r.type.name} for ${r.employee.fullName} (${fmtMoney(Number(r.row.amount))}), to be paid with the next payroll` });
   return c.json(r.row, 201);
 });
 
@@ -109,18 +109,18 @@ leaveExtrasRoutes.post("/encashments/:id/cancel", requirePerm("leave", "configur
 leaveExtrasRoutes.get("/year-close", requirePerm("leave", "view"), async (c) => {
   const [t] = await c.get("db").select({ s: tenants.settings }).from(tenants).where(eq(tenants.id, tid(c)));
   const closed = (t?.s as { leaveYearClosed?: number } | undefined)?.leaveYearClosed ?? null;
-  const year = Number(todayIST().slice(0, 4));
+  const year = Number(todayLocal().slice(0, 4));
   const open = closed === null || closed < year - 1;
   return c.json({ lastClosed: closed, due: open && (await hasLeaveYear(c.get("db"), tid(c), year - 1)) ? year - 1 : null });
 });
 
 leaveExtrasRoutes.post("/year-close", requirePerm("leave", "configure"), v("json", z.object({ year: z.coerce.number().int().min(2000).max(2100), encashLapsed: z.boolean().default(false), dryRun: z.boolean().default(true) })), async (c) => {
   const b = c.req.valid("json");
-  const today = todayIST();
+  const today = todayLocal();
   const current = Number(today.slice(0, 4));
   if (b.year > current || (b.year === current && today < `${current}-12-01`)) throw badRequest(`Close ${b.year} from December onwards, when the year's leave is mostly settled`);
   if (!(await hasLeaveYear(c.get("db"), tid(c), b.year))) throw badRequest(`There are no leave balances for ${b.year} here, so there's nothing to carry forward. Set opening balances for ${b.year + 1} with Adjust balance instead.`);
   const r = await closeLeaveYear(c.get("db"), tid(c), b.year, { encashLapsed: b.encashLapsed, dryRun: b.dryRun }, uid(c));
-  if (!b.dryRun) await audit(c, { action: "leave.year_close", entity: "leave_balance", summary: `Closed leave year ${b.year}: ${r.carriedDays} days carried into ${b.year + 1}, ${r.lapsedDays} lapsed${r.encashDays ? `, ${r.encashDays} encashed (${inr(r.encashAmount)})` : ""}` });
+  if (!b.dryRun) await audit(c, { action: "leave.year_close", entity: "leave_balance", summary: `Closed leave year ${b.year}: ${r.carriedDays} days carried into ${b.year + 1}, ${r.lapsedDays} lapsed${r.encashDays ? `, ${r.encashDays} encashed (${fmtMoney(r.encashAmount)})` : ""}` });
   return c.json(r);
 });

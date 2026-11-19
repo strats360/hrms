@@ -1,6 +1,6 @@
 import { and, between, eq, inArray, sql } from "drizzle-orm";
 import { attendanceRecords, employees, leaveBalances, leaveEncashments, leaveTypes, payrollAdjustments, payrollItems, payrollRuns, tenants, type Database } from "@hrms/db";
-import { accruedLeave, DEFAULT_OVERTIME, encashmentPerDay, overtimePay, todayIST, type OvertimeSettings } from "@hrms/shared";
+import { accruedLeave, DEFAULT_OVERTIME, encashmentPerDay, overtimePay, todayLocal, type OvertimeSettings } from "@hrms/shared";
 import { balanceSummary, ensureBalances } from "./leave";
 import { getTemplate, resolveStructure, structuresAsOf } from "./payroll";
 
@@ -78,11 +78,11 @@ export async function createEncashment(db: Database, tenantId: string, b: { empl
   const [type] = await db.select().from(leaveTypes).where(and(eq(leaveTypes.id, b.leaveTypeId), eq(leaveTypes.tenantId, tenantId)));
   if (!type) throw new Error("Leave type not found");
   if (!type.encashable) throw new Error(`${type.name} can't be encashed. Turn on encashment for it under leave policies.`);
-  const year = Number(todayIST().slice(0, 4));
+  const year = Number(todayLocal().slice(0, 4));
   const bal = (await balanceSummary(db, tenantId, emp.id, year)).find((x) => x.leaveTypeId === type.id);
   const free = Math.max(0, (bal?.available ?? 0) - (bal?.pending ?? 0));
   if (b.days > free) throw new Error(`Only ${free} day${free === 1 ? "" : "s"} of ${type.name} can be encashed`);
-  const pay = (await monthlyPay(db, tenantId, [emp.id], todayIST())).get(emp.id)!;
+  const pay = (await monthlyPay(db, tenantId, [emp.id], todayLocal())).get(emp.id)!;
   const perDay = encashmentPerDay(pay.basic);
   const [row] = await db.insert(leaveEncashments).values({ tenantId, employeeId: emp.id, leaveTypeId: type.id, year, days: b.days, perDay, amount: Math.round(perDay * b.days), reason: "request", note: b.note ?? null, createdBy: userId }).returning();
   // the days come off the balance now, so they can't be taken as leave as well

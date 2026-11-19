@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
-import { fmtDate, inr, todayIST } from "@hrms/shared";
+import { fmtDate, fmtMoney, todayLocal } from "@hrms/shared";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { BankFileFormat, DebitAccount } from "@/lib/types";
@@ -26,7 +26,7 @@ export default function Accounts() {
       { id: "label", header: "Account", accessorFn: (a) => a.label, cell: ({ row: { original: a } }) => <div><span className="font-semibold">{a.label}</span> {a.isDefault ? <Tag tone="accent">Default</Tag> : null}</div> },
       { id: "bank", header: "Bank", accessorFn: (a) => a.bankName, cell: ({ row: { original: a } }) => <div>{a.bankName} ····{a.accountLast4}<div className="text-muted text-[11.5px]">{a.ifsc}</div></div> },
       { id: "format", header: "File format", accessorFn: (a) => a.formatLabel },
-      { id: "balance", header: "Balance", accessorFn: (a) => Number(a.balance ?? 0), meta: { align: "right" }, cell: ({ row: { original: a } }) => (a.balance !== null ? <div>{inr(a.balance)}<div className="text-muted text-[11.5px]">{a.balanceAsOf ? `as of ${fmtDate(a.balanceAsOf)}` : ""}</div></div> : "—") },
+      { id: "balance", header: "Balance", accessorFn: (a) => Number(a.balance ?? 0), meta: { align: "right" }, cell: ({ row: { original: a } }) => (a.balance !== null ? <div>{fmtMoney(a.balance)}<div className="text-muted text-[11.5px]">{a.balanceAsOf ? `as of ${fmtDate(a.balanceAsOf)}` : ""}</div></div> : "—") },
       { id: "status", header: "Status", accessorFn: (a) => (a.active ? 1 : 0), cell: ({ row: { original: a } }) => (a.active ? <Tag tone="ok">Active</Tag> : <Tag>Inactive</Tag>) },
     ],
     [],
@@ -62,13 +62,13 @@ export default function Accounts() {
 function AccountDialog({ value, onClose }: { value: DebitAccount | "new" | null; onClose: () => void }) {
   const qc = useQueryClient();
   const existing = value && value !== "new" ? value : null;
-  const blank = { label: "", bankName: "", accountNumber: "", ifsc: "", fileFormat: "generic_csv" as BankFileFormat, clientCode: "", isDefault: false, balance: "", balanceAsOf: todayIST(), active: true };
+  const blank = { label: "", bankName: "", accountNumber: "", ifsc: "", fileFormat: "generic_csv" as BankFileFormat, clientCode: "", isDefault: false, balance: "", balanceAsOf: todayLocal(), active: true };
   const [f, setF] = useState(blank);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     if (!value) return;
     setError(null);
-    setF(existing ? { label: existing.label, bankName: existing.bankName, accountNumber: "", ifsc: existing.ifsc, fileFormat: existing.fileFormat, clientCode: existing.clientCode ?? "", isDefault: existing.isDefault, balance: existing.balance === null ? "" : String(existing.balance), balanceAsOf: existing.balanceAsOf ?? todayIST(), active: existing.active } : blank);
+    setF(existing ? { label: existing.label, bankName: existing.bankName, accountNumber: "", ifsc: existing.ifsc, fileFormat: existing.fileFormat, clientCode: existing.clientCode ?? "", isDefault: existing.isDefault, balance: existing.balance === null ? "" : String(existing.balance), balanceAsOf: existing.balanceAsOf ?? todayLocal(), active: existing.active } : blank);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((x) => ({ ...x, [k]: v }));

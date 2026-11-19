@@ -253,6 +253,13 @@
       "when": 1795106808521,
       "tag": "0035_legal_entities",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1795107673803,
+      "tag": "0036_money_three_decimals",
+      "breakpoints": true
     }
   ]
 }

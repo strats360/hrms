@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { inr, inrCompact } from "@hrms/shared";
+import { fmtMoney, fmtMoneyCompact } from "@hrms/shared";
 import { api, qs } from "@/lib/api";
 import { StatCard, TableCard } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -36,7 +36,7 @@ export interface SummaryResp {
 
 export const useTdsSummary = (fy: string) => useQuery({ queryKey: ["tds", "summary", fy], queryFn: () => api.get<SummaryResp>(`/admin/tds/summary${qs({ fy })}`) });
 
-const money = (k: keyof SummaryRow, header: string): ColumnDef<SummaryRow> => ({ id: k, header, accessorKey: k, meta: { align: "right" }, cell: ({ getValue }) => inr(getValue<number>()) });
+const money = (k: keyof SummaryRow, header: string): ColumnDef<SummaryRow> => ({ id: k, header, accessorKey: k, meta: { align: "right" }, cell: ({ getValue }) => fmtMoney(getValue<number>()) });
 
 export default function Summary() {
   const fy = useFy();
@@ -55,7 +55,7 @@ export default function Summary() {
     () => [
       { id: "name", header: "Employee", accessorKey: "name", cell: ({ row: { original: r } }) => <div><div className="font-medium">{r.name}</div><div className="text-muted text-[12px]">{r.code} · {r.pan ?? "No PAN"}</div></div> },
       { id: "regime", header: "Regime", accessorKey: "regime", cell: ({ getValue }) => <Tag tone={getValue<string>() === "old" ? "warn" : "neutral"}>{getValue<string>() === "old" ? "Old" : "New"}</Tag> },
-      { id: "declared", header: "Declared", accessorKey: "declaredTotal", meta: { align: "right" }, cell: ({ row: { original: r } }) => <div>{inr(r.declaredTotal)}{r.declared80C ? <div className="text-muted text-[11.5px]">80C {inrCompact(r.declared80C)}</div> : null}</div> },
+      { id: "declared", header: "Declared", accessorKey: "declaredTotal", meta: { align: "right" }, cell: ({ row: { original: r } }) => <div>{fmtMoney(r.declaredTotal)}{r.declared80C ? <div className="text-muted text-[11.5px]">80C {fmtMoneyCompact(r.declared80C)}</div> : null}</div> },
       money("taxableIncome", "Taxable income"),
       money("annualTax", "Annual tax"),
       money("monthlyTds", "Monthly TDS"),
@@ -72,8 +72,8 @@ export default function Summary() {
   return (
     <>
       <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(170px, 100%), 1fr))" }}>
-        <StatCard label={`Monthly TDS${last ? ` (${monthLabel(last).split(" ")[0].slice(0, 3)})` : ""}`} value={inrCompact(t.monthlyTds)} meta={last ? `${monthLabel(last)} payroll` : "No locked payroll yet"} />
-        <StatCard label="Deducted YTD" value={inrCompact(t.deducted)} meta="From locked payroll" />
+        <StatCard label={`Monthly TDS${last ? ` (${monthLabel(last).split(" ")[0].slice(0, 3)})` : ""}`} value={fmtMoneyCompact(t.monthlyTds)} meta={last ? `${monthLabel(last)} payroll` : "No locked payroll yet"} />
+        <StatCard label="Deducted YTD" value={fmtMoneyCompact(t.deducted)} meta="From locked payroll" />
         <StatCard label="Regime split" value={`${t.newRegime} / ${t.oldRegime}`} meta="new / old" />
         <StatCard label="Declarations" value={t.submitted} meta={t.pending ? <Tag tone="warn">{t.pending} pending</Tag> : "All submitted"} />
         <StatCard label="Nil-tax employees" value={t.nilTax} meta="Rebate u/s 87A or below the limit" />

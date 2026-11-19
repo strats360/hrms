@@ -1,4 +1,4 @@
-import { fmtDate, inr, rupeesInWords } from "@hrms/shared";
+import { fmtDate, fmtMoney, rupeesInWords } from "@hrms/shared";
 import type { PayLine, PayslipView } from "@/lib/types";
 import { Tag } from "@/components/ui/tag";
 
@@ -14,13 +14,13 @@ function Lines({ title, lines, total, totalLabel }: { title: string; lines: PayL
         {lines.map((l) => (
           <div key={l.code} className="flex justify-between py-[5px]">
             <span>{l.label}</span>
-            <span className="num">{inr(l.amount)}</span>
+            <span className="num">{fmtMoney(l.amount)}</span>
           </div>
         ))}
         {lines.length === 0 ? <div className="text-muted py-[5px]">None</div> : null}
         <div className="flex justify-between border-t border-[var(--color-divider)] py-2 font-bold">
           <span>{totalLabel}</span>
-          <span className="num">{inr(total)}</span>
+          <span className="num">{fmtMoney(total)}</span>
         </div>
       </div>
     </div>
@@ -62,17 +62,17 @@ export function Payslip({ slip }: { slip: PayslipView }) {
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-md)] px-4 py-3.5" style={{ background: "var(--ok-bg)", color: "var(--ok-fg)" }}>
         <div>
           <div className="text-[12px]">Net pay</div>
-          <div className="text-[26px] font-medium num">{inr(slip.net)}</div>
+          <div className="text-[26px] font-medium num">{fmtMoney(slip.net)}</div>
           <div className="text-[12px]">{rupeesInWords(slip.net)}</div>
-          {slip.reimbursement ? <div className="mt-1 text-[12px]">Includes reimbursements of {inr(slip.reimbursement)} (not taxable)</div> : null}
+          {slip.reimbursement ? <div className="mt-1 text-[12px]">Includes reimbursements of {fmtMoney(slip.reimbursement)} (not taxable)</div> : null}
         </div>
         <div className="text-right text-[12.5px]">
           <div>
-            Employer PF {inr(erPf)}
-            {erEsi ? ` · Employer ESI ${inr(erEsi)}` : ""}
+            Employer PF {fmtMoney(erPf)}
+            {erEsi ? ` · Employer ESI ${fmtMoney(erEsi)}` : ""}
           </div>
-          <div>Monthly cost to company {inr(slip.gross + slip.employerCost)}</div>
-          {slip.tax ? <div>Projected annual taxable income {inr(slip.tax.taxableIncome)} · {e.regime === "old" ? "Old" : "New"} regime</div> : null}
+          <div>Monthly cost to company {fmtMoney(slip.gross + slip.employerCost)}</div>
+          {slip.tax ? <div>Projected annual taxable income {fmtMoney(slip.tax.taxableIncome)} · {e.regime === "old" ? "Old" : "New"} regime</div> : null}
         </div>
       </div>
       <div className="text-muted text-[11.5px]">This is a computer-generated payslip and does not need a signature. Pay date {slip.run.payDate ? fmtDate(slip.run.payDate) : "—"}.</div>

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
-import { fmtDate, inr, loanSchedule } from "@hrms/shared";
+import { fmtDate, fmtMoney, loanSchedule } from "@hrms/shared";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -35,12 +35,12 @@ export function MyLoans({ data }: { data: MyLoansData }) {
                 </div>
                 <Tag tone="ok">Recovering</Tag>
               </div>
-              <div className="num text-[24px] font-medium">{inr(l.outstanding)} <span className="text-muted text-[13px] font-normal">left</span></div>
+              <div className="num text-[24px] font-medium">{fmtMoney(l.outstanding)} <span className="text-muted text-[13px] font-normal">left</span></div>
               <div className="h-1.5 overflow-hidden rounded-full bg-[var(--tint-1)]">
                 <div className="h-full rounded-full bg-[var(--ok-fg)]" style={{ width: `${l.payable ? Math.round((l.recovered / l.payable) * 100) : 0}%` }} />
               </div>
               <div className="text-muted text-[12.5px]">
-                {inr(l.emi)} a month from your salary{l.nextMonth ? `, next in ${monthLabel(l.nextMonth)}` : ""} · last in {monthLabel(l.endMonth)}
+                {fmtMoney(l.emi)} a month from your salary{l.nextMonth ? `, next in ${monthLabel(l.nextMonth)}` : ""} · last in {monthLabel(l.endMonth)}
               </div>
             </Card>
           ))}
@@ -64,7 +64,7 @@ export function MyLoans({ data }: { data: MyLoansData }) {
               <div key={l.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-[13.5px]">
                 <div className="min-w-0">
                   <div className="font-medium">
-                    {l.typeLabel} {l.code} · {inr(l.amount)}
+                    {l.typeLabel} {l.code} · {fmtMoney(l.amount)}
                   </div>
                   <div className="text-muted text-[12px]">
                     {l.months} month{l.months === 1 ? "" : "s"}
@@ -134,7 +134,7 @@ function AskDialog({ policy, onClose }: { policy: MyLoansData["policy"]; onClose
               <option value="loan">Loan</option>
             </Select>
           </Field>
-          <Field label="Amount (₹)" hint={`Up to ${inr(max)}`} error={amount > max ? "More than the limit" : null}>
+          <Field label="Amount (₹)" hint={`Up to ${fmtMoney(max)}`} error={amount > max ? "More than the limit" : null}>
             <Input type="number" min={1} max={max} value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} />
           </Field>
           <Field label="Repay over (months)" hint={`Up to ${maxMonths}`} error={months > maxMonths ? "Too long" : null}>
@@ -146,8 +146,8 @@ function AskDialog({ policy, onClose }: { policy: MyLoansData["policy"]; onClose
         </Field>
         {plan.length && !over ? (
           <div className="text-[13px]">
-            About <b>{inr(plan[0]!.emi)}</b> a month for {plan.length} month{plan.length === 1 ? "" : "s"}
-            {rate ? `, at ${rate}% interest (${inr(plan.reduce((s, x) => s + x.interest, 0))} in total)` : ", interest-free"}.
+            About <b>{fmtMoney(plan[0]!.emi)}</b> a month for {plan.length} month{plan.length === 1 ? "" : "s"}
+            {rate ? `, at ${rate}% interest (${fmtMoney(plan.reduce((s, x) => s + x.interest, 0))} in total)` : ", interest-free"}.
           </div>
         ) : null}
       </div>

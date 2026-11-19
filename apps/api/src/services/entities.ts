@@ -1,5 +1,5 @@
 import { and, asc, eq } from "drizzle-orm";
-import { legalEntities, tenants, type Database } from "@hrms/db";
+import { employees, legalEntities, tenants, type Database } from "@hrms/db";
 import { COUNTRIES, type CountryCode } from "@hrms/shared";
 
 export type LegalEntity = typeof legalEntities.$inferSelect;
@@ -72,3 +72,17 @@ export async function nextEntityCode(db: Database, tenantId: string) {
 }
 
 export const countryInfo = (c: string) => COUNTRIES[c as CountryCode];
+
+/** An employee's time zone: their legal entity's zone. */
+export async function zoneOfEmployee(db: Database, tenantId: string, employeeId: string) {
+  const [e] = await db.select({ entityId: employees.entityId }).from(employees).where(and(eq(employees.id, employeeId), eq(employees.tenantId, tenantId)));
+  return (await entityOf(db, tenantId, e?.entityId)).timeZone;
+}
+
+/** Time zone by entity id for a whole tenant, for loops over many employees. */
+export async function entityZones(db: Database, tenantId: string) {
+  const list = await listEntities(db, tenantId);
+  const def = list.find((x) => x.isDefault)!.timeZone;
+  const byId = new Map(list.map((x) => [x.id, x.timeZone]));
+  return (entityId: string | null | undefined) => (entityId && byId.get(entityId)) || def;
+}

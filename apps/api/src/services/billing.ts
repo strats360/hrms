@@ -1,6 +1,6 @@
 import { and, eq, inArray, like, ne, notInArray, sql } from "drizzle-orm";
 import { employees, invoices, platformSettings, plans, tenants, type Database, type InvoiceParty } from "@hrms/db";
-import { billableSeats, invoiceTax, invoicingEntitySchema, stateCodeOf, todayIST } from "@hrms/shared";
+import { billableSeats, invoiceTax, invoicingEntitySchema, stateCodeOf, todayLocal } from "@hrms/shared";
 import type { z } from "zod";
 
 export type InvoicingEntity = z.infer<typeof invoicingEntitySchema>;
@@ -104,7 +104,7 @@ export async function issueInvoices(db: Database, period: string, userId: string
   if (!drafts.length) return [];
   const ts = new Map((await db.select().from(tenants).where(inArray(tenants.id, drafts.map((d) => d.tenantId)))).map((t) => [t.id, t]));
   const next = await nextInvoiceNumber(db, entity.invoicePrefix, period);
-  const issuedOn = opts.issuedOn ?? todayIST();
+  const issuedOn = opts.issuedOn ?? todayLocal();
   const seller: InvoiceParty = { name: entity.legalName, legalName: entity.legalName, gstin: entity.gstin ?? null, address: entity.address ?? null, state: entity.state ?? null, stateCode: stateCodeOf(entity.gstin, entity.state) };
   const created: Invoice[] = [];
   for (const d of drafts) {
@@ -143,7 +143,7 @@ export async function issueInvoices(db: Database, period: string, userId: string
 }
 
 /** Invoices still unpaid after their due date. */
-export async function overdueInvoices(db: Database, today = todayIST()) {
+export async function overdueInvoices(db: Database, today = todayLocal()) {
   return db
     .select({ inv: invoices, tenantName: tenants.name, tenantStatus: tenants.status, email: sql<string | null>`coalesce(${tenants.billingEmail}, ${tenants.contactEmail})` })
     .from(invoices)
@@ -155,10 +155,10 @@ export async function overdueInvoices(db: Database, today = todayIST()) {
 export async function restoreIfClear(db: Database, tenantId: string) {
   const [t] = await db.select().from(tenants).where(eq(tenants.id, tenantId));
   if (!t || t.status !== "past_due") return false;
-  const [o] = await db.select({ n: sql<number>`count(*)::int` }).from(invoices).where(and(eq(invoices.tenantId, tenantId), eq(invoices.status, "issued"), sql`${invoices.dueOn} < ${todayIST()}`));
+  const [o] = await db.select({ n: sql<number>`count(*)::int` }).from(invoices).where(and(eq(invoices.tenantId, tenantId), eq(invoices.status, "issued"), sql`${invoices.dueOn} < ${todayLocal()}`));
   if ((o?.n ?? 0) > 0) return false;
   await db.update(tenants).set({ status: "active" }).where(eq(tenants.id, tenantId));
   return true;
 }
 
-export const invoiceStatus = (i: Pick<Invoice, "status" | "dueOn">, today = todayIST()) => (i.status === "issued" && i.dueOn < today ? "overdue" : i.status);
+export const invoiceStatus = (i: Pick<Invoice, "status" | "dueOn">, today = todayLocal()) => (i.status === "issued" && i.dueOn < today ? "overdue" : i.status);

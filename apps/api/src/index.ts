@@ -1,3 +1,4 @@
+import { setLocalDefaults } from "@hrms/shared";
 import type { Env } from "./env";
 import { buildApp } from "./app";
 import { runScheduled } from "./services/jobs";
@@ -16,6 +17,7 @@ export default {
   },
   /** Cron Triggers: the daily jobs at 10:00 IST, and an hourly run for scheduled announcements. */
   async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    setLocalDefaults({ timeZone: env.DEFAULT_TIME_ZONE, currency: env.DEFAULT_CURRENCY });
     ctx.waitUntil(event.cron === HOURLY ? runHourly(env) : runScheduled(env));
   },
 } satisfies ExportedHandler<Env>;

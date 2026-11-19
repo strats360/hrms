@@ -15,7 +15,7 @@ import { sql } from "drizzle-orm";
 import type { ApprovalRecord } from "@hrms/shared";
 import { tenantIdColumn as tenantId } from "./org";
 import { employees } from "./people";
-import { id, timestamps } from "./_helpers";
+import { id, timestamps, money } from "./_helpers";
 
 const employeeId = () =>
   text("employee_id")
@@ -221,8 +221,8 @@ export const leaveEncashments = pgTable(
       .references(() => leaveTypes.id, { onDelete: "cascade" }),
     year: integer("year").notNull(),
     days: numeric("days", { precision: 6, scale: 1, mode: "number" }).notNull(),
-    perDay: numeric("per_day", { precision: 14, scale: 2, mode: "number" }).notNull(),
-    amount: numeric("amount", { precision: 14, scale: 2, mode: "number" }).notNull(),
+    perDay: money("per_day").notNull(),
+    amount: money("amount").notNull(),
     reason: text("reason").notNull().default("request"), // request | year_end
     note: text("note"),
     status: text("status").notNull().default("pending"), // pending | in_payroll | cancelled

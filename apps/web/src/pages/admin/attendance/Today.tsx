@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { fmtDate, todayIST } from "@hrms/shared";
+import { fmtDate, todayLocal } from "@hrms/shared";
 import { api, qs } from "@/lib/api";
 import { StatCard, TableCard } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -48,12 +48,12 @@ const FILTERS: Record<Exclude<Filter, "flagged">, (s: string | null) => boolean>
 };
 
 export default function Today() {
-  const [date, setDate] = useState(todayIST());
+  const [date, setDate] = useState(todayLocal());
   const [filter, setFilter] = useState<Filter>("all");
   const [q, setQ] = useState("");
   const query = useQuery({ queryKey: ["attendance", "today", date], queryFn: () => api.get<TodayRes>(`/admin/attendance/today${qs({ date })}`) });
   const s = query.data?.summary;
-  const isToday = date === todayIST();
+  const isToday = date === todayLocal();
 
   const rows = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -121,7 +121,7 @@ export default function Today() {
           <div className="card-title text-[17px]">
             {isToday ? "Today" : "Day"} · {DAY_SHORT[weekdayOf(date)]} {fmtDate(date)}
           </div>
-          <Input type="date" value={date} max={todayIST()} onChange={(e) => e.target.value && setDate(e.target.value)} className="!w-[170px]" aria-label="Date" />
+          <Input type="date" value={date} max={todayLocal()} onChange={(e) => e.target.value && setDate(e.target.value)} className="!w-[170px]" aria-label="Date" />
         </div>
         <DataTable
           data={rows}

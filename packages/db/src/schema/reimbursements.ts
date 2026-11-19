@@ -2,9 +2,8 @@ import { bigint, boolean, date, index, numeric, pgTable, text, timestamp, unique
 import { tenantIdColumn as tenantId } from "./org";
 import { employees } from "./people";
 import { payrollRuns } from "./payroll";
-import { id, timestamps } from "./_helpers";
+import { id, money, timestamps } from "./_helpers";
 
-const money = (name: string) => numeric(name, { precision: 14, scale: 2, mode: "number" });
 
 /** Expense category with its policy limit and approval chain. */
 export const reimbursementCategories = pgTable(

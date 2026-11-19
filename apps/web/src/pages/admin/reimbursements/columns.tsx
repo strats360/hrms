@@ -1,5 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { fmtDate, inr } from "@hrms/shared";
+import { fmtDate, fmtMoney } from "@hrms/shared";
 import type { Claim } from "@/lib/types";
 import { PersonCell } from "@/components/ui/avatar";
 import { Tag } from "@/components/ui/tag";
@@ -31,7 +31,7 @@ export function claimColumns(opts: { payment?: boolean; gst?: boolean } = {}): C
       meta: { align: "right" },
       cell: ({ row: { original: r } }) => (
         <div>
-          <span className="font-semibold">{inr(r.amount)}</span>
+          <span className="font-semibold">{fmtMoney(r.amount)}</span>
           {r.overLimit ? (
             <div>
               <Tag tone="warn" className="!text-[11px]">

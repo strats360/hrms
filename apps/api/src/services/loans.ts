@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, like } from "drizzle-orm";
 import { employeeLoans, loanRepayments, payrollAdjustments, payrollRuns, tenants, type Database } from "@hrms/db";
-import { DEFAULT_LOAN_POLICY, emiFor, LOAN_TYPE_LABEL, loanSchedule, todayIST, totalPayable, type LoanPolicy, type LoanType } from "@hrms/shared";
+import { DEFAULT_LOAN_POLICY, emiFor, LOAN_TYPE_LABEL, loanSchedule, todayLocal, totalPayable, type LoanPolicy, type LoanType } from "@hrms/shared";
 
 export type Loan = typeof employeeLoans.$inferSelect;
 const LOCKED = ["approved", "paid"];
@@ -99,7 +99,7 @@ export async function closeRepaidLoans(db: Database, tenantId: string, loanIds?:
   let closed = 0;
   for (const l of loans) {
     if (loanSummary(l, rec.get(l.id)!).outstanding <= 0) {
-      await db.update(employeeLoans).set({ status: "closed", closedOn: todayIST() }).where(eq(employeeLoans.id, l.id));
+      await db.update(employeeLoans).set({ status: "closed", closedOn: todayLocal() }).where(eq(employeeLoans.id, l.id));
       closed++;
     }
   }

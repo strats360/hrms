@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ASSET_CATEGORIES, ASSET_CATEGORY_LABEL, ASSET_STATUS_LABEL, CONDITION_LABEL, CONDITIONS, todayIST, type AssetCategory, type AssetStatus, type Condition } from "@hrms/shared";
+import { ASSET_CATEGORIES, ASSET_CATEGORY_LABEL, ASSET_STATUS_LABEL, CONDITION_LABEL, CONDITIONS, todayLocal, type AssetCategory, type AssetStatus, type Condition } from "@hrms/shared";
 import { api, errorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -69,7 +69,7 @@ export function AssignDialog({ asset, onClose }: { asset: Pick<Asset, "id" | "ta
   const qc = useQueryClient();
   const L = useLookups();
   const [find, setFind] = useState("");
-  const [f, setF] = useState({ employeeId: "", date: todayIST(), condition: asset.condition, expectedReturn: "", note: "" });
+  const [f, setF] = useState({ employeeId: "", date: todayLocal(), condition: asset.condition, expectedReturn: "", note: "" });
   const people = (L.data?.employees ?? []).filter((e) => find.trim().length >= 2 && `${e.name} ${e.code}`.toLowerCase().includes(find.trim().toLowerCase())).slice(0, 8);
   const chosen = L.data?.employees.find((e) => e.id === f.employeeId);
   const save = useMutation({
@@ -101,7 +101,7 @@ export function AssignDialog({ asset, onClose }: { asset: Pick<Asset, "id" | "ta
 
 export function ReturnDialog({ asset, holder, onClose }: { asset: Pick<Asset, "id" | "tag" | "name" | "condition">; holder: string; onClose: () => void }) {
   const qc = useQueryClient();
-  const [f, setF] = useState({ date: todayIST(), condition: asset.condition, status: "available" as "available" | "in_repair" | "retired" | "lost", note: "" });
+  const [f, setF] = useState({ date: todayLocal(), condition: asset.condition, status: "available" as "available" | "in_repair" | "retired" | "lost", note: "" });
   const save = useMutation({
     mutationFn: () => api.post(`/admin/assets/${asset.id}/return`, f),
     onSuccess: () => (toast.success(`${asset.tag} returned`), qc.invalidateQueries({ queryKey: ["assets"] }), qc.invalidateQueries({ queryKey: ["exit"] }), onClose()),

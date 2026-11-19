@@ -1,10 +1,10 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { todayIST } from "@hrms/shared";
+import { todayLocal } from "@hrms/shared";
 import { Client, lastEmailTo, login } from "./helpers";
 
 let kunal: Client, krupa: Client, nisha: Client, priya: Client, hardik: Client;
 let hdfc: any;
-const today = todayIST();
+const today = todayLocal();
 const idOf = async (code: string) => (await kunal.get(`/admin/employees?q=${code}`)).body.rows[0].id as string;
 
 beforeAll(async () => {

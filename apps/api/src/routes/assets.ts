@@ -12,7 +12,7 @@ import {
   ISSUE_LABEL,
   reportIssueSchema,
   returnSchema,
-  todayIST,
+  todayLocal,
   warrantyState,
   type AssetCategory,
   type AssetStatus,
@@ -106,7 +106,7 @@ const listQuery = (c: Context<AppEnv>) =>
 assetRoutes.get("/", async (c) => {
   const db = c.get("db");
   const rows = await listQuery(c);
-  const today = todayIST();
+  const today = todayLocal();
   const since = rows.length
     ? new Map((await db.select({ assetId: assetAssignments.assetId, on: assetAssignments.assignedOn, ack: assetAssignments.acknowledgedAt, issue: assetAssignments.issue }).from(assetAssignments).where(and(inArray(assetAssignments.assetId, rows.map((r) => r.a.id)), isNull(assetAssignments.returnedOn)))).map((x) => [x.assetId, x]))
     : new Map();
@@ -138,7 +138,7 @@ assetRoutes.get("/export.xlsx", requirePerm("assets", "export"), async (c) => {
     },
   ]);
   await audit(c, { action: "assets.export", entity: "asset", summary: `Exported ${rows.length} assets` });
-  return c.body(file as unknown as ArrayBuffer, 200, { "Content-Type": XLSX_MIME, "Content-Disposition": `attachment; filename="assets-${todayIST()}.xlsx"` });
+  return c.body(file as unknown as ArrayBuffer, 200, { "Content-Type": XLSX_MIME, "Content-Disposition": `attachment; filename="assets-${todayLocal()}.xlsx"` });
 });
 
 assetRoutes.post("/", requirePerm("assets", "edit"), v("json", assetSchema), async (c) => {
@@ -174,7 +174,7 @@ assetRoutes.get("/:id", async (c) => {
     .innerJoin(employees, eq(employees.id, assetAssignments.employeeId))
     .where(eq(assetAssignments.assetId, a.id))
     .orderBy(desc(assetAssignments.assignedOn), desc(assetAssignments.createdAt));
-  return c.json({ asset: { ...a, warranty: warrantyState(a.warrantyUntil, todayIST()) }, history: history.map((h) => ({ ...h.x, employee: { id: h.x.employeeId, name: h.name, code: h.code } })) });
+  return c.json({ asset: { ...a, warranty: warrantyState(a.warrantyUntil, todayLocal()) }, history: history.map((h) => ({ ...h.x, employee: { id: h.x.employeeId, name: h.name, code: h.code } })) });
 });
 
 assetRoutes.post("/:id/assign", requirePerm("assets", "edit"), v("json", assignSchema), async (c) => {
@@ -213,7 +213,7 @@ assetRoutes.post("/:id/status", requirePerm("assets", "edit"), v("json", assetSt
   const a = await load(c, c.req.param("id"));
   if (a.status === "assigned") throw badRequest("Take it back from the person first");
   const b = c.req.valid("json");
-  await c.get("db").update(assets).set({ status: b.status, notes: b.note ? [a.notes, `${fmtDate(todayIST())}: ${b.note}`].filter(Boolean).join("\n") : a.notes, updatedAt: new Date() }).where(eq(assets.id, a.id));
+  await c.get("db").update(assets).set({ status: b.status, notes: b.note ? [a.notes, `${fmtDate(todayLocal())}: ${b.note}`].filter(Boolean).join("\n") : a.notes, updatedAt: new Date() }).where(eq(assets.id, a.id));
   await audit(c, { action: "assets.status", entity: "asset", entityId: a.id, summary: `${a.tag} ${a.name} is now ${ASSET_STATUS_LABEL[b.status].toLowerCase()}${b.note ? `: ${b.note}` : ""}` });
   return c.json({ ok: true });
 });

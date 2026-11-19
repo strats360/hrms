@@ -5,7 +5,7 @@ import { useSession } from "@/lib/session";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { ATTENDANCE_STATUSES, ATTENDANCE_STATUS_LABELS, correctionCreateSchema, fmtDate, todayIST, type AttendanceStatus } from "@hrms/shared";
+import { ATTENDANCE_STATUSES, ATTENDANCE_STATUS_LABELS, correctionCreateSchema, fmtDate, todayLocal, type AttendanceStatus } from "@hrms/shared";
 import { api, qs } from "@/lib/api";
 import { hoursMinutes } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -59,7 +59,7 @@ const monthLabel = (m: string) => new Date(m + "-01T00:00:00Z").toLocaleDateStri
 export default function EssAttendance() {
   const { has } = useSession();
   const [params, setParams] = useSearchParams();
-  const thisMonth = todayIST().slice(0, 7);
+  const thisMonth = todayLocal().slice(0, 7);
   const [month, setMonth] = useState(thisMonth);
   const [open, setOpen] = useState(params.get("correct") === "1");
   const [prefillDate, setPrefillDate] = useState<string | undefined>();
@@ -108,7 +108,7 @@ export default function EssAttendance() {
               {Array.from({ length: firstDow }).map((_, i) => <div key={`b${i}`} />)}
               {days.map((d) => {
                 const c = d.status ? COLORS[d.status] ?? COLORS.not_marked! : { bg: "transparent", fg: "var(--muted)" };
-                const canCorrect = d.date <= todayIST() && d.status !== "holiday" && d.status !== "weekly_off" && d.status !== null;
+                const canCorrect = d.date <= todayLocal() && d.status !== "holiday" && d.status !== "weekly_off" && d.status !== null;
                 return (
                   <button
                     key={d.date}
@@ -117,7 +117,7 @@ export default function EssAttendance() {
                     onClick={() => { setPrefillDate(d.date); setOpen(true); }}
                     title={`${fmtDate(d.date)}: ${d.status ? statusLabel(d.status) : "No record"}${d.checkIn ? ` · ${d.checkIn} to ${d.checkOut ?? "…"}` : ""}`}
                     className="flex min-h-[54px] flex-col items-start gap-0.5 rounded-[var(--radius-sm)] border p-1.5 text-left sm:min-h-[72px]"
-                    style={{ background: c.bg, color: c.fg, borderColor: d.date === todayIST() ? "var(--color-accent)" : "var(--color-divider)", cursor: canCorrect ? "pointer" : "default" }}
+                    style={{ background: c.bg, color: c.fg, borderColor: d.date === todayLocal() ? "var(--color-accent)" : "var(--color-divider)", cursor: canCorrect ? "pointer" : "default" }}
                   >
                     <span className="text-[12px] font-semibold">{Number(d.date.slice(8))}</span>
                     {d.status ? <span className="hidden text-[10.5px] leading-tight sm:block">{statusLabel(d.status)}</span> : null}
@@ -163,7 +163,7 @@ export default function EssAttendance() {
 
 function CorrectionDialog({ open, onOpenChange, date }: { open: boolean; onOpenChange: (v: boolean) => void; date?: string }) {
   const qc = useQueryClient();
-  const blank = () => ({ date: date ?? todayIST(), issue: ISSUES[0]!, requestedCheckIn: "", requestedCheckOut: "", requestedStatus: "", reason: "" });
+  const blank = () => ({ date: date ?? todayLocal(), issue: ISSUES[0]!, requestedCheckIn: "", requestedCheckOut: "", requestedStatus: "", reason: "" });
   const [f, setF] = useState(blank);
   const [errors, setErrors] = useState<Record<string, string>>({});
   useEffect(() => {
@@ -197,7 +197,7 @@ function CorrectionDialog({ open, onOpenChange, date }: { open: boolean; onOpenC
     >
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Date" error={errors.date}>
-          <Input type="date" value={f.date} max={todayIST()} onChange={(e) => setF({ ...f, date: e.target.value })} />
+          <Input type="date" value={f.date} max={todayLocal()} onChange={(e) => setF({ ...f, date: e.target.value })} />
         </Field>
         <Field label="What happened">
           <Select value={f.issue} onChange={(e) => setF({ ...f, issue: e.target.value, requestedStatus: e.target.value === "WFH not marked" ? "wfh" : f.requestedStatus })}>

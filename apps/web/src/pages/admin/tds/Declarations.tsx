@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Check, ExternalLink, X } from "lucide-react";
-import { fmtDate, inr, TAX_SECTION_LABELS, TAX_SECTIONS, type TaxSection } from "@hrms/shared";
+import { fmtDate, fmtMoney, TAX_SECTION_LABELS, TAX_SECTIONS, type TaxSection } from "@hrms/shared";
 import { api, ApiError, qs } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { TaxDeclaration, TaxProof } from "@/lib/types";
@@ -39,7 +39,7 @@ interface Detail extends TaxDeclaration {
 type Filter = "" | "submitted" | "verified" | "draft";
 
 const OTHER: TaxSection[] = ["80CCD1B", "80E", "80G", "80TTA", "previousEmployer"];
-const amt = (k: TaxSection, header: string): ColumnDef<Row> => ({ id: k, header, accessorFn: (r) => r.declared[k], meta: { align: "right" }, cell: ({ getValue }) => (getValue<number>() ? inr(getValue<number>()) : "—") });
+const amt = (k: TaxSection, header: string): ColumnDef<Row> => ({ id: k, header, accessorFn: (r) => r.declared[k], meta: { align: "right" }, cell: ({ getValue }) => (getValue<number>() ? fmtMoney(getValue<number>()) : "—") });
 
 export default function Declarations() {
   const fy = useFy();
@@ -59,7 +59,7 @@ export default function Declarations() {
       amt("80D", "80D"),
       amt("hra", "HRA rent"),
       amt("24b", "24(b)"),
-      { id: "other", header: "Other", accessorFn: (r) => OTHER.reduce((s, k) => s + (r.declared[k] ?? 0), 0), meta: { align: "right" }, cell: ({ getValue }) => (getValue<number>() ? inr(getValue<number>()) : "—") },
+      { id: "other", header: "Other", accessorFn: (r) => OTHER.reduce((s, k) => s + (r.declared[k] ?? 0), 0), meta: { align: "right" }, cell: ({ getValue }) => (getValue<number>() ? fmtMoney(getValue<number>()) : "—") },
       { id: "proofs", header: "Proofs", accessorFn: (r) => r.proofs.pending, cell: ({ row: { original: r } }) => (r.proofs.total ? <Tag tone={r.proofs.pending ? "warn" : "ok"}>{r.proofs.pending ? `${r.proofs.pending} of ${r.proofs.total} to review` : `${r.proofs.total} reviewed`}</Tag> : <span className="text-muted">None</span>) },
       { id: "status", header: "Status", accessorKey: "status", cell: ({ getValue }) => <Tag tone={DECL_STATUS_TONE[getValue<string>()] ?? "neutral"}>{DECL_STATUS_LABEL[getValue<string>()] ?? getValue<string>()}</Tag> },
     ],
@@ -180,9 +180,9 @@ function ReviewDialog({ id, onClose }: { id: string | null; onClose: () => void 
                       <div className="min-w-0">
                         <div className="font-semibold">{TAX_SECTION_LABELS[k]}</div>
                         <div className="text-muted text-[12.5px]">
-                          Declared {inr(d.declared[k] ?? 0)}
-                          {k === "hra" && d.data.rent ? ` · ${inr(d.data.rent.monthlyRent)} × ${d.data.rent.months} months · ${d.data.rent.metro ? "metro" : "non-metro"}${d.data.rent.landlordName ? ` · landlord ${d.data.rent.landlordName}` : ""}${d.data.rent.landlordPan ? ` (PAN ${d.data.rent.landlordPan})` : ""}` : ""}
-                          {k === "previousEmployer" && d.data.previousEmployer ? ` · TDS ${inr(d.data.previousEmployer.tds ?? 0)}${d.data.previousEmployer.name ? ` · ${d.data.previousEmployer.name}` : ""}` : ""}
+                          Declared {fmtMoney(d.declared[k] ?? 0)}
+                          {k === "hra" && d.data.rent ? ` · ${fmtMoney(d.data.rent.monthlyRent)} × ${d.data.rent.months} months · ${d.data.rent.metro ? "metro" : "non-metro"}${d.data.rent.landlordName ? ` · landlord ${d.data.rent.landlordName}` : ""}${d.data.rent.landlordPan ? ` (PAN ${d.data.rent.landlordPan})` : ""}` : ""}
+                          {k === "previousEmployer" && d.data.previousEmployer ? ` · TDS ${fmtMoney(d.data.previousEmployer.tds ?? 0)}${d.data.previousEmployer.name ? ` · ${d.data.previousEmployer.name}` : ""}` : ""}
                         </div>
                       </div>
                       <label className="flex items-center gap-2 text-[12.5px]">

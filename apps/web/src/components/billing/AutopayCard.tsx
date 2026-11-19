@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Repeat } from "lucide-react";
-import { fmtDate, inr } from "@hrms/shared";
+import { fmtDate, fmtMoney } from "@hrms/shared";
 import { api, errorMessage } from "@/lib/api";
 import { openMandateCheckout } from "@/lib/cashfree";
 import { useSession } from "@/lib/session";
@@ -130,11 +130,11 @@ export function AutopayCard() {
             </div>
             <div>
               <div className="text-muted text-[12px]">Limit per invoice</div>
-              {inr(m.maxAmount)}
+              {fmtMoney(m.maxAmount)}
             </div>
             <div>
               <div className="text-muted text-[12px]">Next debit</div>
-              {d.nextCharge ? `${inr(d.nextCharge.amount)} for ${d.nextCharge.invoice}, on ${fmtDate(d.nextCharge.scheduledFor.slice(0, 10))}` : "With the next invoice"}
+              {d.nextCharge ? `${fmtMoney(d.nextCharge.amount)} for ${d.nextCharge.invoice}, on ${fmtDate(d.nextCharge.scheduledFor.slice(0, 10))}` : "With the next invoice"}
               {d.nextCharge && canEdit ? (
                 <button
                   type="button"
@@ -162,7 +162,7 @@ export function AutopayCard() {
                 value={method}
                 onChange={setMethod}
                 options={[
-                  { value: "upi", label: `UPI autopay (up to ${inr(d.upiLimit)})` },
+                  { value: "upi", label: `UPI autopay (up to ${fmtMoney(d.upiLimit)})` },
                   { value: "enach", label: "Bank e-mandate (eNACH)" },
                 ]}
               />
@@ -174,7 +174,7 @@ export function AutopayCard() {
               {pending ? "Try again" : "Set up autopay"}
             </Button>
           </div>
-          {overUpi ? <Notice tone="warn">UPI autopay debits above {inr(d.upiLimit)} need your approval in the UPI app every month (RBI rules). Choose a bank e-mandate for a higher limit.</Notice> : null}
+          {overUpi ? <Notice tone="warn">UPI autopay debits above {fmtMoney(d.upiLimit)} need your approval in the UPI app every month (RBI rules). Choose a bank e-mandate for a higher limit.</Notice> : null}
           <div className="text-muted text-[12px]">You'll approve the mandate on Cashfree's secure page{method === "upi" ? " in your UPI app" : " with net banking or a debit card"}. A ₹1 authorisation is refunded. You can cancel autopay here any time.</div>
         </>
       ) : (

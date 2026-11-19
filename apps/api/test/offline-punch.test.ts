@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import postgres from "postgres";
-import { todayIST } from "@hrms/shared";
+import { todayLocal } from "@hrms/shared";
 import { Client, env, login } from "./helpers";
 
 const sql = postgres(env.DATABASE_URL!, { max: 1, onnotice: () => {} });
@@ -15,10 +15,10 @@ beforeAll(async () => {
   [{ id: priyaId }] = (await sql`select id from employees where work_email = 'priya.vaghela@strats360.com'`) as any;
   [{ s: saved }] = (await sql`select settings->'punchPolicy' as s from tenants where code = 'TN-0142'`) as any;
   await sql`update tenants set settings = settings - 'punchPolicy' where code = 'TN-0142'`;
-  await sql`delete from attendance_records where employee_id = ${priyaId} and date = ${todayIST()}`;
+  await sql`delete from attendance_records where employee_id = ${priyaId} and date = ${todayLocal()}`;
 });
 afterAll(async () => {
-  await sql`delete from attendance_records where employee_id = ${priyaId} and date = ${todayIST()}`;
+  await sql`delete from attendance_records where employee_id = ${priyaId} and date = ${todayLocal()}`;
   if (saved) await sql`update tenants set settings = jsonb_set(settings, '{punchPolicy}', ${sql.json(saved as any)}) where code = 'TN-0142'`;
   await sql.end();
 });
@@ -38,14 +38,14 @@ describe("Punches saved offline", () => {
     expect(r.status).toBe(200);
     expect(r.body).toMatchObject({ action: "in", checkIn: ist(at) });
     expect(r.body.flags.join(" ")).toMatch(new RegExp(`Punched offline at ${ist(at)}, sent at \\d\\d:\\d\\d`));
-    const [rec] = await sql`select ip from attendance_records where employee_id = ${priyaId} and date = ${todayIST()}`;
+    const [rec] = await sql`select ip from attendance_records where employee_id = ${priyaId} and date = ${todayLocal()}`;
     expect(rec!.ip).toBeNull(); // the network at sending time isn't where they punched
   });
 
   it("won't let a stale offline punch land before the check-in or after a check-out", async () => {
     const before = await priya.post("/ess/attendance/punch", { source: "gps", capturedAt: ago(6) });
     expect(before.status).toBe(400);
-    await sql`update attendance_records set check_in = check_in - interval '8 hours' where employee_id = ${priyaId} and date = ${todayIST()}`;
+    await sql`update attendance_records set check_in = check_in - interval '8 hours' where employee_id = ${priyaId} and date = ${todayLocal()}`;
     const out = await priya.post("/ess/attendance/punch", { source: "gps" });
     expect(out.body.action).toBe("out");
     const late = await priya.post("/ess/attendance/punch", { source: "gps", capturedAt: ago(30) });

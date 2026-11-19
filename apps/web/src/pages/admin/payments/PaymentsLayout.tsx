@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Outlet, useLocation, useSearchParams } from "react-router";
 import { Download, Plus } from "lucide-react";
 import { toast } from "sonner";
-import { fmtDate, inr, inrCompact } from "@hrms/shared";
+import { fmtDate, fmtMoney, fmtMoneyCompact } from "@hrms/shared";
 import { download, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { PaymentType } from "@/lib/types";
@@ -67,12 +67,12 @@ export default function PaymentsLayout() {
         }
       />
       <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(200px, 100%), 1fr))" }}>
-        <StatCard label={ready ? `Ready to pay · ${ready.label}` : "Ready to pay · salary"} value={ready ? inr(ready.net) : "—"} meta={ready ? `${ready.employees} employees · locked` : "No locked payroll waiting"} />
-        <StatCard label="Approved claims unpaid" value={s ? inr(s.claimsUnpaid.amount) : "—"} meta={s ? `${s.claimsUnpaid.claims} claim${s.claimsUnpaid.claims === 1 ? "" : "s"} · next reimbursement batch or payroll` : undefined} />
-        <StatCard label="Failed or held" value={s ? s.attention.count : "—"} meta={s?.attention.count ? <Tag tone="warn">{inr(s.attention.amount)} to resolve</Tag> : "Nothing to resolve"} />
+        <StatCard label={ready ? `Ready to pay · ${ready.label}` : "Ready to pay · salary"} value={ready ? fmtMoney(ready.net) : "—"} meta={ready ? `${ready.employees} employees · locked` : "No locked payroll waiting"} />
+        <StatCard label="Approved claims unpaid" value={s ? fmtMoney(s.claimsUnpaid.amount) : "—"} meta={s ? `${s.claimsUnpaid.claims} claim${s.claimsUnpaid.claims === 1 ? "" : "s"} · next reimbursement batch or payroll` : undefined} />
+        <StatCard label="Failed or held" value={s ? s.attention.count : "—"} meta={s?.attention.count ? <Tag tone="warn">{fmtMoney(s.attention.amount)} to resolve</Tag> : "Nothing to resolve"} />
         <StatCard
           label={s?.account ? `${s.account.label} account` : "Payroll account"}
-          value={s?.account?.balance !== null && s?.account?.balance !== undefined ? inrCompact(s.account.balance) : "—"}
+          value={s?.account?.balance !== null && s?.account?.balance !== undefined ? fmtMoneyCompact(s.account.balance) : "—"}
           meta={s?.account ? `${s.account.bankName} ····${s.account.accountLast4}${s.account.balanceAsOf ? ` · balance on ${fmtDate(s.account.balanceAsOf, false)}` : ""}` : "Add a debit account"}
         />
       </div>

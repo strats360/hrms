@@ -37,7 +37,7 @@ import {
   user,
   type Database,
 } from "@hrms/db";
-import { COMPANY_ISSUED_DOCS, DEFAULT_PRIVACY, ERASED_DATA, KEPT_DATA, todayIST, type PrivacySettings } from "@hrms/shared";
+import { COMPANY_ISSUED_DOCS, DEFAULT_PRIVACY, ERASED_DATA, KEPT_DATA, todayLocal, type PrivacySettings } from "@hrms/shared";
 import type { Env } from "../env";
 import { deleteFile, getFile, safeName } from "../lib/storage";
 
@@ -164,7 +164,7 @@ export async function exportEmployeeData(db: Database, env: Env, tenantId: strin
     "You can ask the company to erase your personal data from Your account > Your data, once you've left.",
   ].join("\n");
   const zip = zipSync({ "README.txt": strToU8(readme), "data.json": strToU8(JSON.stringify(data, null, 2)), ...files }, { level: 6 });
-  return { zip, filename: `my-data-${safeName(e.employeeCode)}-${todayIST()}.zip`, employee: e, fileCount: Object.keys(files).length };
+  return { zip, filename: `my-data-${safeName(e.employeeCode)}-${todayLocal()}.zip`, employee: e, fileCount: Object.keys(files).length };
 }
 
 /**

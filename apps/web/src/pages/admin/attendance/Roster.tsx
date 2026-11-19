@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Copy, Moon, Wand2 } from "lucide-react";
-import { todayIST } from "@hrms/shared";
+import { todayLocal } from "@hrms/shared";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Avatar } from "@/components/ui/avatar";
@@ -62,7 +62,7 @@ export default function Roster() {
   const qc = useQueryClient();
   const { can } = useSession();
   const canPlan = can("attendance", "edit") || can("attendance", "approve");
-  const [week, setWeek] = useState(() => monday(todayIST()));
+  const [week, setWeek] = useState(() => monday(todayLocal()));
   const [search, setSearch] = useState("");
   const [fill, setFill] = useState(false);
   const q = useQuery({ queryKey: ["roster", week], queryFn: () => api.get<RosterRes>(`/admin/attendance/roster?from=${week}`) });
@@ -80,7 +80,7 @@ export default function Roster() {
   const rows = useMemo(() => (d?.rows ?? []).filter((r) => !search.trim() || `${r.name} ${r.code} ${r.department ?? ""}`.toLowerCase().includes(search.trim().toLowerCase())), [d, search]);
   if (q.isLoading) return <Loading />;
   if (q.error || !d) return <ErrorState error={q.error} retry={() => q.refetch()} />;
-  const today = todayIST();
+  const today = todayLocal();
   const shiftName = (id: string | null) => d.shifts.find((s) => s.id === id);
   const locked = (date: string) => !!d.lockedUntil && date <= d.lockedUntil;
 

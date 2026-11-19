@@ -1,9 +1,8 @@
 import { date, index, integer, jsonb, numeric, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { tenantIdColumn as tenantId } from "./org";
 import { employees } from "./people";
-import { id, timestamps } from "./_helpers";
+import { id, money, timestamps } from "./_helpers";
 
-const money = (name: string) => numeric(name, { precision: 14, scale: 2, mode: "number" });
 
 /** Salary advances and employee loans, recovered from salary (see @hrms/shared loans). */
 export const employeeLoans = pgTable(

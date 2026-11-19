@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
-import { inr, payrollAdjustmentSchema } from "@hrms/shared";
+import { fmtMoney, payrollAdjustmentSchema } from "@hrms/shared";
 import { api } from "@/lib/api";
 import type { PayrollItem } from "@/lib/types";
 import { Dialog } from "@/components/ui/dialog";
@@ -164,7 +164,7 @@ export function AdjustmentDialog({ runId, item, onClose }: { runId: string; item
                 {a.label} <span className="text-muted">· {a.kind === "earning" ? "earning" : "deduction"}</span>
               </span>
               <span className="flex items-center gap-2">
-                <span className="num font-medium">{a.kind === "deduction" ? "−" : ""}{inr(a.amount)}</span>
+                <span className="num font-medium">{a.kind === "deduction" ? "−" : ""}{fmtMoney(a.amount)}</span>
                 <Button icon size="sm" variant="ghost" aria-label={`Remove ${a.label}`} loading={remove.isPending && remove.variables === a.id} onClick={() => remove.mutate(a.id)}>
                   {remove.isPending && remove.variables === a.id ? null : <Trash2 size={14} />}
                 </Button>

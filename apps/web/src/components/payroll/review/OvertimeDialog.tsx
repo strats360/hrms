@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { inr } from "@hrms/shared";
+import { fmtMoney } from "@hrms/shared";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/field";
@@ -36,7 +36,7 @@ export function OvertimeDialog({ runId, open, onClose }: { runId: string; open: 
   const save = useMutation({
     mutationFn: () => api.put<{ employees: number; total: number }>(`/admin/payroll/runs/${runId}/overtime`, { rows: Object.entries(hours).map(([employeeId, h]) => ({ employeeId, hours: Number(h) || 0 })) }),
     onSuccess: (r) => {
-      toast.success(r.employees ? `Overtime added for ${r.employees} employee${r.employees === 1 ? "" : "s"}: ${inr(r.total)}` : "Overtime removed from this payroll");
+      toast.success(r.employees ? `Overtime added for ${r.employees} employee${r.employees === 1 ? "" : "s"}: ${fmtMoney(r.total)}` : "Overtime removed from this payroll");
       qc.invalidateQueries({ queryKey: ["payroll"] });
       onClose();
     },
@@ -56,7 +56,7 @@ export function OvertimeDialog({ runId, open, onClose }: { runId: string; open: 
         <>
           <Button onClick={onClose}>Cancel</Button>
           <Button variant="primary" disabled={!rows.length} loading={save.isPending} onClick={() => save.mutate()}>
-            Pay {inr(total)}
+            Pay {fmtMoney(total)}
           </Button>
         </>
       }
@@ -87,11 +87,11 @@ export function OvertimeDialog({ runId, open, onClose }: { runId: string; open: 
                       {r.hours} h<span className="text-muted"> · {r.days} day{r.days === 1 ? "" : "s"}</span>
                       {r.overLimit ? <Tag tone="warn" className="ml-1">Over {s?.monthlyLimitHours} h</Tag> : null}
                     </td>
-                    <td className="num text-right">{inr(r.ratePerHour)}</td>
+                    <td className="num text-right">{fmtMoney(r.ratePerHour)}</td>
                     <td>
                       <Input className="!w-[90px]" type="number" min={0} step={0.5} value={hours[r.employeeId] ?? ""} onChange={(e) => setHours({ ...hours, [r.employeeId]: e.target.value })} aria-label={`Hours for ${r.name}`} />
                     </td>
-                    <td className="num text-right">{inr(Math.round(r.ratePerHour * h))}</td>
+                    <td className="num text-right">{fmtMoney(Math.round(r.ratePerHour * h))}</td>
                   </tr>
                 );
               })}

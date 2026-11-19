@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
-import { fmtDate, inr, todayIST } from "@hrms/shared";
+import { fmtDate, fmtMoney, todayLocal } from "@hrms/shared";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { PayrollRun } from "@/lib/types";
@@ -35,7 +35,7 @@ export default function Runs() {
   const qc = useQueryClient();
   const runs = usePayrollRuns();
   const start = useStartCurrentRun();
-  const month = todayIST().slice(0, 7);
+  const month = todayLocal().slice(0, 7);
   const current = runs.data?.find((r) => r.month === month);
 
   const discard = useMutation({
@@ -51,9 +51,9 @@ export default function Runs() {
     () => [
       { id: "month", header: "Month", accessorKey: "month", cell: ({ row }) => <span className="font-medium">{monthLabel(row.original.month)}</span> },
       { id: "employees", header: "Employees", accessorFn: (r) => r.totals?.employees ?? 0, meta: { align: "right" } },
-      { id: "gross", header: "Gross", accessorFn: (r) => r.totals?.gross ?? 0, cell: ({ getValue }) => inr(getValue<number>()), meta: { align: "right" } },
-      { id: "net", header: "Net pay", accessorFn: (r) => r.totals?.net ?? 0, cell: ({ getValue }) => <span className="font-semibold">{inr(getValue<number>())}</span>, meta: { align: "right" } },
-      { id: "tds", header: "TDS", accessorFn: (r) => r.totals?.tds ?? 0, cell: ({ getValue }) => inr(getValue<number>()), meta: { align: "right" } },
+      { id: "gross", header: "Gross", accessorFn: (r) => r.totals?.gross ?? 0, cell: ({ getValue }) => fmtMoney(getValue<number>()), meta: { align: "right" } },
+      { id: "net", header: "Net pay", accessorFn: (r) => r.totals?.net ?? 0, cell: ({ getValue }) => <span className="font-semibold">{fmtMoney(getValue<number>())}</span>, meta: { align: "right" } },
+      { id: "tds", header: "TDS", accessorFn: (r) => r.totals?.tds ?? 0, cell: ({ getValue }) => fmtMoney(getValue<number>()), meta: { align: "right" } },
       { id: "status", header: "Status", accessorKey: "status", cell: ({ row }) => <Tag tone={RUN_TONE[row.original.status]}>{RUN_STATUS_LABEL[row.original.status]}</Tag> },
       { id: "approved", header: "Approved by", accessorFn: (r) => r.approvedByName ?? "", cell: ({ row }) => row.original.approvedByName ?? "—" },
       { id: "paid", header: "Paid on", accessorFn: (r) => r.paidAt ?? "", cell: ({ row }) => (row.original.paidAt ? fmtDate(row.original.paidAt.slice(0, 10)) : "—") },
@@ -71,7 +71,7 @@ export default function Runs() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="card-kicker">{monthLabel(month)} payroll</div>
-            <div className="stat-value mt-0.5">{t ? inr(t.net) : current ? "Not calculated yet" : "Not started"}</div>
+            <div className="stat-value mt-0.5">{t ? fmtMoney(t.net) : current ? "Not calculated yet" : "Not started"}</div>
             <div className="card-meta">
               {current && t ? `${t.employees} employees · net payable · pay date ${current.payDate ? fmtDate(current.payDate) : "not set"}` : current ? "Inputs are being prepared" : "Start the run to fetch salary structures and attendance"}
             </div>
@@ -133,7 +133,7 @@ function Fig({ label, v }: { label: string; v: number }) {
   return (
     <div>
       <div className="text-muted text-[11.5px]">{label}</div>
-      <div className="num font-semibold">{inr(v)}</div>
+      <div className="num font-semibold">{fmtMoney(v)}</div>
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Download } from "lucide-react";
-import { inr } from "@hrms/shared";
+import { fmtMoney } from "@hrms/shared";
 import { api, download, qs } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { ContributionRow } from "@/lib/types";
@@ -22,7 +22,7 @@ interface Resp {
   missing: { uan: number; esicIp: number; pan: number };
 }
 
-const money = (k: keyof ContributionRow, header: string): ColumnDef<ContributionRow> => ({ id: k, header, accessorKey: k, meta: { align: "right" }, cell: ({ getValue }) => inr(getValue<number>()) });
+const money = (k: keyof ContributionRow, header: string): ColumnDef<ContributionRow> => ({ id: k, header, accessorKey: k, meta: { align: "right" }, cell: ({ getValue }) => fmtMoney(getValue<number>()) });
 
 export default function EmployeeWise() {
   const { can } = useSession();

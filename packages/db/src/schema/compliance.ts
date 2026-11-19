@@ -1,6 +1,6 @@
 import { date, index, numeric, pgTable, text, uniqueIndex } from "drizzle-orm/pg-core";
 import { tenantIdColumn as tenantId } from "./org";
-import { id, timestamps } from "./_helpers";
+import { id, timestamps, money } from "./_helpers";
 
 /**
  * A statutory payment recorded against an obligation. Obligations themselves are
@@ -14,8 +14,8 @@ export const statutoryChallans = pgTable(
     statute: text("statute").notNull(), // epf | esi | pt | lwf | tds
     period: text("period").notNull(), // wage month YYYY-MM
     jurisdiction: text("jurisdiction").notNull().default(""), // state for PT/LWF, "" otherwise
-    amountDue: numeric("amount_due", { precision: 14, scale: 2, mode: "number" }).notNull(),
-    amountPaid: numeric("amount_paid", { precision: 14, scale: 2, mode: "number" }).notNull(),
+    amountDue: money("amount_due").notNull(),
+    amountPaid: money("amount_paid").notNull(),
     reference: text("reference"), // TRRN / CIN / challan number
     paidOn: date("paid_on", { mode: "string" }).notNull(),
     receiptKey: text("receipt_key"),

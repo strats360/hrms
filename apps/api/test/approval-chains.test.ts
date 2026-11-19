@@ -1,13 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import postgres from "postgres";
-import { todayIST } from "@hrms/shared";
+import { todayLocal } from "@hrms/shared";
 import { Client, env, lastEmailTo, login } from "./helpers";
 
 const sql = postgres(env.DATABASE_URL!, { max: 1, onnotice: () => {} });
 let priya: Client, hardik: Client, nisha: Client;
 let priyaId = "";
 let cl = "";
-const year = Number(todayIST().slice(0, 4));
+const year = Number(todayLocal().slice(0, 4));
 const made: string[] = [];
 
 /** Weekdays in the year with no leave for Priya yet. */

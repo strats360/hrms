@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
-import { fmtDate, holidaySchema, todayIST } from "@hrms/shared";
+import { fmtDate, holidaySchema, todayLocal } from "@hrms/shared";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { Holiday } from "@/lib/types";
@@ -28,7 +28,7 @@ export default function Holidays() {
   const { can } = useSession();
   const qc = useQueryClient();
   const lookups = useLookups();
-  const thisYear = Number(todayIST().slice(0, 4));
+  const thisYear = Number(todayLocal().slice(0, 4));
   const [year, setYear] = useState(thisYear);
   const [adding, setAdding] = useState(false);
   const editable = can("leave", "configure");
@@ -55,7 +55,7 @@ export default function Holidays() {
     [lookups.data],
   );
   const rows = query.data ?? [];
-  const upcoming = rows.filter((h) => h.date >= todayIST()).length;
+  const upcoming = rows.filter((h) => h.date >= todayLocal()).length;
 
   return (
     <div className="flex flex-col gap-4">
@@ -116,7 +116,7 @@ export default function Holidays() {
 function AddHolidayDialog({ year, onClose }: { year: number; onClose: () => void }) {
   const qc = useQueryClient();
   const lookups = useLookups();
-  const [f, setF] = useState({ date: `${year}-01-01` > todayIST() ? `${year}-01-01` : todayIST(), name: "", type: "festival", branchId: "" });
+  const [f, setF] = useState({ date: `${year}-01-01` > todayLocal() ? `${year}-01-01` : todayLocal(), name: "", type: "festival", branchId: "" });
   const [err, setErr] = useState<string | null>(null);
   const m = useMutation({
     mutationFn: (body: unknown) => api.post("/admin/leave/holidays", body),

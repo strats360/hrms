@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { inr } from "@hrms/shared";
+import { fmtMoney } from "@hrms/shared";
 import { api, qs } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { Claim, ClaimSummary } from "@/lib/types";
@@ -46,10 +46,10 @@ export default function Queue() {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-        <StatCard label="Awaiting approval" value={s ? inr(s.pending.amount) : "—"} meta={s ? `${s.pending.count} claim${s.pending.count === 1 ? "" : "s"} · ${s.withManager} with managers, ${s.withFinance} with finance` : undefined} onClick={() => setFilter("all")} />
-        <StatCard label="Approved, unpaid" value={s ? inr(s.approvedUnpaid.amount) : "—"} meta={s ? `${s.approvedUnpaid.count} claim${s.approvedUnpaid.count === 1 ? "" : "s"} · paid with next payroll` : undefined} />
-        <StatCard label="Paid this month" value={s ? inr(s.paidThisMonth.amount) : "—"} meta={s ? `${s.paidThisMonth.count} claim${s.paidThisMonth.count === 1 ? "" : "s"} with salary` : undefined} />
-        <StatCard label="GST input credit" value={s ? inr(s.gstCredit) : "—"} meta="this FY, on claims with GSTIN" />
+        <StatCard label="Awaiting approval" value={s ? fmtMoney(s.pending.amount) : "—"} meta={s ? `${s.pending.count} claim${s.pending.count === 1 ? "" : "s"} · ${s.withManager} with managers, ${s.withFinance} with finance` : undefined} onClick={() => setFilter("all")} />
+        <StatCard label="Approved, unpaid" value={s ? fmtMoney(s.approvedUnpaid.amount) : "—"} meta={s ? `${s.approvedUnpaid.count} claim${s.approvedUnpaid.count === 1 ? "" : "s"} · paid with next payroll` : undefined} />
+        <StatCard label="Paid this month" value={s ? fmtMoney(s.paidThisMonth.amount) : "—"} meta={s ? `${s.paidThisMonth.count} claim${s.paidThisMonth.count === 1 ? "" : "s"} with salary` : undefined} />
+        <StatCard label="GST input credit" value={s ? fmtMoney(s.gstCredit) : "—"} meta="this FY, on claims with GSTIN" />
       </div>
       {list.error ? <ErrorState error={list.error} retry={() => list.refetch()} /> : null}
       <TableCard>

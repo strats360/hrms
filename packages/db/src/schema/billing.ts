@@ -1,9 +1,8 @@
 import { sql } from "drizzle-orm";
 import { boolean, date, index, integer, jsonb, numeric, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { tenants } from "./tenancy";
-import { id, timestamps } from "./_helpers";
+import { id, money, timestamps } from "./_helpers";
 
-const money = (name: string) => numeric(name, { precision: 14, scale: 2, mode: "number" });
 
 /** SaaS plans. Tenants reference a plan by key (tenants.plan). */
 export const plans = pgTable(

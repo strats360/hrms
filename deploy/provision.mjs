@@ -12,6 +12,8 @@
  *   APP_URL                                       optional; defaults to https://CUSTOM_DOMAIN or the workers.dev URL
  *   EMAIL_FROM                                    optional, e.g. "Saralix <people@strats360.com>"
  *   CASHFREE_ENV                                  sandbox | production (default sandbox)
+ *   ALLOWED_COUNTRIES                             entity countries this site allows, e.g. "IN" or "AE,QA,KW,OM" (default IN)
+ *   DEFAULT_TIME_ZONE, DEFAULT_CURRENCY           the site's default zone and currency (default Asia/Kolkata, INR)
  *
  *   node deploy/provision.mjs [--dry-run]
  *
@@ -135,7 +137,7 @@ export function workerConfig({ hyperdriveId, appUrl, emailFrom, customDomain }) 
     triggers: { crons: ["30 4 * * *", "0 * * * *"] },
     workers_dev: !customDomain,
     ...(customDomain ? { routes: [{ pattern: customDomain, custom_domain: true }] } : {}),
-    vars: { APP_URL: appUrl, EMAIL_FROM: emailFrom ?? "", ENVIRONMENT: deployEnv, CASHFREE_ENV: env.CASHFREE_ENV === "production" ? "production" : "sandbox" },
+    vars: { APP_URL: appUrl, EMAIL_FROM: emailFrom ?? "", ENVIRONMENT: deployEnv, CASHFREE_ENV: env.CASHFREE_ENV === "production" ? "production" : "sandbox", ALLOWED_COUNTRIES: env.ALLOWED_COUNTRIES || "IN", DEFAULT_TIME_ZONE: env.DEFAULT_TIME_ZONE || "Asia/Kolkata", DEFAULT_CURRENCY: env.DEFAULT_CURRENCY || "INR" },
     hyperdrive: [{ binding: "HYPERDRIVE", id: hyperdriveId }],
     r2_buckets: [{ binding: "FILES", bucket_name: bucket }],
   };

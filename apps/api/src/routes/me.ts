@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
-import { employees, memberships, platformStaff, roles, tenants } from "@hrms/db";
+import { and, eq } from "drizzle-orm";
+import { employees, legalEntities, memberships, platformStaff, roles, tenants } from "@hrms/db";
 import type { AppEnv } from "../env";
 import { loadFlags } from "../services/flags";
 import { activeAccess } from "../services/support";
@@ -30,11 +30,16 @@ meRoutes.get("/", async (c) => {
       employeeName: employees.fullName,
       employeeCode: employees.employeeCode,
       designationId: employees.designationId,
+      timeZone: legalEntities.timeZone,
+      currency: legalEntities.currency,
+      country: legalEntities.country,
     })
     .from(memberships)
     .innerJoin(tenants, eq(tenants.id, memberships.tenantId))
     .leftJoin(roles, eq(roles.id, memberships.roleId))
     .leftJoin(employees, eq(employees.id, memberships.employeeId))
+    // the default entity's zone and currency drive dates and money in the app
+    .leftJoin(legalEntities, and(eq(legalEntities.tenantId, tenants.id), eq(legalEntities.isDefault, true)))
     .where(eq(memberships.userId, s.userId));
   const [staff] = await db.select().from(platformStaff).where(eq(platformStaff.userId, s.userId));
 
@@ -68,6 +73,9 @@ meRoutes.get("/", async (c) => {
         employeeName: r.employeeName,
         employeeCode: r.employeeCode,
         plan: r.plan,
+        timeZone: r.timeZone ?? "Asia/Kolkata",
+        currency: r.currency ?? "INR",
+        country: r.country ?? "IN",
         features: evaluateFlags(flags, { id: r.tenantId, plan: r.plan }),
         twoFactorRequired: twoFactorRequired(readTwoFactorPolicy(r.settings), !!r.roleId),
       })),

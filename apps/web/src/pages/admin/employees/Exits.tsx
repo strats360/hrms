@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
-import { EXIT_TYPE_LABELS, EXIT_TYPES, fmtDate, inr, todayIST, type ExitType } from "@hrms/shared";
+import { EXIT_TYPE_LABELS, EXIT_TYPES, fmtDate, fmtMoney, todayLocal, type ExitType } from "@hrms/shared";
 import { CardHeader, StatCard, TableCard } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
@@ -66,7 +66,7 @@ export default function Exits() {
       ...(money ? [{ id: "net", accessorKey: "netAmount", header: "Settlement", meta: { align: "right" }, cell: ({ getValue }) => {
           const n = getValue() as number | null;
           if (n === null) return <span className="text-muted">Not drafted</span>;
-          return n < 0 ? <span className="num">Recover {inr(-n)}</span> : <span className="num">{inr(n)}</span>;
+          return n < 0 ? <span className="num">Recover {fmtMoney(-n)}</span> : <span className="num">{fmtMoney(n)}</span>;
         } } as ColumnDef<ExitRow>] : []),
       { id: "status", accessorKey: "status", header: "Status", cell: ({ row }) => <Tag tone={EXIT_TONE[row.original.status] ?? "neutral"}>{row.original.statusLabel}</Tag> },
     ],
@@ -142,8 +142,8 @@ function StartExitDialog({ open, employeeId, onClose, onDone }: { open: boolean;
   const [search, setSearch] = useState("");
   const [emp, setEmp] = useState<{ id: string; fullName: string; employeeCode: string } | null>(null);
   const [type, setType] = useState<ExitType>("resignation");
-  const [resignationDate, setResignationDate] = useState(todayIST());
-  const [lastWorkingDay, setLastWorkingDay] = useState(addDays(todayIST(), 29));
+  const [resignationDate, setResignationDate] = useState(todayLocal());
+  const [lastWorkingDay, setLastWorkingDay] = useState(addDays(todayLocal(), 29));
   const [noticeDays, setNoticeDays] = useState("");
   const [noticeWaived, setNoticeWaived] = useState(false);
   const [payInLieu, setPayInLieu] = useState(false);

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
-import { inr, todayIST, type LoanPolicy } from "@hrms/shared";
+import { fmtMoney, todayLocal, type LoanPolicy } from "@hrms/shared";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
@@ -28,9 +28,9 @@ export default function Loans() {
     () => [
       { id: "employee", header: "Employee", accessorFn: (r) => r.employeeName, cell: ({ row: { original: r } }) => <PersonCell employeeId={r.employeeId} name={r.employeeName ?? ""} sub={r.employeeCode} /> },
       { id: "code", header: "Loan", accessorKey: "code", cell: ({ row: { original: r } }) => <div>{r.code}<div className="text-muted text-[12px]">{r.typeLabel}</div></div> },
-      { id: "amount", header: "Amount", accessorKey: "amount", meta: { align: "right" }, cell: ({ getValue }) => <span className="num">{inr(getValue<number>())}</span> },
-      { id: "emi", header: "Monthly", accessorKey: "emi", meta: { align: "right" }, cell: ({ row: { original: r } }) => <span className="num">{inr(r.emi)}<div className="text-muted text-[12px]">{r.months} month{r.months === 1 ? "" : "s"}{r.interestPct ? ` · ${r.interestPct}%` : ""}</div></span> },
-      { id: "left", header: "Left to recover", accessorKey: "outstanding", meta: { align: "right" }, cell: ({ row: { original: r } }) => (r.status === "active" ? <span className="num font-semibold">{inr(r.outstanding)}</span> : <span className="text-muted">—</span>) },
+      { id: "amount", header: "Amount", accessorKey: "amount", meta: { align: "right" }, cell: ({ getValue }) => <span className="num">{fmtMoney(getValue<number>())}</span> },
+      { id: "emi", header: "Monthly", accessorKey: "emi", meta: { align: "right" }, cell: ({ row: { original: r } }) => <span className="num">{fmtMoney(r.emi)}<div className="text-muted text-[12px]">{r.months} month{r.months === 1 ? "" : "s"}{r.interestPct ? ` · ${r.interestPct}%` : ""}</div></span> },
+      { id: "left", header: "Left to recover", accessorKey: "outstanding", meta: { align: "right" }, cell: ({ row: { original: r } }) => (r.status === "active" ? <span className="num font-semibold">{fmtMoney(r.outstanding)}</span> : <span className="text-muted">—</span>) },
       { id: "next", header: "Next", accessorKey: "nextMonth", cell: ({ row: { original: r } }) => (r.status === "active" ? monthLabel(r.nextMonth) : r.status === "approved" ? `From ${monthLabel(r.startMonth)}` : "—") },
       { id: "status", header: "Status", accessorKey: "status", cell: ({ row: { original: r } }) => <Tag tone={LOAN_TONE[r.status]}>{r.statusLabel}</Tag> },
     ],
@@ -43,8 +43,8 @@ export default function Loans() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard label="Waiting for approval" value={s?.requested ?? "—"} onClick={() => setFilter("open")} />
         <StatCard label="Being recovered" value={s?.active ?? "—"} />
-        <StatCard label="Left to recover" value={s ? inr(s.outstanding) : "—"} />
-        <StatCard label="Recovered each month" value={s ? inr(s.monthly) : "—"} meta="from salary, in payroll" />
+        <StatCard label="Left to recover" value={s ? fmtMoney(s.outstanding) : "—"} />
+        <StatCard label="Recovered each month" value={s ? fmtMoney(s.monthly) : "—"} meta="from salary, in payroll" />
       </div>
       <TableCard>
         <CardHeader
@@ -75,7 +75,7 @@ function NewLoanDialog({ firstOpenMonth, interestPct, onClose }: { firstOpenMont
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [emp, setEmp] = useState<{ id: string; fullName: string; employeeCode: string } | null>(null);
-  const [f, setF] = useState({ type: "advance", amount: "", months: "1", interestPct: "0", startMonth: firstOpenMonth, reason: "", paid: true, paidOn: todayIST(), method: "bank_transfer", reference: "" });
+  const [f, setF] = useState({ type: "advance", amount: "", months: "1", interestPct: "0", startMonth: firstOpenMonth, reason: "", paid: true, paidOn: todayLocal(), method: "bank_transfer", reference: "" });
   const hits = useQuery({ queryKey: ["employees", "pick", search], queryFn: () => api.get<{ rows: { id: string; fullName: string; employeeCode: string }[] }>(`/admin/employees?q=${encodeURIComponent(search)}&pageSize=6`), enabled: search.trim().length >= 2 && !emp });
   const save = useMutation({
     mutationFn: () =>
@@ -134,7 +134,7 @@ function NewLoanDialog({ firstOpenMonth, interestPct, onClose }: { firstOpenMont
             </Select>
           </Field>
           <Field label="Amount (₹)"><Input type="number" min={1} value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></Field>
-          <Field label="Repay over (months)" hint={emi && f.type === "advance" ? `About ${inr(emi)} a month` : undefined}><Input type="number" min={1} max={120} value={f.months} onChange={(e) => setF({ ...f, months: e.target.value })} /></Field>
+          <Field label="Repay over (months)" hint={emi && f.type === "advance" ? `About ${fmtMoney(emi)} a month` : undefined}><Input type="number" min={1} max={120} value={f.months} onChange={(e) => setF({ ...f, months: e.target.value })} /></Field>
           {f.type === "loan" ? <Field label="Interest % a year" hint="0 for interest-free"><Input type="number" min={0} max={36} step={0.25} value={f.interestPct} onChange={(e) => setF({ ...f, interestPct: e.target.value })} /></Field> : null}
           <Field label="First recovery"><Input type="month" min={firstOpenMonth} value={f.startMonth} onChange={(e) => setF({ ...f, startMonth: e.target.value })} /></Field>
         </div>
@@ -142,7 +142,7 @@ function NewLoanDialog({ firstOpenMonth, interestPct, onClose }: { firstOpenMont
         <Checkbox checked={f.paid} onChange={(v) => setF({ ...f, paid: v })} label="Already paid out" />
         {f.paid ? (
           <div className="grid gap-3 sm:grid-cols-3">
-            <Field label="Paid on"><Input type="date" max={todayIST()} value={f.paidOn} onChange={(e) => setF({ ...f, paidOn: e.target.value })} /></Field>
+            <Field label="Paid on"><Input type="date" max={todayLocal()} value={f.paidOn} onChange={(e) => setF({ ...f, paidOn: e.target.value })} /></Field>
             <Field label="How">
               <Select value={f.method} onChange={(e) => setF({ ...f, method: e.target.value })}>
                 {Object.entries(METHOD_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}

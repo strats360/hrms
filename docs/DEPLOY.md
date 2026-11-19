@@ -84,6 +84,9 @@ On each environment, add:
 | `EMAIL_FROM` | `Saralix <people@strats360.com>` | none (email off) |
 | `WORKER_NAME` | `saralix` | `saralix`, or `saralix-staging` |
 | `CASHFREE_ENV` | `production` on production, `sandbox` on staging | `sandbox` |
+| `ALLOWED_COUNTRIES` | `IN`, or `AE,QA,KW,OM` on a Gulf site | `IN` |
+| `DEFAULT_TIME_ZONE` | `Asia/Kolkata`, `Asia/Dubai` | `Asia/Kolkata` |
+| `DEFAULT_CURRENCY` | `INR`, `AED` | `INR` |
 
 ## 6. Deploy
 

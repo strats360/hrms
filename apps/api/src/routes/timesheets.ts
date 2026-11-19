@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import { and, asc, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { attendanceRecords, departments, employees, projects, tenants, timesheetEntries, timesheets, type Database } from "@hrms/db";
-import { addWeeks, fmtDate, hoursLabel, projectSchema, timesheetProblem, timesheetRejectSchema, timesheetSaveSchema, todayIST, weekDates, weekStart, type GridRow } from "@hrms/shared";
+import { addWeeks, fmtDate, hoursLabel, projectSchema, timesheetProblem, timesheetRejectSchema, timesheetSaveSchema, todayLocal, weekDates, weekStart, type GridRow } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
 import { requireEmployee, requirePerm } from "../lib/context";
@@ -18,7 +18,7 @@ type Sheet = typeof timesheets.$inferSelect;
 
 const isoDate = /^\d{4}-\d{2}-\d{2}$/;
 function weekParam(c: Context<AppEnv>) {
-  const w = c.req.query("week") ?? c.req.param("week") ?? todayIST();
+  const w = c.req.query("week") ?? c.req.param("week") ?? todayLocal();
   if (!isoDate.test(w)) throw badRequest("Pick a week");
   return weekStart(w);
 }
@@ -79,7 +79,7 @@ essTimesheetRoutes.get("/", async (c) => {
   return c.json({
     week,
     dates,
-    current: weekStart(todayIST()),
+    current: weekStart(todayLocal()),
     sheet: sheet ? { id: sheet.id, status: sheet.status, totalMinutes: sheet.totalMinutes, submittedAt: sheet.submittedAt, decidedBy: sheet.decidedBy, decidedAt: sheet.decidedAt, rejectReason: sheet.rejectReason } : null,
     rows,
     projects: all.filter((p) => p.status === "active" || used.has(p.id)).map((p) => ({ id: p.id, code: p.code, name: p.name, client: p.client, billable: p.billable, archived: p.status !== "active" })),
@@ -93,7 +93,7 @@ essTimesheetRoutes.put("/:week", v("json", timesheetSaveSchema), async (c) => {
   const eid = c.get("tenant").employeeId!;
   const week = c.req.param("week");
   if (!isoDate.test(week) || weekStart(week) !== week) throw badRequest("Weeks start on a Monday");
-  if (week > weekStart(todayIST())) throw badRequest("You can't fill in a future week yet");
+  if (week > weekStart(todayLocal())) throw badRequest("You can't fill in a future week yet");
   const b = c.req.valid("json");
   const dates = weekDates(week);
   const rows = b.rows.map((r) => ({ ...r, minutes: Object.fromEntries(Object.entries(r.minutes).filter(([, m]) => m > 0)) })).filter((r) => Object.keys(r.minutes).length || r.note);
@@ -180,7 +180,7 @@ timesheetRoutes.get("/", async (c) => {
   const me = c.get("tenant").employeeId;
   return c.json({
     week,
-    current: weekStart(todayIST()),
+    current: weekStart(todayLocal()),
     canApprove: can(c, "approve"),
     rows: people.map((p) => {
       const s = byEmp.get(p.id);
@@ -280,8 +280,8 @@ timesheetRoutes.post("/remind", requirePerm("attendance", "approve"), v("json", 
 
 /** Approved hours by project and by person, for a date range. */
 async function report(c: Context<AppEnv>) {
-  const from = c.req.query("from") ?? addWeeks(weekStart(todayIST()), -4);
-  const to = c.req.query("to") ?? todayIST();
+  const from = c.req.query("from") ?? addWeeks(weekStart(todayLocal()), -4);
+  const to = c.req.query("to") ?? todayLocal();
   if (!isoDate.test(from) || !isoDate.test(to) || to < from) throw badRequest("Pick a valid date range");
   const scope = await teamScope(c, "attendance");
   const rows = await c

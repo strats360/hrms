@@ -3,7 +3,7 @@ import { sendNotification } from "../services/notifications";
 import { and, asc, desc, eq, gte, ilike, inArray, lte, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { claimReceipts, departments, employees, paymentBatches, payments, payrollRuns, reimbursementCategories, reimbursementClaims, tenants } from "@hrms/db";
-import { bulkDecisionSchema, claimCreateSchema, decisionSchema, inr, reimbursementCategorySchema, todayIST } from "@hrms/shared";
+import { bulkDecisionSchema, claimCreateSchema, decisionSchema, fmtMoney, reimbursementCategorySchema, todayLocal } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
 import { requireEmployee, requirePerm } from "../lib/context";
@@ -141,7 +141,7 @@ async function createClaim(c: Context<AppEnv>, employeeId: string, form: FormDat
   const b = parsed.data;
   const [cat] = await db.select().from(reimbursementCategories).where(and(eq(reimbursementCategories.id, b.categoryId), eq(reimbursementCategories.tenantId, tid(c))));
   if (!cat || !cat.active) throw badRequest("Pick a valid category");
-  if (b.expenseDate > todayIST()) throw badRequest("The expense date can't be in the future");
+  if (b.expenseDate > todayLocal()) throw badRequest("The expense date can't be in the future");
   const [emp] = await db.select().from(employees).where(and(eq(employees.id, employeeId), eq(employees.tenantId, tid(c))));
   if (!emp) throw notFound("Employee");
   if (b.expenseDate < emp.dateOfJoining) throw badRequest("The expense is from before the employee joined");
@@ -150,7 +150,7 @@ async function createClaim(c: Context<AppEnv>, employeeId: string, form: FormDat
   if (amount <= 0) throw badRequest("Enter the amount");
   if (b.gstAmount && b.gstAmount > amount) throw badRequest("GST can't be more than the claim amount");
   const files = form.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
-  if (amount > Number(cat.receiptRequiredAbove) && files.length === 0) throw badRequest(`Attach a receipt for ${cat.name} claims above ${inr(Number(cat.receiptRequiredAbove))}`);
+  if (amount > Number(cat.receiptRequiredAbove) && files.length === 0) throw badRequest(`Attach a receipt for ${cat.name} claims above ${fmtMoney(Number(cat.receiptRequiredAbove))}`);
   for (const f of files) {
     if (f.size > MAX_UPLOAD_BYTES) throw badRequest("Receipts must be 10 MB or smaller");
     if (!ALLOWED_TYPES.includes(f.type)) throw badRequest("Receipts must be PDF, PNG, JPG or WebP");
@@ -173,7 +173,7 @@ async function createClaim(c: Context<AppEnv>, employeeId: string, form: FormDat
     await putFile(c.env, key, await f.arrayBuffer(), f.type);
     await db.insert(claimReceipts).values({ tenantId: tid(c), claimId: claim!.id, fileKey: key, fileName: f.name, mimeType: f.type, sizeBytes: f.size });
   }
-  await audit(c, { action: "reimb.claim_create", entity: "reimbursement_claim", entityId: claim!.id, summary: `${code}: ${cat.name} ${inr(amount)} for ${emp.fullName}${limit.over ? " (over policy limit)" : ""}` });
+  await audit(c, { action: "reimb.claim_create", entity: "reimbursement_claim", entityId: claim!.id, summary: `${code}: ${cat.name} ${fmtMoney(amount)} for ${emp.fullName}${limit.over ? " (over policy limit)" : ""}` });
   return { claim: claim!, overLimit: limit };
 }
 
@@ -186,7 +186,7 @@ async function notifyDecision(c: Context<AppEnv>, claim: Claim, decision: "appro
     const { html, text } = layout({
       company: e.company,
       heading: `Claim ${claim.code} ${ok ? "approved" : "not approved"}`,
-      paragraphs: [`Hi ${e.first},`, ok ? `Your claim of ${inr(Number(claim.amount))} is approved and will be paid with your next salary.` : `Your claim of ${inr(Number(claim.amount))} was rejected.`, ...(claim.rejectionReason ? [`Reason: ${claim.rejectionReason}`] : [])],
+      paragraphs: [`Hi ${e.first},`, ok ? `Your claim of ${fmtMoney(Number(claim.amount))} is approved and will be paid with your next salary.` : `Your claim of ${fmtMoney(Number(claim.amount))} was rejected.`, ...(claim.rejectionReason ? [`Reason: ${claim.rejectionReason}`] : [])],
       cta: { label: "View my claims", url: `${c.env.APP_URL}/me/claims` },
     });
     await sendNotification(c, "claim_decision", { to: e.email, subject: `Claim ${claim.code} ${ok ? "approved" : "rejected"}`, html, text });
@@ -247,7 +247,7 @@ reimbursementRoutes.get("/claims", requirePerm("reimbursements", "view"), v("que
 });
 
 reimbursementRoutes.get("/summary", requirePerm("reimbursements", "view"), async (c) => {
-  const month = todayIST().slice(0, 7);
+  const month = todayLocal().slice(0, 7);
   const rows = (await baseQuery(c, [])) as Row[];
   const sum = (f: (r: Row) => boolean) => rows.filter(f).reduce((s, r) => s + Number(r.claim.amount), 0);
   const fyStart = `${Number(month.slice(5)) >= 4 ? month.slice(0, 4) : Number(month.slice(0, 4)) - 1}-04-01`;
@@ -324,7 +324,7 @@ reimbursementRoutes.get("/export.csv", requirePerm("reimbursements", "export"), 
     rows.map((r) => [r.code, r.employeeCode, r.employeeName, r.department, r.category, r.expenseDate, Number(r.amount), r.vendor, r.gstin, r.gstAmount, r.project, r.description, r.statusLabel, r.overLimit ? "Yes" : "", r.payment]),
   );
   await audit(c, { action: "reimb.export", entity: "reimbursement_claim", summary: `Exported ${rows.length} claims` });
-  return c.body(csv, 200, { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="reimbursements-${todayIST()}.csv"` });
+  return c.body(csv, 200, { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="reimbursements-${todayLocal()}.csv"` });
 });
 
 // ---------------------------------------------------------------------------
@@ -336,7 +336,7 @@ essClaimRoutes.get("/", async (c) => {
   const db = c.get("db");
   const rows = ((await baseQuery(c, [eq(reimbursementClaims.employeeId, myId(c))]).orderBy(desc(reimbursementClaims.createdAt)).limit(200)) as Row[]).map(shape);
   const categories = await db.select().from(reimbursementCategories).where(and(eq(reimbursementCategories.tenantId, tid(c)), eq(reimbursementCategories.active, true))).orderBy(asc(reimbursementCategories.name));
-  const month = todayIST().slice(0, 7);
+  const month = todayLocal().slice(0, 7);
   const usage = categories
     .filter((cat) => cat.limitPeriod === "month" && cat.limitAmount !== null)
     .map((cat) => ({ categoryId: cat.id, name: cat.name, limit: Number(cat.limitAmount), used: rows.filter((r) => r.categoryId === cat.id && r.expenseDate.startsWith(month) && !["rejected", "cancelled"].includes(r.status)).reduce((s, r) => s + Number(r.amount), 0) }));

@@ -1,7 +1,8 @@
 import { Hono, type Context } from "hono";
 import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { attendanceRecords, employees, payrollRuns, shiftRoster, shifts } from "@hrms/db";
-import { dateRange, evaluateAttendance, todayIST, weekday } from "@hrms/shared";
+import { entityZones } from "../services/entities";
+import { dateRange, evaluateAttendance, todayLocal, weekday } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
 import { requireEmployee, requirePerm } from "../lib/context";
@@ -52,15 +53,17 @@ async function saveEntries(c: Context<AppEnv>, entries: Entry[]) {
         .onConflictDoUpdate({ target: [shiftRoster.employeeId, shiftRoster.date], set: { shiftId: e.isOff ? null : e.shiftId, isOff: e.isOff, createdBy: userId, updatedAt: new Date() } });
   }
   // punches already in on those days: evaluate them again with the shift now planned
-  const past = entries.filter((e) => e.date <= todayIST());
+  const past = entries.filter((e) => e.date <= todayLocal());
   if (past.length) {
     const recs = await db
       .select()
       .from(attendanceRecords)
       .where(and(eq(attendanceRecords.tenantId, tid(c)), inArray(attendanceRecords.employeeId, [...new Set(past.map((e) => e.employeeId))]), inArray(attendanceRecords.date, [...new Set(past.map((e) => e.date))])));
+    const zoneOf = await entityZones(db, tid(c));
+    const entityOfEmp = new Map((await db.select({ id: employees.id, entityId: employees.entityId }).from(employees).where(and(eq(employees.tenantId, tid(c)), inArray(employees.id, [...new Set(recs.map((r) => r.employeeId))])))).map((x) => [x.id, x.entityId]));
     for (const r of recs.filter((r) => r.checkIn && !r.isManual && past.some((e) => e.employeeId === r.employeeId && e.date === r.date))) {
       const s = await shiftFor(db, tid(c), r.employeeId, r.date);
-      const ev = evaluateAttendance(s, r.checkIn, r.checkOut, { wfh: r.source === "wfh" });
+      const ev = evaluateAttendance(s, r.checkIn, r.checkOut, { wfh: r.source === "wfh", timeZone: zoneOf(entityOfEmp.get(r.employeeId)) });
       await upsertAttendance(db, { ...r, status: ev.status, workMinutes: ev.workMinutes, lateMinutes: ev.lateMinutes, earlyMinutes: ev.earlyMinutes, overtimeMinutes: ev.overtimeMinutes });
     }
   }
@@ -161,7 +164,7 @@ essRosterRoutes.use("*", requireEmployee);
 essRosterRoutes.get("/", async (c) => {
   const db = c.get("db");
   const eid = c.get("tenant").employeeId!;
-  const from = todayIST();
+  const from = todayLocal();
   const to = plus(from, 13);
   const all = await db.select().from(shifts).where(eq(shifts.tenantId, tid(c)));
   const [e] = await db.select({ id: employees.id, shiftId: employees.shiftId, branchId: employees.branchId, dateOfJoining: employees.dateOfJoining, lastWorkingDay: employees.lastWorkingDay }).from(employees).where(eq(employees.id, eid));

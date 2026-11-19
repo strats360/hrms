@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { attendanceCorrections, departments, employees, leaveRequests, leaveTypes, onboardingInvites, reimbursementClaims } from "@hrms/db";
-import { can, todayIST } from "@hrms/shared";
+import { can, todayLocal } from "@hrms/shared";
 import type { AppEnv } from "../env";
 import { buildCalendar } from "../services/attendance";
 import { teamScope } from "../services/scope";
@@ -14,7 +14,7 @@ dashboardRoutes.get("/", async (c) => {
   const db = c.get("db");
   const t = c.get("tenant");
   const tid = t.tenantId;
-  const today = todayIST();
+  const today = todayLocal();
 
   const counts = await db
     .select({ status: employees.status, n: sql<number>`count(*)::int` })

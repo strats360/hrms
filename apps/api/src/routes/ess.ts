@@ -37,8 +37,8 @@ import {
   panSchema,
   phoneSchema,
   punchSchema,
-  todayIST,
-  toISTTime,
+  todayLocal,
+  toLocalTime,
   uanSchema,
   TAX_REGIMES,
   GENDERS,
@@ -49,7 +49,8 @@ import { requireEmployee } from "../lib/context";
 import { v } from "../lib/validate";
 import { ApiError, badRequest, notFound } from "../lib/errors";
 import { audit } from "../lib/audit";
-import { buildCalendar, istDateTime, shiftFor, upsertAttendance } from "../services/attendance";
+import { buildCalendar, localDateTime, shiftFor, upsertAttendance } from "../services/attendance";
+import { entityOf } from "../services/entities";
 import { approvalPolicy, chainFor, waitingOn } from "../services/approvals";
 import { applyLeave, balanceSummary, cancelLeave } from "../services/leave";
 import { bankFields } from "../services/employees";
@@ -88,7 +89,7 @@ async function loadMe(c: Context<AppEnv>) {
 essRoutes.get("/home", async (c) => {
   const { tid, eid } = me(c);
   const db = c.get("db");
-  const today = todayIST();
+  const today = todayLocal();
   const profile = await loadMe(c);
   const [rec] = await db.select().from(attendanceRecords).where(and(eq(attendanceRecords.tenantId, tid), eq(attendanceRecords.employeeId, eid), eq(attendanceRecords.date, today)));
   const shift = await shiftFor(db, tid, eid, today);
@@ -119,8 +120,8 @@ essRoutes.get("/home", async (c) => {
     today: {
       date: today,
       shift: { name: shift.name, start: shift.startTime, end: shift.endTime },
-      checkIn: rec?.checkIn ? toISTTime(rec.checkIn) : null,
-      checkOut: rec?.checkOut ? toISTTime(rec.checkOut) : null,
+      checkIn: rec?.checkIn ? toLocalTime(rec.checkIn) : null,
+      checkOut: rec?.checkOut ? toLocalTime(rec.checkOut) : null,
       status: rec?.status ?? null,
       source: rec?.source ?? null,
     },
@@ -133,10 +134,10 @@ essRoutes.get("/home", async (c) => {
 // ---------- attendance ----------
 /** Is this punch from an office (location and network), per the company's punch policy? */
 /** When an overnight shift that starts on `date` ends (the next morning), or null for a day shift. */
-function nightShiftEnd(s: { startTime: string; endTime: string }, date: string) {
+function nightShiftEnd(s: { startTime: string; endTime: string }, date: string, tz?: string) {
   if (s.endTime > s.startTime) return null;
   const next = new Date(Date.parse(`${date}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
-  return istDateTime(next, s.endTime);
+  return localDateTime(next, s.endTime, tz);
 }
 
 async function punchPolicyFor(db: Database, tid: string): Promise<PunchPolicy> {
@@ -175,8 +176,10 @@ essRoutes.post("/attendance/punch", v("json", punchSchema), async (c) => {
   const { tid, eid } = me(c);
   const db = c.get("db");
   const body = c.req.valid("json");
-  const [emp] = await db.select({ status: employees.status, branchId: employees.branchId }).from(employees).where(eq(employees.id, eid));
+  const [emp] = await db.select({ status: employees.status, branchId: employees.branchId, entityId: employees.entityId }).from(employees).where(eq(employees.id, eid));
   if (emp?.status === "onboarding") throw badRequest("Attendance starts once HR verifies your onboarding");
+  // the day and shift times are read in the employee's zone (their legal entity's)
+  const tz = (await entityOf(db, tid, emp?.entityId)).timeZone;
   // a punch saved on the phone without a connection keeps the time it was made
   const sentAt = new Date();
   let now = sentAt;
@@ -189,11 +192,11 @@ essRoutes.post("/attendance/punch", v("json", punchSchema), async (c) => {
   const offline = !!body.capturedAt && sentAt.getTime() - now.getTime() > 2 * 60_000;
   const check = await punchCheck(c, tid, emp?.branchId ?? null, { ...body, offline });
   if (!check.allowed) throw new ApiError(403, check.error!, "outside_office");
-  if (offline) check.flags.push(`Punched offline at ${toISTTime(now)}, sent at ${toISTTime(sentAt)}`);
+  if (offline) check.flags.push(`Punched offline at ${toLocalTime(now, tz)}, sent at ${toLocalTime(sentAt, tz)}`);
   const policy = await punchPolicyFor(db, tid);
   const selfie = body.selfie ? decodeSelfie(body.selfie) : null;
   if (policy.selfie === "required" && !selfie) throw new ApiError(400, "Your company asks for a selfie when you punch. Allow camera access and take one.", "selfie_required");
-  let date = todayIST(now);
+  let date = todayLocal(now, tz);
   let shift = await shiftFor(db, tid, eid, date);
   let [rec] = await db.select().from(attendanceRecords).where(and(eq(attendanceRecords.tenantId, tid), eq(attendanceRecords.employeeId, eid), eq(attendanceRecords.date, date)));
   // night shift: a punch after midnight closes the shift that started yesterday
@@ -202,7 +205,7 @@ essRoutes.post("/attendance/punch", v("json", punchSchema), async (c) => {
     const [prev] = await db.select().from(attendanceRecords).where(and(eq(attendanceRecords.tenantId, tid), eq(attendanceRecords.employeeId, eid), eq(attendanceRecords.date, yesterday)));
     if (prev?.checkIn && !prev.checkOut) {
       const prevShift = await shiftFor(db, tid, eid, yesterday);
-      const ends = nightShiftEnd(prevShift, yesterday);
+      const ends = nightShiftEnd(prevShift, yesterday, tz);
       if (ends && now.getTime() <= ends.getTime() + 6 * 3_600_000) {
         date = yesterday;
         shift = prevShift;
@@ -224,7 +227,7 @@ essRoutes.post("/attendance/punch", v("json", punchSchema), async (c) => {
     checkOut = now;
     action = "out";
   }
-  const ev = evaluateAttendance(shift, checkIn, checkOut, { wfh });
+  const ev = evaluateAttendance(shift, checkIn, checkOut, { wfh, timeZone: tz });
   let selfieKey: string | undefined;
   if (selfie && policy.selfie !== "off") {
     selfieKey = `tenants/${tid}/attendance/${date}/${eid}-${action}-${crypto.randomUUID()}.${selfie.type.split("/")[1]}`;
@@ -253,13 +256,13 @@ essRoutes.post("/attendance/punch", v("json", punchSchema), async (c) => {
     flags: [...new Set([...(rec?.flags ?? []), ...check.flags.map((f) => `${action === "in" ? "In" : "Out"}: ${f}`)])],
     distanceM: check.distanceM ?? rec?.distanceM ?? null,
   });
-  return c.json({ action, checkIn: toISTTime(row.checkIn), checkOut: toISTTime(row.checkOut), status: row.status, lateMinutes: row.lateMinutes, flags: check.flags, selfie: !!selfieKey });
+  return c.json({ action, checkIn: toLocalTime(row.checkIn, tz), checkOut: toLocalTime(row.checkOut, tz), status: row.status, lateMinutes: row.lateMinutes, flags: check.flags, selfie: !!selfieKey });
 });
 
 essRoutes.get("/attendance", v("query", z.object({ month: z.string().regex(/^\d{4}-\d{2}$/).optional() })), async (c) => {
   const { tid, eid } = me(c);
   const db = c.get("db");
-  const month = c.req.valid("query").month ?? todayIST().slice(0, 7);
+  const month = c.req.valid("query").month ?? todayLocal().slice(0, 7);
   const [y, m] = month.split("-").map(Number) as [number, number];
   const from = `${month}-01`;
   const to = `${month}-${String(daysInMonth(y, m)).padStart(2, "0")}`;
@@ -274,7 +277,7 @@ essRoutes.get("/attendance", v("query", z.object({ month: z.string().regex(/^\d{
     month,
     days: cal.days.map((d) => {
       const r = cal.records.get(`${eid}|${d}`);
-      return { date: d, status: cal.status(e!, d), checkIn: r?.checkIn ? toISTTime(r.checkIn) : null, checkOut: r?.checkOut ? toISTTime(r.checkOut) : null, workMinutes: r?.workMinutes ?? 0, source: r?.source ?? null };
+      return { date: d, status: cal.status(e!, d), checkIn: r?.checkIn ? toLocalTime(r.checkIn) : null, checkOut: r?.checkOut ? toLocalTime(r.checkOut) : null, workMinutes: r?.workMinutes ?? 0, source: r?.source ?? null };
     }),
     corrections,
   });
@@ -283,7 +286,7 @@ essRoutes.get("/attendance", v("query", z.object({ month: z.string().regex(/^\d{
 essRoutes.post("/attendance/corrections", v("json", correctionCreateSchema), async (c) => {
   const { tid, eid } = me(c);
   const body = c.req.valid("json");
-  if (body.date > todayIST()) throw badRequest("You can't correct a future date");
+  if (body.date > todayLocal()) throw badRequest("You can't correct a future date");
   if (!body.requestedCheckIn && !body.requestedCheckOut && !body.requestedStatus) throw badRequest("Say what should change: a time or a status");
   const db = c.get("db");
   const [dup] = await db
@@ -300,7 +303,7 @@ essRoutes.post("/attendance/corrections", v("json", correctionCreateSchema), asy
 essRoutes.get("/leave", async (c) => {
   const { tid, eid } = me(c);
   const db = c.get("db");
-  const year = Number(c.req.query("year") ?? todayIST().slice(0, 4));
+  const year = Number(c.req.query("year") ?? todayLocal().slice(0, 4));
   const balances = await balanceSummary(db, tid, eid, year);
   const requests = await db
     .select({ r: leaveRequests, type: leaveTypes.name, code: leaveTypes.code })
@@ -335,14 +338,14 @@ essRoutes.post("/leave/:id/cancel", async (c) => {
   const db = c.get("db");
   const [req] = await db.select().from(leaveRequests).where(and(eq(leaveRequests.id, c.req.param("id")), eq(leaveRequests.tenantId, tid), eq(leaveRequests.employeeId, eid)));
   if (!req) throw notFound("Leave request");
-  if (req.status === "approved" && req.startDate <= todayIST()) throw badRequest("Leave that has started can only be cancelled by HR");
+  if (req.status === "approved" && req.startDate <= todayLocal()) throw badRequest("Leave that has started can only be cancelled by HR");
   await cancelLeave(db, tid, req.id, c.get("session")!.userId);
   await audit(c, { action: "leave.cancel", entity: "leave_request", entityId: req.id, summary: `Cancelled ${req.code}` });
   return c.json({ ok: true });
 });
 
 essRoutes.get("/holidays", async (c) => {
-  const year = Number(c.req.query("year") ?? todayIST().slice(0, 4));
+  const year = Number(c.req.query("year") ?? todayLocal().slice(0, 4));
   const rows = await c
     .get("db")
     .select()

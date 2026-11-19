@@ -1,8 +1,8 @@
 import { useSearchParams } from "react-router";
-import { todayIST } from "@hrms/shared";
+import { todayLocal } from "@hrms/shared";
 
 export function currentFy() {
-  const [y, m] = todayIST().split("-").map(Number) as [number, number];
+  const [y, m] = todayLocal().split("-").map(Number) as [number, number];
   const s = m >= 4 ? y : y - 1;
   return `${s}-${String((s + 1) % 100).padStart(2, "0")}`;
 }

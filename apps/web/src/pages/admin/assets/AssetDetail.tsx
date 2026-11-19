@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ChevronLeft, Pencil } from "lucide-react";
-import { ASSET_CATEGORY_LABEL, ASSET_STATUS_LABEL, CONDITION_LABEL, fmtDate, inr, ISSUE_LABEL, type Condition } from "@hrms/shared";
+import { ASSET_CATEGORY_LABEL, ASSET_STATUS_LABEL, CONDITION_LABEL, fmtDate, fmtMoney, ISSUE_LABEL, type Condition } from "@hrms/shared";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
@@ -71,7 +71,7 @@ export default function AssetDetail() {
             <KV label="Condition">{CONDITION_LABEL[a.condition]}</KV>
             <KV label="With">{open ? <Link to={`/employees/${open.employee.id}`}>{open.employee.name}</Link> : "—"}</KV>
             <KV label="Bought">{a.purchaseDate ? fmtDate(a.purchaseDate) : "—"}</KV>
-            <KV label="Cost">{a.purchaseCost != null ? inr(a.purchaseCost) : "—"}</KV>
+            <KV label="Cost">{a.purchaseCost != null ? fmtMoney(a.purchaseCost) : "—"}</KV>
             <KV label="Vendor">{a.vendor ?? "—"}</KV>
             <KV label="Invoice">{a.invoiceNumber ?? "—"}</KV>
             <KV label="Warranty until">{a.warrantyUntil ? fmtDate(a.warrantyUntil) : "—"}</KV>

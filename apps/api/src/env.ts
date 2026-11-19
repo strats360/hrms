@@ -21,6 +21,9 @@ export interface Env {
   ENVIRONMENT?: string;
   /** Countries entities may use on this instance, comma separated ISO codes (default IN). See docs/MULTI_COUNTRY.md. */
   ALLOWED_COUNTRIES?: string;
+  /** The site's default IANA time zone and currency (default Asia/Kolkata and INR). */
+  DEFAULT_TIME_ZONE?: string;
+  DEFAULT_CURRENCY?: string;
   /** Cashfree Payment Gateway (subscription invoices). App ID and secret are Worker secrets. */
   CASHFREE_APP_ID?: string;
   CASHFREE_SECRET_KEY?: string;

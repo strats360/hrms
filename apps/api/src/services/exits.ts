@@ -1,7 +1,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { loansToRecover, settleLoansInFnf } from "./loans";
 import { employeeExits, employees, leaveBalances, leaveTypes, payments, payrollItems, payrollRuns, reimbursementClaims, tenants, type Database } from "@hrms/db";
-import { packFor, DEFAULT_CLEARANCE, type ExitType, type FnfResult, type ManualLine } from "@hrms/shared";
+import { packFor, DEFAULT_CLEARANCE, type ExitType, type FnfResult, type ManualLine, toLocalDate } from "@hrms/shared";
 import { balanceSummary } from "./leave";
 import { entityOf } from "./entities";
 import { getTemplate, resolveStructure, structuresAsOf } from "./payroll";
@@ -130,7 +130,7 @@ export async function exitPaymentEffects(db: Database, paid: { id: string; utr: 
     const rows = await db.select().from(employeeExits).where(and(inArray(employeeExits.paymentId, paid.map((p) => p.id)), eq(employeeExits.status, "approved")));
     for (const e of rows) {
       const p = paid.find((x) => x.id === e.paymentId)!;
-      const on = new Date((p.paidAt ?? new Date()).getTime() + 5.5 * 3600_000).toISOString().slice(0, 10);
+      const on = toLocalDate(p.paidAt ?? new Date());
       await markSettled(db, e, { on, method: "bank_transfer", reference: p.utr ?? p.reference });
     }
   }

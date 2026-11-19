@@ -18,7 +18,7 @@ import {
   tenants,
   type Database,
 } from "@hrms/db";
-import { daysInMonth, fyOfMonth, minimumWageShortfall, ptSlabSummary, todayIST, WAGE_CATEGORY_LABELS, type Action, type Module } from "@hrms/shared";
+import { daysInMonth, fyOfMonth, minimumWageShortfall, ptSlabSummary, todayLocal, WAGE_CATEGORY_LABELS, type Action, type Module } from "@hrms/shared";
 import { contributionRow, LOCKED, type Item } from "../routes/compliance";
 import { getTemplate, resolveStructure, structuresAsOf } from "./payroll";
 import { fyMonths, QUARTERS } from "./tax";
@@ -51,7 +51,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 const mLabel = (m: string) => `${MONTHS[Number(m.slice(5, 7)) - 1]} ${m.slice(0, 4)}`;
 
 export function resolvePeriod(period?: string): Period {
-  const today = todayIST();
+  const today = todayLocal();
   const thisMonth = today.slice(0, 7);
   const p = period || thisMonth;
   let months: string[];
@@ -330,7 +330,7 @@ export const REPORTS: ReportDef[] = [
     usesPeriod: false,
     async run({ db, tenantId, f }) {
       const conds = await employeeScope(db, tenantId, { ...f, status: "active" });
-      const today = todayIST();
+      const today = todayLocal();
       const emps = await db.select({ e: employees, state: branches.state }).from(employees).leftJoin(branches, eq(branches.id, employees.branchId)).where(and(...conds));
       const [t] = await db.select({ state: tenants.state, settings: tenants.settings }).from(tenants).where(eq(tenants.id, tenantId));
       const basis = (t?.settings as { minWageBasis?: "basic" | "gross" } | null)?.minWageBasis ?? "basic";
@@ -554,7 +554,7 @@ export const REPORTS: ReportDef[] = [
       if (!emps.length) return { header: ["Employee ID"], rows: [], note: "No employees on notice or exited." };
       const ids = emps.map((e) => e.id);
       const template = await getTemplate(db, tenantId);
-      const structs = await structuresAsOf(db, tenantId, ids, todayIST());
+      const structs = await structuresAsOf(db, tenantId, ids, todayLocal());
       const lastRuns = await db
         .select({ e: payrollItems.employeeId, month: sql<string>`max(${payrollRuns.month})` })
         .from(payrollItems)
@@ -562,7 +562,7 @@ export const REPORTS: ReportDef[] = [
         .where(and(inArray(payrollItems.employeeId, ids), inArray(payrollRuns.status, LOCKED)))
         .groupBy(payrollItems.employeeId);
       const lastMonth = new Map(lastRuns.map((r) => [r.e, r.month]));
-      const year = Number(todayIST().slice(0, 4));
+      const year = Number(todayLocal().slice(0, 4));
       const encash = await db
         .select({ e: leaveBalances.employeeId, bal: sql<number>`coalesce(sum(${leaveBalances.opening} + ${leaveBalances.accrued} + ${leaveBalances.adjusted} - ${leaveBalances.used}),0)::float` })
         .from(leaveBalances)
@@ -584,7 +584,7 @@ export const REPORTS: ReportDef[] = [
       const owed = new Map(unpaid.map((r) => [r.e, r.s]));
       const rows = emps.map((e) => {
         const basic = resolveStructure(e, structs.get(e.id), template).components.basic;
-        const end = e.lastWorkingDay ?? todayIST();
+        const end = e.lastWorkingDay ?? todayLocal();
         const ms = (Date.parse(end) - Date.parse(e.dateOfJoining)) / (365.25 * 86400000);
         // completed years, with 6+ months counting as a full year
         const years = Math.floor(ms) + (ms - Math.floor(ms) >= 0.5 ? 1 : 0);

@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
-import { inr } from "@hrms/shared";
+import { fmtMoney } from "@hrms/shared";
 import { api } from "@/lib/api";
 import type { PayrollRun } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ export default function RunWizard() {
   const calculate = useMutation({
     mutationFn: () => api.post<PayrollRun>(`/admin/payroll/runs/${runId}/calculate`),
     onSuccess: (r) => {
-      toast.success(`Calculated ${r.totals?.employees ?? 0} payslips · net ${inr(r.totals?.net ?? 0)}`);
+      toast.success(`Calculated ${r.totals?.employees ?? 0} payslips · net ${fmtMoney(r.totals?.net ?? 0)}`);
       qc.invalidateQueries({ queryKey: ["payroll"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
       setStep((s) => (s !== null && s < 4 ? 4 : s));

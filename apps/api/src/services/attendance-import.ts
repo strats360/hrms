@@ -3,23 +3,24 @@ import { attendanceDevices, attendancePunches, attendanceRecords, employees, pay
 import {
   DEFAULT_SHIFT,
   evaluateAttendance,
-  istDateOf,
+  localDateOf,
   matchImportColumns,
   parseImportDate,
   parseImportStatus,
   parseImportTime,
   parsePunchTime,
-  todayIST,
+  todayLocal,
   type AttendanceStatus,
   type ShiftRule,
 } from "@hrms/shared";
-import { istDateTime, shiftsById, upsertAttendance } from "./attendance";
+import { localDateTime, shiftsById, upsertAttendance } from "./attendance";
+import { entityZones } from "./entities";
 
-type Emp = Pick<typeof employees.$inferSelect, "id" | "employeeCode" | "fullName" | "biometricId" | "shiftId" | "dateOfJoining" | "lastWorkingDay" | "status">;
+type Emp = Pick<typeof employees.$inferSelect, "id" | "employeeCode" | "fullName" | "biometricId" | "shiftId" | "entityId" | "dateOfJoining" | "lastWorkingDay" | "status">;
 
 async function employeeLookup(db: Database, tenantId: string) {
   const rows: Emp[] = await db
-    .select({ id: employees.id, employeeCode: employees.employeeCode, fullName: employees.fullName, biometricId: employees.biometricId, shiftId: employees.shiftId, dateOfJoining: employees.dateOfJoining, lastWorkingDay: employees.lastWorkingDay, status: employees.status })
+    .select({ id: employees.id, employeeCode: employees.employeeCode, fullName: employees.fullName, biometricId: employees.biometricId, shiftId: employees.shiftId, entityId: employees.entityId, dateOfJoining: employees.dateOfJoining, lastWorkingDay: employees.lastWorkingDay, status: employees.status })
     .from(employees)
     .where(eq(employees.tenantId, tenantId));
   const byCode = new Map(rows.map((e) => [e.employeeCode.toUpperCase(), e]));
@@ -42,9 +43,9 @@ async function lockedMonths(db: Database, tenantId: string) {
 }
 
 /** A day's in and out, with an out earlier than the in read as the next morning (night shifts). */
-function dayTimes(date: string, inT: string, outT: string) {
-  const checkIn = inT ? istDateTime(date, inT) : null;
-  let checkOut = outT ? istDateTime(date, outT) : null;
+function dayTimes(date: string, inT: string, outT: string, tz: string) {
+  const checkIn = inT ? localDateTime(date, inT, tz) : null;
+  let checkOut = outT ? localDateTime(date, outT, tz) : null;
   if (checkIn && checkOut && checkOut <= checkIn) checkOut = new Date(checkOut.getTime() + 86400000);
   return { checkIn, checkOut };
 }
@@ -77,8 +78,9 @@ export async function importAttendance(db: Database, tenantId: string, table: st
 
   const emps = await employeeLookup(db, tenantId);
   const shiftOf = await shiftResolver(db, tenantId);
+  const zoneOf = await entityZones(db, tenantId);
   const locked = await lockedMonths(db, tenantId);
-  const today = todayIST();
+  const today = todayLocal();
 
   type Ok = { r: ImportRowResult; emp: Emp; values: typeof attendanceRecords.$inferInsert };
   const results: ImportRowResult[] = [];
@@ -114,8 +116,9 @@ export async function importAttendance(db: Database, tenantId: string, table: st
     const given = parseImportStatus(get(col.status));
     if (given === null) return fail(`Unknown status "${get(col.status)}". Use P, A, HD, L, WFH, WO or H`);
     if (!inT && !given) return fail("Add a check-in time or a status");
-    const { checkIn, checkOut } = dayTimes(date, inT, outT);
-    const ev = checkIn ? evaluateAttendance(shiftOf(emp.shiftId), checkIn, checkOut, { wfh: given === "wfh" }) : null;
+    const tz = zoneOf(emp.entityId);
+    const { checkIn, checkOut } = dayTimes(date, inT, outT, tz);
+    const ev = checkIn ? evaluateAttendance(shiftOf(emp.shiftId), checkIn, checkOut, { wfh: given === "wfh", timeZone: tz }) : null;
     // an explicit status wins; otherwise the shift rules decide from the times
     const status = (given || ev?.status) as AttendanceStatus;
     r.checkIn = inT || null;
@@ -195,6 +198,7 @@ export async function ingestPunches(db: Database, device: typeof attendanceDevic
   const tenantId = device.tenantId;
   const emps = await employeeLookup(db, tenantId);
   const shiftOf = await shiftResolver(db, tenantId);
+  const zoneOf = await entityZones(db, tenantId);
   const locked = await lockedMonths(db, tenantId);
   const unknown = new Set<string>();
   const invalid: string[] = [];
@@ -206,12 +210,13 @@ export async function ingestPunches(db: Database, device: typeof attendanceDevic
       unknown.add(String(p.userId));
       continue;
     }
-    const at = parsePunchTime(String(p.time));
+    // a device keeps local time: read it in the employee's zone
+    const at = parsePunchTime(String(p.time), zoneOf(emp.entityId));
     if (!at || at.getTime() > now + 10 * 60_000) {
       invalid.push(`${p.userId} @ ${p.time}`);
       continue;
     }
-    rows.push({ tenantId, deviceId: device.id, employeeId: emp.id, punchedAt: at, date: istDateOf(at), direction: p.direction ?? null });
+    rows.push({ tenantId, deviceId: device.id, employeeId: emp.id, punchedAt: at, date: localDateOf(at, zoneOf(emp.entityId)), direction: p.direction ?? null });
   }
   let accepted = 0;
   for (let i = 0; i < rows.length; i += 500) {
@@ -244,7 +249,7 @@ export async function ingestPunches(db: Database, device: typeof attendanceDevic
     const checkIn = new Date(first);
     // a single punch is an arrival; a second one at least a minute later is the departure
     const checkOut = last - first >= 60_000 ? new Date(last) : null;
-    const ev = evaluateAttendance(shiftOf(emp.shiftId), checkIn, checkOut, { wfh: cur?.status === "wfh" });
+    const ev = evaluateAttendance(shiftOf(emp.shiftId), checkIn, checkOut, { wfh: cur?.status === "wfh", timeZone: zoneOf(emp.entityId) });
     await upsertAttendance(db, { tenantId, employeeId: empId, date, checkIn, checkOut, source: "biometric", status: ev.status, workMinutes: ev.workMinutes, lateMinutes: ev.lateMinutes, earlyMinutes: ev.earlyMinutes, overtimeMinutes: ev.overtimeMinutes, note: cur?.note ?? null, isManual: false });
     updated++;
   }

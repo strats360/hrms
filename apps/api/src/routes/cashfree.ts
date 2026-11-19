@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import { and, desc, eq, gt } from "drizzle-orm";
 import { billingMandates, invoicePayments, invoices, tenants } from "@hrms/db";
-import { inr } from "@hrms/shared";
+import { fmtMoney } from "@hrms/shared";
 import type { AppEnv } from "../env";
 import { requirePerm } from "../lib/context";
 import { ApiError, badRequest, notFound } from "../lib/errors";
@@ -34,7 +34,7 @@ async function receipt(c: Context<AppEnv>, r: SettleResult) {
     const { html, text } = layout({
       company: entity.legalName,
       heading: `Payment received for ${inv.i.number}`,
-      paragraphs: [`We've received ${inr(Number(r.attempt.amount))} for ${periodLabel(inv.i.period)} (paid by ${r.attempt.method ?? "online payment"}). Thank you.`, ...(r.restored ? ["Your account is active again."] : [])],
+      paragraphs: [`We've received ${fmtMoney(Number(r.attempt.amount))} for ${periodLabel(inv.i.period)} (paid by ${r.attempt.method ?? "online payment"}). Thank you.`, ...(r.restored ? ["Your account is active again."] : [])],
       cta: { label: "View invoice", url: `${c.env.APP_URL}/settings/billing` },
     });
     await c.get("mailer").send({ to, subject: `Payment received · ${inv.i.number}`, html, text });
@@ -51,7 +51,7 @@ async function receipt(c: Context<AppEnv>, r: SettleResult) {
 export async function withdrawAutopay(c: Context<AppEnv>, inv: { id: string; number: string; tenantId: string }, reason: string, opts: { orderId?: string } = {}) {
   try {
     const r = await cancelScheduledCharges(c.get("db"), cashfreeConfig(c.env), inv.id, reason, opts);
-    for (const a of r.cancelled) await audit(c, { tenantId: inv.tenantId, action: "billing.autopay_withdrawn", entity: "invoice", entityId: inv.id, summary: `Withdrew the scheduled autopay debit for ${inv.number} (${inr(Number(a.amount))}): ${reason}` });
+    for (const a of r.cancelled) await audit(c, { tenantId: inv.tenantId, action: "billing.autopay_withdrawn", entity: "invoice", entityId: inv.id, summary: `Withdrew the scheduled autopay debit for ${inv.number} (${fmtMoney(Number(a.amount))}): ${reason}` });
     for (const p of r.pending) await audit(c, { tenantId: inv.tenantId, action: "billing.payment_review", entity: "invoice", entityId: inv.id, summary: `The autopay debit ${p.attempt.orderId} for ${inv.number} couldn't be withdrawn (${p.reason}). If it goes through, refund it.` });
     for (const s of r.settled) if (s.needsReview) await audit(c, { tenantId: inv.tenantId, action: "billing.payment_review", entity: "invoice", entityId: inv.id, summary: `Autopay payment needs review: ${s.needsReview} (${s.attempt.orderId})` });
     return r;
@@ -109,7 +109,7 @@ tenantPayRoutes.post("/invoices/:id/pay", requirePerm("billing", "view"), async 
     });
     if (!order.payment_session_id) throw new CashfreeError("Cashfree didn't return a payment session", 502);
     await db.update(invoicePayments).set({ paymentSessionId: order.payment_session_id, gatewayOrderId: order.cf_order_id ? String(order.cf_order_id) : null }).where(eq(invoicePayments.id, attempt!.id));
-    await audit(c, { action: "billing.pay_start", entity: "invoice", entityId: inv.id, summary: `Started online payment for ${inv.number} (${inr(Number(inv.total))})` });
+    await audit(c, { action: "billing.pay_start", entity: "invoice", entityId: inv.id, summary: `Started online payment for ${inv.number} (${fmtMoney(Number(inv.total))})` });
     return c.json({ orderId, paymentSessionId: order.payment_session_id, mode: cfg.mode }, 201);
   } catch (e) {
     await db.update(invoicePayments).set({ status: "failed", failureReason: (e as Error).message }).where(eq(invoicePayments.id, attempt!.id));
@@ -187,7 +187,7 @@ tenantPayRoutes.post("/autopay", requirePerm("billing", "edit"), v("json", setup
     });
     if (!s.sessionId) throw new CashfreeError("Cashfree didn't return a session", 502);
     await db.update(billingMandates).set({ sessionId: s.sessionId, gatewaySubscriptionId: s.cfSubscriptionId, gatewayStatus: s.status }).where(eq(billingMandates.id, m!.id));
-    await audit(c, { action: "billing.autopay_start", entity: "billing_mandate", entityId: m!.id, summary: `Started ${b.method === "upi" ? "UPI autopay" : "bank e-mandate"} setup, limit ${inr(b.maxAmount)}` });
+    await audit(c, { action: "billing.autopay_start", entity: "billing_mandate", entityId: m!.id, summary: `Started ${b.method === "upi" ? "UPI autopay" : "bank e-mandate"} setup, limit ${fmtMoney(b.maxAmount)}` });
     return c.json({ subscriptionId, sessionId: s.sessionId, mode: cfg.mode }, 201);
   } catch (e) {
     await db.update(billingMandates).set({ status: "failed", failureReason: (e as Error).message }).where(eq(billingMandates.id, m!.id));
@@ -203,7 +203,7 @@ tenantPayRoutes.get("/autopay/:subscriptionId", requirePerm("billing", "view"), 
   const [m] = await db.select().from(billingMandates).where(and(eq(billingMandates.subscriptionId, c.req.param("subscriptionId")), eq(billingMandates.tenantId, tid(c))));
   if (!m) throw notFound("Mandate");
   const { mandate, changed } = await syncMandate(db, cfg, m);
-  if (changed && mandate.status === "active") await audit(c, { action: "billing.autopay_active", entity: "billing_mandate", entityId: m.id, summary: `Autopay is on (${methodLabel(mandate)}, up to ${inr(Number(mandate.maxAmount))})` });
+  if (changed && mandate.status === "active") await audit(c, { action: "billing.autopay_active", entity: "billing_mandate", entityId: m.id, summary: `Autopay is on (${methodLabel(mandate)}, up to ${fmtMoney(Number(mandate.maxAmount))})` });
   // switching autopay on also lines up the open invoice, if it fits under the limit
   if (mandate.status === "active") {
     const [open] = await db.select().from(invoices).where(and(eq(invoices.tenantId, tid(c)), eq(invoices.status, "issued"))).orderBy(desc(invoices.period)).limit(1);
@@ -280,7 +280,7 @@ cashfreeWebhook.post("/cashfree/webhook", async (c) => {
   await receipt(c, r);
   await afterOnlinePayment(c, r);
   if (r.settled || r.needsReview) {
-    await audit(c, { tenantId: r.attempt.tenantId, action: r.settled ? "billing.paid_online" : "billing.payment_review", entity: "invoice", entityId: r.attempt.invoiceId, summary: r.settled ? `Invoice paid online (${inr(Number(r.attempt.amount))}, Cashfree ${r.attempt.gatewayPaymentId}${r.restored ? "; account restored" : ""})` : `Online payment needs review: ${r.needsReview} (order ${orderId})` });
+    await audit(c, { tenantId: r.attempt.tenantId, action: r.settled ? "billing.paid_online" : "billing.payment_review", entity: "invoice", entityId: r.attempt.invoiceId, summary: r.settled ? `Invoice paid online (${fmtMoney(Number(r.attempt.amount))}, Cashfree ${r.attempt.gatewayPaymentId}${r.restored ? "; account restored" : ""})` : `Online payment needs review: ${r.needsReview} (order ${orderId})` });
   }
   return c.json({ ok: true, status: r.status });
 });
@@ -303,7 +303,7 @@ async function subscriptionEvent(c: Context<AppEnv>, cfg: NonNullable<ReturnType
             action: r.settled ? "billing.paid_autopay" : r.status === "failed" ? "billing.autopay_failed" : "billing.payment_review",
             entity: "invoice",
             entityId: attempt.invoiceId,
-            summary: r.settled ? `Invoice paid by autopay (${inr(Number(attempt.amount))})${r.restored ? "; account restored" : ""}` : r.status === "failed" ? `Autopay charge failed: ${r.attempt.failureReason ?? "declined"}` : `Autopay payment needs review: ${r.needsReview}`,
+            summary: r.settled ? `Invoice paid by autopay (${fmtMoney(Number(attempt.amount))})${r.restored ? "; account restored" : ""}` : r.status === "failed" ? `Autopay charge failed: ${r.attempt.failureReason ?? "declined"}` : `Autopay payment needs review: ${r.needsReview}`,
           });
         }
         if (newlyFailed) {
@@ -335,7 +335,7 @@ async function autopayFailed(c: Context<AppEnv>, tenantId: string, amount: numbe
       company: entity.legalName,
       heading: "Autopay couldn't collect your invoice",
       paragraphs: [
-        `The autopay debit of ${inr(amount)} didn't go through${reason ? ` (${reason})` : ""}.`,
+        `The autopay debit of ${fmtMoney(amount)} didn't go through${reason ? ` (${reason})` : ""}.`,
         retryAt
           ? `We'll try once more around ${retryAt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", timeZone: "Asia/Kolkata" })}, after your bank's pre-debit notice. Please make sure the account has funds, or pay online now and we'll skip the retry.`
           : "Please pay the invoice online, or check your mandate with your bank.",

@@ -1,9 +1,8 @@
 import { bigint, boolean, date, index, integer, numeric, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { tenantIdColumn as tenantId } from "./org";
 import { employees } from "./people";
-import { id, timestamps } from "./_helpers";
+import { id, money, timestamps } from "./_helpers";
 
-const money = (name: string) => numeric(name, { precision: 14, scale: 2, mode: "number" });
 
 export const jobOpenings = pgTable(
   "job_openings",

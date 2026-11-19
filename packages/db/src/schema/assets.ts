@@ -1,7 +1,7 @@
 import { date, index, numeric, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { tenantIdColumn as tenantId } from "./org";
 import { employees } from "./people";
-import { id, timestamps } from "./_helpers";
+import { id, timestamps, money } from "./_helpers";
 
 export const assets = pgTable(
   "assets",
@@ -13,7 +13,7 @@ export const assets = pgTable(
     category: text("category").notNull(),
     serialNumber: text("serial_number"),
     purchaseDate: date("purchase_date", { mode: "string" }),
-    purchaseCost: numeric("purchase_cost", { precision: 14, scale: 2, mode: "number" }),
+    purchaseCost: money("purchase_cost"),
     vendor: text("vendor"),
     invoiceNumber: text("invoice_number"),
     warrantyUntil: date("warranty_until", { mode: "string" }),

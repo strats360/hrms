@@ -35,7 +35,7 @@ import {
   tenants,
   attendanceRecords,
 } from "@hrms/db";
-import { DEMO_EMAIL_DOMAIN, randomToken, countLeaveDays, dateRange, encryptField, evaluateAttendance, sha256Hex, todayIST, weekday, DEFAULT_SHIFT } from "@hrms/shared";
+import { DEMO_EMAIL_DOMAIN, randomToken, countLeaveDays, dateRange, encryptField, evaluateAttendance, sha256Hex, todayLocal, weekday, DEFAULT_SHIFT } from "@hrms/shared";
 import { upsertLogin } from "../src/services/users";
 import { provisionTenant } from "../src/services/provisioning";
 import { syncDefaultEntity } from "../src/services/entities";
@@ -87,7 +87,7 @@ const rnd = () => {
 };
 const pick = <T>(a: readonly T[]) => a[Math.floor(rnd() * a.length)]!;
 
-const today = todayIST();
+const today = todayLocal();
 const year = Number(today.slice(0, 4));
 
 async function main() {

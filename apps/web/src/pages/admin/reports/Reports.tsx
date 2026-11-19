@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Lock } from "lucide-react";
-import { todayIST } from "@hrms/shared";
+import { todayLocal } from "@hrms/shared";
 import { api, download, errorMessage, qs } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,7 @@ interface Preview {
 const MON = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 function periodOptions() {
-  const today = todayIST();
+  const today = todayLocal();
   const [y, m] = today.split("-").map(Number) as [number, number];
   const fyStart = m >= 4 ? y : y - 1;
   const fy = (s: number) => `${s}-${String((s + 1) % 100).padStart(2, "0")}`;

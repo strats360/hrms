@@ -1,9 +1,9 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { todayIST } from "@hrms/shared";
+import { todayLocal } from "@hrms/shared";
 import { Client, login } from "./helpers";
 
 let kunal: Client, nisha: Client, hardik: Client, priya: Client;
-const [y, m] = todayIST().split("-").map(Number) as [number, number];
+const [y, m] = todayLocal().split("-").map(Number) as [number, number];
 const lastMonth = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
 const fy = `${m >= 4 ? y : y - 1}-${String(((m >= 4 ? y : y - 1) + 1) % 100).padStart(2, "0")}`;
 

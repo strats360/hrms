@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Paperclip, Pin, Plus } from "lucide-react";
-import { ANNOUNCEMENT_CATEGORIES, ANNOUNCEMENT_CATEGORY_LABEL, fmtDate, todayIST, type AnnouncementCategory } from "@hrms/shared";
+import { ANNOUNCEMENT_CATEGORIES, ANNOUNCEMENT_CATEGORY_LABEL, fmtDate, todayLocal, type AnnouncementCategory, zonedDateTime } from "@hrms/shared";
 import { api, errorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { CardHeader, TableCard } from "@/components/ui/card";
@@ -109,7 +109,7 @@ function EditDialog({ row, onClose }: { row: Row | null; onClose: () => void }) 
   const [preview, setPreview] = useState(false);
   const save = useMutation({
     mutationFn: async (draft: boolean) => {
-      const body = { title: f.title, body: f.body, category: f.category, departmentIds: f.departmentIds, branchIds: f.branchIds, pinned: f.pinned, requireAck: f.requireAck, emailEveryone: f.emailEveryone, publishAt: f.when === "later" && f.publishAt ? `${f.publishAt}:00+05:30` : null, expiresAt: f.expiresAt || null, draft };
+      const body = { title: f.title, body: f.body, category: f.category, departmentIds: f.departmentIds, branchIds: f.branchIds, pinned: f.pinned, requireAck: f.requireAck, emailEveryone: f.emailEveryone, publishAt: f.when === "later" && f.publishAt ? zonedDateTime(f.publishAt.slice(0, 10), f.publishAt.slice(11, 16)).toISOString() : null, expiresAt: f.expiresAt || null, draft };
       const r = row ? await api.put<{ id: string; emailed: number; state: string }>(`/admin/announcements/${row.id}`, body) : await api.post<{ id: string; emailed: number; state: string }>("/admin/announcements", body);
       if (file) {
         const fd = new FormData();
@@ -153,7 +153,7 @@ function EditDialog({ row, onClose }: { row: Row | null; onClose: () => void }) 
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Title" span><Input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} maxLength={150} /></Field>
           <Field label="Type"><Select value={f.category} onChange={(e) => setF({ ...f, category: e.target.value as AnnouncementCategory })}>{ANNOUNCEMENT_CATEGORIES.map((c) => <option key={c} value={c}>{ANNOUNCEMENT_CATEGORY_LABEL[c]}</option>)}</Select></Field>
-          <Field label="Show until (optional)" hint="It drops off Home after this date"><Input type="date" min={todayIST()} value={f.expiresAt} onChange={(e) => setF({ ...f, expiresAt: e.target.value })} /></Field>
+          <Field label="Show until (optional)" hint="It drops off Home after this date"><Input type="date" min={todayLocal()} value={f.expiresAt} onChange={(e) => setF({ ...f, expiresAt: e.target.value })} /></Field>
           <Field label="Message" span hint="Plain text. Leave a blank line between paragraphs. Links become clickable."><Textarea rows={9} value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} /></Field>
           <Field label="Who sees it" span hint="Everyone, unless you pick departments or branches">
             <div className="flex flex-col gap-2">

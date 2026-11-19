@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import postgres from "postgres";
 import { createDb } from "@hrms/db";
-import { todayIST } from "@hrms/shared";
+import { todayLocal } from "@hrms/shared";
 import { Client, env, login } from "./helpers";
 import { purgeOldSelfies } from "../src/services/selfie-retention";
 
@@ -9,7 +9,7 @@ const sql = postgres(env.DATABASE_URL!, { max: 1, onnotice: () => {} });
 const db = createDb(env.DATABASE_URL!, { max: 1 });
 let kunal: Client, priya: Client, hardik: Client, amit: Client;
 let priyaId = "";
-const today = todayIST();
+const today = todayLocal();
 const JPG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0x4a, 0x46, 0x49, 0x46, 0, 1, 2, 3]);
 const dataUrl = (b: Uint8Array) => `data:image/jpeg;base64,${Buffer.from(b).toString("base64")}`;
 let saved: unknown = null;

@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Clock, Download, Lock, Wallet } from "lucide-react";
-import { inr } from "@hrms/shared";
+import { fmtMoney } from "@hrms/shared";
 import { api, download, errorMessage, qs } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { Lookups, PayrollItem, PayrollRun } from "@/lib/types";
@@ -24,7 +24,7 @@ type Filter = "all" | "exceptions" | "lop" | "hold";
 
 /** Rupee figure sized to fit a stat tile (crore amounts are long). */
 function Money({ v }: { v: number }) {
-  return <span className="text-[24px]">{inr(v)}</span>;
+  return <span className="text-[24px]">{fmtMoney(v)}</span>;
 }
 
 function change(item: PayrollItem) {
@@ -67,7 +67,7 @@ export default function Review() {
   const encash = useMutation({
     mutationFn: () => api.post<{ added: number; total: number }>(`/admin/payroll/runs/${runId}/encashments`),
     onSuccess: (r) => {
-      toast.success(`Added ${r.added} leave encashment${r.added === 1 ? "" : "s"}: ${inr(r.total)}`);
+      toast.success(`Added ${r.added} leave encashment${r.added === 1 ? "" : "s"}: ${fmtMoney(r.total)}`);
       qc.invalidateQueries({ queryKey: ["payroll"] });
     },
     onError: (e) => toast.error(errorMessage(e)),
@@ -115,12 +115,12 @@ export default function Review() {
           );
         },
       },
-      { id: "gross", header: "Gross", accessorFn: (r) => r.gross, meta: { align: "right" }, cell: ({ getValue }) => inr(getValue<number>()) },
-      { id: "deductions", header: "Deductions", accessorFn: (r) => r.totalDeductions, meta: { align: "right" }, cell: ({ getValue }) => inr(getValue<number>()) },
-      { id: "tds", header: "TDS", accessorFn: (r) => r.tds, meta: { align: "right" }, cell: ({ getValue }) => inr(getValue<number>()) },
-      { id: "claims", header: "Claims", accessorFn: (r) => Number(r.reimbursement ?? 0), meta: { align: "right" }, cell: ({ getValue }) => (getValue<number>() ? inr(getValue<number>()) : <span className="text-muted">—</span>) },
-      { id: "employer", header: "Employer", accessorFn: (r) => r.employerCost, meta: { align: "right" }, cell: ({ getValue }) => inr(getValue<number>()) },
-      { id: "net", header: "Net", accessorFn: (r) => r.net, meta: { align: "right" }, cell: ({ getValue }) => <span className="font-semibold">{inr(getValue<number>())}</span> },
+      { id: "gross", header: "Gross", accessorFn: (r) => r.gross, meta: { align: "right" }, cell: ({ getValue }) => fmtMoney(getValue<number>()) },
+      { id: "deductions", header: "Deductions", accessorFn: (r) => r.totalDeductions, meta: { align: "right" }, cell: ({ getValue }) => fmtMoney(getValue<number>()) },
+      { id: "tds", header: "TDS", accessorFn: (r) => r.tds, meta: { align: "right" }, cell: ({ getValue }) => fmtMoney(getValue<number>()) },
+      { id: "claims", header: "Claims", accessorFn: (r) => Number(r.reimbursement ?? 0), meta: { align: "right" }, cell: ({ getValue }) => (getValue<number>() ? fmtMoney(getValue<number>()) : <span className="text-muted">—</span>) },
+      { id: "employer", header: "Employer", accessorFn: (r) => r.employerCost, meta: { align: "right" }, cell: ({ getValue }) => fmtMoney(getValue<number>()) },
+      { id: "net", header: "Net", accessorFn: (r) => r.net, meta: { align: "right" }, cell: ({ getValue }) => <span className="font-semibold">{fmtMoney(getValue<number>())}</span> },
       {
         id: "change",
         header: "vs last month",
@@ -130,10 +130,10 @@ export default function Review() {
           const c = change(r);
           if (c === null) return <span className="text-muted">New</span>;
           const text = `${c > 0 ? "+" : ""}${c.toFixed(1)}%`;
-          return Math.abs(c) > 20 ? <Tag tone="warn" title={`Last month ${inr(r.previousNet!)}`}>{text}</Tag> : <span className="text-muted" title={`Last month ${inr(r.previousNet!)}`}>{text}</span>;
+          return Math.abs(c) > 20 ? <Tag tone="warn" title={`Last month ${fmtMoney(r.previousNet!)}`}>{text}</Tag> : <span className="text-muted" title={`Last month ${fmtMoney(r.previousNet!)}`}>{text}</span>;
         },
       },
-      { id: "ctc", header: "CTC", accessorFn: (r) => r.gross + r.employerCost, meta: { align: "right" }, cell: ({ getValue }) => inr(getValue<number>()) },
+      { id: "ctc", header: "CTC", accessorFn: (r) => r.gross + r.employerCost, meta: { align: "right" }, cell: ({ getValue }) => fmtMoney(getValue<number>()) },
       {
         id: "status",
         header: "Status",
@@ -142,7 +142,7 @@ export default function Review() {
           <div className="flex flex-wrap gap-1">
             {r.onHold ? <Tag tone="bad" title={r.holdReason ?? undefined}>On hold</Tag> : null}
             {r.warnings.length ? <Tag tone="warn" title={r.warnings.join("\n")}>{r.warnings.length} {r.warnings.length === 1 ? "check" : "checks"}</Tag> : null}
-            {r.adjustments.length ? <Tag tone="accent" title={r.adjustments.map((a) => `${a.label} ${inr(a.amount)}`).join("\n")}>{r.adjustments.length} one-time</Tag> : null}
+            {r.adjustments.length ? <Tag tone="accent" title={r.adjustments.map((a) => `${a.label} ${fmtMoney(a.amount)}`).join("\n")}>{r.adjustments.length} one-time</Tag> : null}
             {!r.onHold && !r.warnings.length && !r.adjustments.length ? <Tag tone="ok">OK</Tag> : null}
           </div>
         ),
@@ -199,10 +199,10 @@ export default function Review() {
       {t ? (
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(190px, 100%), 1fr))" }}>
           <StatCard label="Gross earnings" value={<Money v={t.gross} />} meta={`${t.employees} employees`} />
-          <StatCard label="Total deductions" value={<Money v={t.deductions} />} meta={`PF ${inr(t.pfEmployee)} · PT ${inr(t.pt)}`} />
-          <StatCard label="Employer contributions" value={<Money v={t.employerCost} />} meta={`PF ${inr(t.pfEmployer)} · ESI ${inr(t.esiEmployer)}`} />
+          <StatCard label="Total deductions" value={<Money v={t.deductions} />} meta={`PF ${fmtMoney(t.pfEmployee)} · PT ${fmtMoney(t.pt)}`} />
+          <StatCard label="Employer contributions" value={<Money v={t.employerCost} />} meta={`PF ${fmtMoney(t.pfEmployer)} · ESI ${fmtMoney(t.esiEmployer)}`} />
           <StatCard label="TDS" value={<Money v={t.tds} />} meta="Income tax this month" />
-          <StatCard label="Net salary" value={<Money v={t.net} />} meta={t.onHold ? <Tag tone="bad">{t.onHold} on hold</Tag> : t.reimbursement ? `Includes ${inr(t.reimbursement)} claims` : "Payable to employees"} className="!shadow-[inset_0_0_0_1px_var(--color-accent)]" />
+          <StatCard label="Net salary" value={<Money v={t.net} />} meta={t.onHold ? <Tag tone="bad">{t.onHold} on hold</Tag> : t.reimbursement ? `Includes ${fmtMoney(t.reimbursement)} claims` : "Payable to employees"} className="!shadow-[inset_0_0_0_1px_var(--color-accent)]" />
           <StatCard label="Cost to company" value={<Money v={t.ctc} />} meta={`${t.withLop} with LOP · ${t.lopDays} days`} />
         </div>
       ) : null}

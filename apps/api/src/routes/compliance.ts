@@ -9,12 +9,12 @@ import {
   ecrLine,
   fmtDate,
   fyOfMonth,
-  inr,
+  fmtMoney,
   pfWages,
   ptSlabSummary,
   STATUTE_LABELS,
   tdsReturnDueDates,
-  todayIST,
+  todayLocal,
   type Statute,
 } from "@hrms/shared";
 import { z } from "zod";
@@ -104,7 +104,7 @@ async function loadObligations(db: Database, tenantId: string, filter: { from?: 
   if (!runs.length) return [];
   const items = await db.select().from(payrollItems).where(inArray(payrollItems.runId, runs.map((r) => r.id)));
   const challans = await db.select().from(statutoryChallans).where(eq(statutoryChallans.tenantId, tenantId));
-  const today = todayIST();
+  const today = todayLocal();
   const out: Obligation[] = [];
   for (const run of runs) {
     for (const o of obligationsForRun(run, items.filter((i) => i.runId === run.id))) {
@@ -130,7 +130,7 @@ async function loadObligations(db: Database, tenantId: string, filter: { from?: 
 // ---------------------------------------------------------------------------
 complianceRoutes.get("/overview", requirePerm("compliance", "view"), async (c) => {
   const db = c.get("db");
-  const today = todayIST();
+  const today = todayLocal();
   const obligations = await loadObligations(db, tid(c));
   const latestMonth = obligations[0]?.period ?? null;
   const latest = obligations.filter((o) => o.period === latestMonth);
@@ -191,7 +191,7 @@ complianceRoutes.get("/overview", requirePerm("compliance", "view"), async (c) =
 // ---------------------------------------------------------------------------
 complianceRoutes.get("/obligations", requirePerm("compliance", "view"), v("query", z.object({ fy: z.string().regex(/^\d{4}-\d{2}$/).optional(), statute: z.string().optional() })), async (c) => {
   const q = c.req.valid("query");
-  const fy = q.fy ?? fyOfMonth(todayIST().slice(0, 7));
+  const fy = q.fy ?? fyOfMonth(todayLocal().slice(0, 7));
   const y = Number(fy.slice(0, 4));
   let rows = await loadObligations(c.get("db"), tid(c), { from: `${y}-04`, to: `${y + 1}-03` });
   if (q.statute) rows = rows.filter((r) => r.statute === q.statute);
@@ -204,13 +204,13 @@ complianceRoutes.post("/challans", requirePerm("compliance", "edit"), v("json", 
   const obligation = (await loadObligations(db, tid(c), { from: b.period, to: b.period })).find((o) => o.statute === b.statute && o.jurisdiction === b.jurisdiction);
   if (!obligation) throw badRequest("There's no locked payroll liability for that statute and month");
   if (obligation.challan) throw badRequest("A payment is already recorded for this. Edit it instead.");
-  if (b.paidOn > todayIST()) throw badRequest("The payment date can't be in the future");
+  if (b.paidOn > todayLocal()) throw badRequest("The payment date can't be in the future");
   const [row] = await db
     .insert(statutoryChallans)
     .values({ ...b, tenantId: tid(c), amountDue: obligation.amount, createdBy: c.get("session")!.userId })
     .returning();
   const late = daysUntil(obligation.dueDate, b.paidOn) < 0;
-  await audit(c, { action: "compliance.challan", entity: "statutory_challan", entityId: row!.id, summary: `Recorded ${obligation.label} payment for ${monthLabel(b.period)}: ${inr(b.amountPaid)}${late ? " (after due date)" : ""}` });
+  await audit(c, { action: "compliance.challan", entity: "statutory_challan", entityId: row!.id, summary: `Recorded ${obligation.label} payment for ${monthLabel(b.period)}: ${fmtMoney(b.amountPaid)}${late ? " (after due date)" : ""}` });
   return c.json(row, 201);
 });
 
@@ -391,7 +391,7 @@ complianceRoutes.get("/rules", requirePerm("compliance", "view"), async (c) => {
   const db = c.get("db");
   const [t] = await db.select().from(tenants).where(eq(tenants.id, tid(c)));
   const template = await getTemplate(db, tid(c));
-  const month = todayIST().slice(0, 7);
+  const month = todayLocal().slice(0, 7);
   const R = await rulesFor(db, month);
   const live = await liveRules(db);
   const since = (key: string) => {
@@ -402,7 +402,7 @@ complianceRoutes.get("/rules", requirePerm("compliance", "view"), async (c) => {
   const pt = (st: string) => (R.noPt.includes(st) ? { none: true } : R.pt[st] ? { none: false, slabs: R.pt[st]!.slabs.map(([u, a]) => ({ upTo: u === Infinity ? null : u, amount: a })), februaryTop: R.pt[st]!.februaryTop ?? null } : null);
   const rules: { rule: string; value: string; scope: string; source: string }[] = [
     { rule: "EPF", value: describeRule("pf", R.pf), scope: "All establishments", source: `EPF Scheme · statutory master, ${since("pf")}` },
-    { rule: "EPF on your salaries", value: template.pfOnFullBasic ? "12% + 12% on actual basic" : `12% + 12% on basic, capped at ${inr(R.pf.wageCeiling)}`, scope: t?.name ?? "Company", source: "Salary template" },
+    { rule: "EPF on your salaries", value: template.pfOnFullBasic ? "12% + 12% on actual basic" : `12% + 12% on basic, capped at ${fmtMoney(R.pf.wageCeiling)}`, scope: t?.name ?? "Company", source: "Salary template" },
     { rule: "ESI", value: describeRule("esi", R.esi), scope: "All", source: `ESI Act · statutory master, ${since("esi")}` },
   ];
   for (const st of states) {

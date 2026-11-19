@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Download, PlayCircle } from "lucide-react";
-import { fmtDate, inr, inrCompact, todayIST } from "@hrms/shared";
+import { fmtDate, fmtMoney, fmtMoneyCompact, todayLocal } from "@hrms/shared";
 import { api, download, errorMessage, qs } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { Invoice } from "@/lib/types";
@@ -47,7 +47,7 @@ interface Dunning {
 }
 
 const prevMonth = () => {
-  const [y, m] = todayIST().split("-").map(Number) as [number, number];
+  const [y, m] = todayLocal().split("-").map(Number) as [number, number];
   return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
 };
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -71,7 +71,7 @@ export default function Billing() {
   const remind = useMutation({ mutationFn: (id: string) => api.post(`/platform/billing/invoices/${id}/remind`), onSuccess: () => (toast.success("Reminder sent"), refresh()) });
   const s = summary.data;
   const months = useMemo(() => {
-    const [y, m] = todayIST().split("-").map(Number) as [number, number];
+    const [y, m] = todayLocal().split("-").map(Number) as [number, number];
     return Array.from({ length: 12 }, (_, i) => new Date(Date.UTC(y, m - 1 - i, 1)).toISOString().slice(0, 7));
   }, []);
   const columns = useMemo<ColumnDef<Invoice, any>[]>(
@@ -79,9 +79,9 @@ export default function Billing() {
       { id: "number", header: "Invoice", accessorFn: (i) => i.number, cell: ({ getValue }) => <span className="font-medium">{getValue<string>()}</span> },
       { id: "tenant", header: "Tenant", accessorFn: (i) => i.tenantName, cell: ({ row: { original: i } }) => <div>{i.tenantName}<div className="text-muted text-[11.5px]">{i.planName} · {i.seats} seats</div></div> },
       { id: "period", header: "Period", accessorFn: (i) => i.period, cell: ({ row: { original: i } }) => i.periodLabel },
-      { id: "subtotal", header: "Subtotal", accessorFn: (i) => Number(i.subtotal), meta: { align: "right" }, cell: ({ getValue }) => inr(getValue<number>()) },
-      { id: "gst", header: "GST", accessorFn: (i) => Number(i.cgst) + Number(i.sgst) + Number(i.igst), meta: { align: "right" }, cell: ({ row: { original: i } }) => <div>{inr(Number(i.cgst) + Number(i.sgst) + Number(i.igst))}<div className="text-muted text-[11px]">{Number(i.igst) ? "IGST" : "CGST + SGST"}</div></div> },
-      { id: "total", header: "Total", accessorFn: (i) => Number(i.total), meta: { align: "right" }, cell: ({ getValue }) => <span className="font-medium">{inr(getValue<number>())}</span> },
+      { id: "subtotal", header: "Subtotal", accessorFn: (i) => Number(i.subtotal), meta: { align: "right" }, cell: ({ getValue }) => fmtMoney(getValue<number>()) },
+      { id: "gst", header: "GST", accessorFn: (i) => Number(i.cgst) + Number(i.sgst) + Number(i.igst), meta: { align: "right" }, cell: ({ row: { original: i } }) => <div>{fmtMoney(Number(i.cgst) + Number(i.sgst) + Number(i.igst))}<div className="text-muted text-[11px]">{Number(i.igst) ? "IGST" : "CGST + SGST"}</div></div> },
+      { id: "total", header: "Total", accessorFn: (i) => Number(i.total), meta: { align: "right" }, cell: ({ getValue }) => <span className="font-medium">{fmtMoney(getValue<number>())}</span> },
       { id: "due", header: "Due", accessorFn: (i) => i.dueOn, cell: ({ row: { original: i } }) => (i.status === "paid" ? <span className="text-muted">Paid {i.paidOn ? fmtDate(i.paidOn, false) : ""}</span> : fmtDate(i.dueOn)) },
       { id: "status", header: "Status", accessorFn: (i) => i.displayStatus, cell: ({ row: { original: i } }) => <div className="flex items-center gap-1.5"><InvoiceStatusTag status={i.displayStatus} />{i.remindersSent ? <span className="text-muted text-[11px]">{i.remindersSent} reminder{i.remindersSent === 1 ? "" : "s"}</span> : null}</div> },
     ],
@@ -95,7 +95,7 @@ export default function Billing() {
         actions={
           canBill ? (
             <>
-              <Button onClick={() => download(`/platform/billing/gstr1.csv?period=${todayIST().slice(0, 7)}`, "gstr1.csv").catch((e) => toast.error(errorMessage(e)))}>
+              <Button onClick={() => download(`/platform/billing/gstr1.csv?period=${todayLocal().slice(0, 7)}`, "gstr1.csv").catch((e) => toast.error(errorMessage(e)))}>
                 <Download size={16} /> GSTR-1 export
               </Button>
               <Button variant="primary" onClick={() => setRunning(true)}>
@@ -106,10 +106,10 @@ export default function Billing() {
         }
       />
       <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(190px, 100%), 1fr))" }}>
-        <StatCard label={`Invoiced · ${s ? label(s.period) : ""}`} value={s ? inrCompact(s.invoiced) : "—"} meta={s ? `${s.invoices} invoice${s.invoices === 1 ? "" : "s"} incl. GST` : undefined} />
-        <StatCard label="Collected" value={s ? inrCompact(s.collected) : "—"} meta={s ? `${s.collectionRate}% of invoiced` : undefined} />
-        <StatCard label="Overdue" value={s ? inrCompact(s.overdue.amount) : "—"} meta={s?.overdue.tenants ? <Tag tone="warn">{s.overdue.tenants} tenant{s.overdue.tenants === 1 ? "" : "s"}</Tag> : "Nothing overdue"} onClick={() => setStatus("overdue")} />
-        <StatCard label="GST payable (GSTR-3B)" value={s ? inrCompact(s.gstPayable) : "—"} meta={s ? `for ${label(s.period)} · due ${fmtDate(s.gstDue, false)}` : undefined} />
+        <StatCard label={`Invoiced · ${s ? label(s.period) : ""}`} value={s ? fmtMoneyCompact(s.invoiced) : "—"} meta={s ? `${s.invoices} invoice${s.invoices === 1 ? "" : "s"} incl. GST` : undefined} />
+        <StatCard label="Collected" value={s ? fmtMoneyCompact(s.collected) : "—"} meta={s ? `${s.collectionRate}% of invoiced` : undefined} />
+        <StatCard label="Overdue" value={s ? fmtMoneyCompact(s.overdue.amount) : "—"} meta={s?.overdue.tenants ? <Tag tone="warn">{s.overdue.tenants} tenant{s.overdue.tenants === 1 ? "" : "s"}</Tag> : "Nothing overdue"} onClick={() => setStatus("overdue")} />
+        <StatCard label="GST payable (GSTR-3B)" value={s ? fmtMoneyCompact(s.gstPayable) : "—"} meta={s ? `for ${label(s.period)} · due ${fmtDate(s.gstDue, false)}` : undefined} />
       </div>
       {list.error ? <ErrorState error={list.error} retry={() => list.refetch()} /> : null}
       <TableCard>
@@ -193,7 +193,7 @@ export default function Billing() {
 }
 
 function PaymentDialog({ invoice, onClose, onDone }: { invoice: Invoice | null; onClose: () => void; onDone: () => void }) {
-  const [paidOn, setPaidOn] = useState(todayIST());
+  const [paidOn, setPaidOn] = useState(todayLocal());
   const [method, setMethod] = useState("upi");
   const [reference, setReference] = useState("");
   const pay = useMutation({
@@ -211,7 +211,7 @@ function PaymentDialog({ invoice, onClose, onDone }: { invoice: Invoice | null; 
       open={!!invoice}
       onOpenChange={(v) => !v && onClose()}
       title="Record payment"
-      description={invoice ? `${invoice.number} · ${invoice.tenantName} · ${inr(invoice.total)}` : undefined}
+      description={invoice ? `${invoice.number} · ${invoice.tenantName} · ${fmtMoney(invoice.total)}` : undefined}
       footer={
         <>
           <Button onClick={onClose}>Cancel</Button>
@@ -249,14 +249,14 @@ function RunDialog({ open, onClose, onDone }: { open: boolean; onClose: () => vo
   const run = useMutation({
     mutationFn: () => api.post<{ created: number; emailed: number; autopay: number; total: number }>("/platform/billing/run", { period }),
     onSuccess: (r) => {
-      toast.success(`${r.created} invoice${r.created === 1 ? "" : "s"} issued (${inr(r.total)}), ${r.emailed} emailed${r.autopay ? `, ${r.autopay} on autopay` : ""}`);
+      toast.success(`${r.created} invoice${r.created === 1 ? "" : "s"} issued (${fmtMoney(r.total)}), ${r.emailed} emailed${r.autopay ? `, ${r.autopay} on autopay` : ""}`);
       onDone();
       onClose();
     },
   });
   const p = preview.data;
   const months = Array.from({ length: 6 }, (_, i) => {
-    const [y, m] = todayIST().split("-").map(Number) as [number, number];
+    const [y, m] = todayLocal().split("-").map(Number) as [number, number];
     return new Date(Date.UTC(y, m - 2 - i, 1)).toISOString().slice(0, 7);
   });
   return (
@@ -289,7 +289,7 @@ function RunDialog({ open, onClose, onDone }: { open: boolean; onClose: () => vo
       {p ? (
         <>
           <Notice tone="sel">
-            {p.count} to invoice · {inr(p.total)} including GST
+            {p.count} to invoice · {fmtMoney(p.total)} including GST
           </Notice>
           <div className="max-h-[45vh] overflow-auto">
             <table className="table text-[13px]">
@@ -310,8 +310,8 @@ function RunDialog({ open, onClose, onDone }: { open: boolean; onClose: () => vo
                     </td>
                     <td>{d.planName}</td>
                     <td style={{ textAlign: "right" }}>{d.seats}</td>
-                    <td style={{ textAlign: "right" }}>{d.skip ? "—" : inr(d.total)}</td>
-                    <td className="text-muted">{d.skip ?? (d.seats > d.activeEmployees ? `Plan minimum (${d.activeEmployees} active)` : `${inr(d.rate)} per employee`)}</td>
+                    <td style={{ textAlign: "right" }}>{d.skip ? "—" : fmtMoney(d.total)}</td>
+                    <td className="text-muted">{d.skip ?? (d.seats > d.activeEmployees ? `Plan minimum (${d.activeEmployees} active)` : `${fmtMoney(d.rate)} per employee`)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -372,7 +372,7 @@ function DunningDialog({ open, onClose, onDone }: { open: boolean; onClose: () =
                 <td>
                   {r.tenantName} {r.tenantStatus !== "active" ? <Tag tone="warn">{r.tenantStatus.replace("_", " ")}</Tag> : null}
                 </td>
-                <td style={{ textAlign: "right" }}>{inr(r.total)}</td>
+                <td style={{ textAlign: "right" }}>{fmtMoney(r.total)}</td>
                 <td style={{ textAlign: "right" }}>{r.daysOverdue}</td>
                 <td>{r.action ? <Tag tone={r.action === "suspend" ? "bad" : "warn"}>{ACTION[r.action]}</Tag> : <span className="text-muted">Nothing due ({r.remindersSent} sent)</span>}{!r.hasEmail ? <span className="text-muted"> · no email</span> : null}</td>
               </tr>

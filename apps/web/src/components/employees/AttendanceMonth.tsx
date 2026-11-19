@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { ATTENDANCE_CODES, ATTENDANCE_STATUS_LABELS, todayIST, weekday, type AttendanceStatus } from "@hrms/shared";
+import { ATTENDANCE_CODES, ATTENDANCE_STATUS_LABELS, todayLocal, weekday, type AttendanceStatus } from "@hrms/shared";
 import { Button } from "@/components/ui/button";
 import { ErrorState, Loading } from "@/components/ui/page";
 import { api, qs } from "@/lib/api";
@@ -34,7 +34,7 @@ const shift = (month: string, d: number) => {
 
 /** One employee's month as a small calendar with totals. */
 export function AttendanceMonth({ employeeId }: { employeeId: string }) {
-  const [month, setMonth] = useState(todayIST().slice(0, 7));
+  const [month, setMonth] = useState(todayLocal().slice(0, 7));
   const q = useQuery({ queryKey: ["employee-attendance", employeeId, month], queryFn: () => api.get<Resp>(`/admin/attendance/employee/${employeeId}${qs({ month })}`) });
   const label = new Date(month + "-01T00:00:00Z").toLocaleString("en-IN", { month: "long", year: "numeric", timeZone: "UTC" });
   const days = q.data?.days ?? [];
@@ -48,7 +48,7 @@ export function AttendanceMonth({ employeeId }: { employeeId: string }) {
           <ChevronLeft size={16} />
         </Button>
         <div className="min-w-[130px] text-center font-medium">{label}</div>
-        <Button icon size="sm" onClick={() => setMonth((m) => shift(m, 1))} disabled={month >= todayIST().slice(0, 7)} aria-label="Next month">
+        <Button icon size="sm" onClick={() => setMonth((m) => shift(m, 1))} disabled={month >= todayLocal().slice(0, 7)} aria-label="Next month">
           <ChevronRight size={16} />
         </Button>
       </div>

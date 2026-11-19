@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import postgres from "postgres";
 import { unzipSync, strFromU8 } from "fflate";
-import { todayIST } from "@hrms/shared";
+import { todayLocal } from "@hrms/shared";
 import { Client, env, login } from "./helpers";
 
 const sql = postgres(env.DATABASE_URL!, { max: 1, onnotice: () => {} });
@@ -16,7 +16,7 @@ beforeAll(async () => {
     { employeeId: await idOf("STL-0042"), amount: 4321, description: "Layout test" },
     { employeeId: await idOf("STL-0057"), amount: 1234, description: "Layout test" },
   ];
-  const b = await kunal.post("/admin/payments/batches", { type: "other", bankAccountId: hdfc.id, paymentDate: todayIST(), label: "Export layout test", lines });
+  const b = await kunal.post("/admin/payments/batches", { type: "other", bankAccountId: hdfc.id, paymentDate: todayLocal(), label: "Export layout test", lines });
   expect(b.status).toBe(201);
   batchId = b.body.id;
   expect((await kunal.post(`/admin/payments/batches/${batchId}/approve`)).status).toBe(200);

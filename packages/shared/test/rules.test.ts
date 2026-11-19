@@ -10,10 +10,10 @@ import {
   evaluateAttendance,
   financialYear,
   fmtDate,
-  inr,
-  inrCompact,
+  fmtMoney,
+  fmtMoneyCompact,
   sanitizeMatrix,
-  todayIST,
+  todayLocal,
 } from "../src";
 
 // 09:00 IST == 03:30 UTC
@@ -83,9 +83,9 @@ describe("permissions", () => {
 
 describe("format", () => {
   it("formats INR in Indian grouping", () => {
-    expect(inr(14236480)).toBe("₹1,42,36,480");
-    expect(inrCompact(14236480)).toBe("₹1.42 Cr");
-    expect(inrCompact(1440000)).toBe("₹14.40 L");
+    expect(fmtMoney(14236480)).toBe("₹1,42,36,480");
+    expect(fmtMoneyCompact(14236480)).toBe("₹1.42 Cr");
+    expect(fmtMoneyCompact(1440000)).toBe("₹14.40 L");
   });
   it("formats dates", () => {
     expect(fmtDate("2026-11-05")).toBe("05 Nov 2026");
@@ -93,7 +93,7 @@ describe("format", () => {
     expect(financialYear("2026-04-01")).toBe("2026-27");
   });
   it("uses IST for today", () => {
-    expect(todayIST(new Date("2026-11-04T19:00:00Z"))).toBe("2026-11-05");
+    expect(todayLocal(new Date("2026-11-04T19:00:00Z"))).toBe("2026-11-05");
   });
 });
 

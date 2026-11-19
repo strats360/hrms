@@ -13,6 +13,8 @@ export interface CountryPack {
   payroll: {
     /** Statutory deductions, employer contributions and income tax for one payslip. */
     statutory(ctx: StatutoryContext): StatutoryResult;
+    /** Decimals payslip lines are rounded to: 0 for whole rupees, 3 for Kuwaiti fils. */
+    roundingDecimals: number;
     /** Net pay in words on payslips, in the country's style. */
     amountInWords(n: number): string;
   };

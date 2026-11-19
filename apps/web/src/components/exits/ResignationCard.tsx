@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { fmtDate, inr } from "@hrms/shared";
+import { fmtDate, fmtMoney } from "@hrms/shared";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -134,13 +134,13 @@ export function ResignationCard() {
               <span>{l.label}</span>
               <span className="num">
                 {l.kind === "deduction" ? "−" : ""}
-                {inr(l.amount)}
+                {fmtMoney(l.amount)}
               </span>
             </div>
           ))}
           <div className="flex justify-between py-1.5 font-medium">
             <span>{x.settlement.net >= 0 ? "Net payable to you" : "Net recoverable from you"}</span>
-            <span className="num">{inr(Math.abs(x.settlement.net))}</span>
+            <span className="num">{fmtMoney(Math.abs(x.settlement.net))}</span>
           </div>
           <div className="text-muted text-[12px]">{x.settledOn ? `Settled on ${fmtDate(x.settledOn)}.` : "Approved. Payment is on its way."} Your last month's salary comes on your payslip as usual.</div>
         </div>

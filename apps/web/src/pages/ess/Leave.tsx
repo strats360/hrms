@@ -4,7 +4,7 @@ import { useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
-import { countLeaveDays, fmtDate, leaveApplySchema, todayIST } from "@hrms/shared";
+import { countLeaveDays, fmtDate, leaveApplySchema, todayLocal } from "@hrms/shared";
 import { api, qs } from "@/lib/api";
 import type { Holiday, LeaveBalance, LeaveRequest, LeaveType } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,7 @@ export default function EssLeavePage() {
   const qc = useQueryClient();
   const [params, setParams] = useSearchParams();
   const [open, setOpen] = useState(params.get("apply") === "1");
-  const year = Number(todayIST().slice(0, 4));
+  const year = Number(todayLocal().slice(0, 4));
   const q = useQuery({ queryKey: ["ess", "leave"], queryFn: () => api.get<EssLeave>("/ess/leave") });
   const hq = useQuery({ queryKey: ["ess", "holidays", year], queryFn: () => api.get<Holiday[]>(`/ess/holidays${qs({ year })}`) });
   const cancel = useMutation({
@@ -44,7 +44,7 @@ export default function EssLeavePage() {
   if (q.isLoading) return <Loading />;
   if (q.isError || !q.data) return <ErrorState error={q.error} retry={() => q.refetch()} />;
   const d = q.data;
-  const today = todayIST();
+  const today = todayLocal();
   const shown = d.balances.filter((b) => b.isPaid);
 
   return (
@@ -114,7 +114,7 @@ export default function EssLeavePage() {
 function ApplyDialog({ open, onOpenChange, data, holidays }: { open: boolean; onOpenChange: (v: boolean) => void; data: EssLeave; holidays: Holiday[] }) {
   const qc = useQueryClient();
   const first = data.types.find((t) => t.code === "CL") ?? data.types[0];
-  const blank = () => ({ leaveTypeId: first?.id ?? "", startDate: todayIST(), endDate: todayIST(), halfDay: false, reason: "" });
+  const blank = () => ({ leaveTypeId: first?.id ?? "", startDate: todayLocal(), endDate: todayLocal(), halfDay: false, reason: "" });
   const [f, setF] = useState(blank);
   const [errors, setErrors] = useState<Record<string, string>>({});
   useEffect(() => {

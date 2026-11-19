@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Printer } from "lucide-react";
-import { fmtDate, inr, rupeesInWords } from "@hrms/shared";
+import { fmtDate, fmtMoney, rupeesInWords } from "@hrms/shared";
 import { api } from "@/lib/api";
 import type { InvoiceDetail, InvoiceStatus } from "@/lib/types";
 import { Dialog } from "@/components/ui/dialog";
@@ -72,25 +72,25 @@ export function InvoiceView({ inv }: { inv: InvoiceDetail }) {
               <td>{l.description}</td>
               <td>{l.sac}</td>
               <td style={{ textAlign: "right" }} className="num">{l.quantity}</td>
-              <td style={{ textAlign: "right" }} className="num">{inr(l.rate, { decimals: 2 })}</td>
-              <td style={{ textAlign: "right" }} className="num">{inr(l.amount, { decimals: 2 })}</td>
+              <td style={{ textAlign: "right" }} className="num">{fmtMoney(l.rate, { decimals: 2 })}</td>
+              <td style={{ textAlign: "right" }} className="num">{fmtMoney(l.amount, { decimals: 2 })}</td>
             </tr>
           ))}
         </tbody>
       </table>
       <div className="ml-auto flex w-full max-w-[320px] flex-col gap-1">
-        <Row label="Taxable value" value={inr(inv.subtotal, { decimals: 2 })} />
+        <Row label="Taxable value" value={fmtMoney(inv.subtotal, { decimals: 2 })} />
         {intra ? (
           <>
-            <Row label="CGST 9%" value={inr(inv.cgst, { decimals: 2 })} />
-            <Row label="SGST 9%" value={inr(inv.sgst, { decimals: 2 })} />
+            <Row label="CGST 9%" value={fmtMoney(inv.cgst, { decimals: 2 })} />
+            <Row label="SGST 9%" value={fmtMoney(inv.sgst, { decimals: 2 })} />
           </>
         ) : (
-          <Row label="IGST 18%" value={inr(inv.igst, { decimals: 2 })} />
+          <Row label="IGST 18%" value={fmtMoney(inv.igst, { decimals: 2 })} />
         )}
         <div className="mt-1 flex justify-between border-t border-[var(--color-divider)] pt-2 text-[15px] font-semibold">
           <span>Total</span>
-          <span className="num">{inr(inv.total, { decimals: 2 })}</span>
+          <span className="num">{fmtMoney(inv.total, { decimals: 2 })}</span>
         </div>
         <div className="text-muted text-right text-[12px]">{rupeesInWords(Math.round(inv.total))}</div>
       </div>
@@ -162,7 +162,7 @@ export function InvoiceDialog({ path, onClose, onPay }: { path: string | null; o
           </Button>
           {onPay && q.data?.payOnline ? (
             <Button variant="primary" onClick={() => onPay(q.data!.id)}>
-              Pay {inr(q.data.total)} now
+              Pay {fmtMoney(q.data.total)} now
             </Button>
           ) : null}
         </>

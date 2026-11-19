@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Download, Plus } from "lucide-react";
-import { ASSET_CATEGORIES, ASSET_CATEGORY_LABEL, ASSET_STATUS_LABEL, ASSET_STATUSES, fmtDate, inr, ISSUE_LABEL } from "@hrms/shared";
+import { ASSET_CATEGORIES, ASSET_CATEGORY_LABEL, ASSET_STATUS_LABEL, ASSET_STATUSES, fmtDate, fmtMoney, ISSUE_LABEL } from "@hrms/shared";
 import { api, download, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
@@ -51,7 +51,7 @@ export default function Assets() {
           ) : <span className="text-muted">{a.branch ?? "—"}</span>,
       },
       { id: "warranty", header: "Warranty", accessorKey: "warrantyUntil", cell: ({ row: { original: a } }) => (a.warrantyUntil ? <span className={a.warranty === "expired" ? "text-muted" : a.warranty === "ending" ? "text-[var(--bad)]" : ""}>{a.warranty === "expired" ? "Ended " : "Until "}{fmtDate(a.warrantyUntil)}</span> : "—") },
-      { id: "cost", header: "Cost", accessorKey: "purchaseCost", cell: ({ getValue }) => (getValue<number | null>() != null ? inr(getValue<number>()) : "—") },
+      { id: "cost", header: "Cost", accessorKey: "purchaseCost", cell: ({ getValue }) => (getValue<number | null>() != null ? fmtMoney(getValue<number>()) : "—") },
     ],
     [],
   );
@@ -79,7 +79,7 @@ export default function Assets() {
       ) : null}
       {list.error ? <ErrorState error={list.error} retry={() => list.refetch()} /> : null}
       <TableCard>
-        <CardHeader className="py-2" title="Register" sub={s ? `Current value at cost ${inr(s.value)}, not counting retired or lost assets.` : undefined} />
+        <CardHeader className="py-2" title="Register" sub={s ? `Current value at cost ${fmtMoney(s.value)}, not counting retired or lost assets.` : undefined} />
         <DataTable
           data={list.data?.rows ?? []}
           columns={columns}

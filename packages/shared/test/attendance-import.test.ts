@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { istDateOf, matchImportColumns, parseImportDate, parseImportStatus, parseImportTime, parsePunchTime } from "../src/attendance-import";
+import { localDateOf, matchImportColumns, parseImportDate, parseImportStatus, parseImportTime, parsePunchTime } from "../src/attendance-import";
 
 describe("attendance import parsing", () => {
   it("reads Indian and ISO dates", () => {
@@ -45,7 +45,7 @@ describe("attendance import parsing", () => {
     const d = parsePunchTime("2026-11-05 09:02:10")!;
     expect(d.toISOString()).toBe("2026-11-05T03:32:10.000Z");
     expect(parsePunchTime("2026-11-05T03:32:10Z")!.getTime()).toBe(d.getTime());
-    expect(istDateOf(parsePunchTime("2026-11-05 23:50")!)).toBe("2026-11-05");
+    expect(localDateOf(parsePunchTime("2026-11-05 23:50")!)).toBe("2026-11-05");
     expect(parsePunchTime("yesterday")).toBeNull();
   });
 });

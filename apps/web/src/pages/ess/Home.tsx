@@ -3,7 +3,7 @@ import { Link, Navigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { CalendarPlus, Camera, ClipboardEdit, FileText, MapPin } from "lucide-react";
-import { addWeeks, fmtDate, todayIST, weekStart } from "@hrms/shared";
+import { addWeeks, fmtDate, todayLocal, weekStart } from "@hrms/shared";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { isNetworkError, QUEUE_EVENT, queuedPunches, queuePunch, savedHome, saveHome } from "@/lib/offline";
@@ -307,7 +307,7 @@ function InterviewNotice() {
 /** Last week's timesheet, for people who keep timesheets: not submitted yet, or sent back. */
 function TimesheetNotice() {
   const { has } = useSession();
-  const last = addWeeks(weekStart(todayIST()), -1);
+  const last = addWeeks(weekStart(todayLocal()), -1);
   const q = useQuery({ queryKey: ["timesheets", "mine", last], queryFn: () => api.get<{ sheet: { status: string; rejectReason: string | null } | null; recent: unknown[]; projects: unknown[] }>(`/ess/timesheets?week=${last}`), enabled: has("module.timesheets"), staleTime: 300_000 });
   const d = q.data;
   if (!d || !d.projects.length || !d.recent.length) return null;

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { toast } from "sonner";
-import { ATTENDANCE_CODES, ATTENDANCE_STATUS_LABELS, todayIST, type AttendanceStatus } from "@hrms/shared";
+import { ATTENDANCE_CODES, ATTENDANCE_STATUS_LABELS, todayLocal, type AttendanceStatus } from "@hrms/shared";
 import { api, download, errorMessage, qs } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
@@ -58,7 +58,7 @@ const th = "px-2 py-1.5 text-[11px] uppercase tracking-[0.06em] font-normal whit
 export default function Monthly() {
   const { can } = useSession();
   const lookups = useLookups();
-  const current = todayIST().slice(0, 7);
+  const current = todayLocal().slice(0, 7);
   const [month, setMonth] = useState(current);
   const [departmentId, setDept] = useState("");
   const [q, setQ] = useState("");

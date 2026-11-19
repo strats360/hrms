@@ -2,9 +2,8 @@ import { boolean, date, index, jsonb, numeric, pgTable, text, timestamp, uniqueI
 import type { MonthlyComponents, PayLine } from "@hrms/shared";
 import { tenantIdColumn as tenantId } from "./org";
 import { employees } from "./people";
-import { id, timestamps } from "./_helpers";
+import { id, money, timestamps } from "./_helpers";
 
-const money = (name: string) => numeric(name, { precision: 14, scale: 2, mode: "number" });
 
 /** Effective-dated salary per employee. Without a row, the template + employees.annual_ctc is used. */
 export const salaryStructures = pgTable(

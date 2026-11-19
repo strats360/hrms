@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ChevronLeft, Check } from "lucide-react";
-import { EMPLOYEE_STATUS_LABELS, EMPLOYEE_STATUSES, EMPLOYMENT_TYPE_LABELS, EMPLOYMENT_TYPES, employeeCreateSchema, employeeUpdateSchema, inr, todayIST } from "@hrms/shared";
+import { EMPLOYEE_STATUS_LABELS, EMPLOYEE_STATUSES, EMPLOYMENT_TYPE_LABELS, EMPLOYMENT_TYPES, employeeCreateSchema, employeeUpdateSchema, fmtMoney, todayLocal } from "@hrms/shared";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox, Field, Input, Segmented, Select } from "@/components/ui/field";
@@ -66,7 +66,7 @@ type Form = {
 const EMPTY: Form = {
   firstName: "", lastName: "", workEmail: "", personalEmail: "", phone: "", dateOfBirth: "", gender: "", maritalStatus: "", bloodGroup: "",
   currentAddress: "", permanentAddress: "", emergencyContactName: "", emergencyContactRelation: "", emergencyContactPhone: "",
-  employeeCode: "", dateOfJoining: todayIST(), entityId: "", departmentId: "", designationId: "", managerId: "", branchId: "", shiftId: "", biometricId: "", wageCategory: "",
+  employeeCode: "", dateOfJoining: todayLocal(), entityId: "", departmentId: "", designationId: "", managerId: "", branchId: "", shiftId: "", biometricId: "", wageCategory: "",
   employmentType: "full_time", workLocation: "", status: "probation", probationMonths: "6", confirmationDate: "", resignationDate: "", lastWorkingDay: "",
   annualCtc: "", accountHolderName: "", bankName: "", accountNumber: "", ifsc: "", paymentMethod: "bank_transfer",
   pan: "", aadhaarLast4: "", uan: "", esicIpNumber: "", pfApplicable: true, esiApplicable: false, ptApplicable: true, taxRegime: "new", sendInvite: true,
@@ -230,7 +230,7 @@ export default function EmployeeForm() {
 
   const monthly = useMemo(() => {
     const n = Number(form.annualCtc.replace(/[,₹\s]/g, ""));
-    return n > 0 ? inr(n / 12) : null;
+    return n > 0 ? fmtMoney(n / 12) : null;
   }, [form.annualCtc]);
 
   if (!can("employees", "edit")) return <Notice tone="warn">You don't have permission to add or edit employees.</Notice>;

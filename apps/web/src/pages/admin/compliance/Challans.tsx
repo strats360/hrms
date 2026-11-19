@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { fmtDate, fyOfMonth, inr, todayIST } from "@hrms/shared";
+import { fmtDate, fyOfMonth, fmtMoney, todayLocal } from "@hrms/shared";
 import { api, qs } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { Obligation } from "@/lib/types";
@@ -19,7 +19,7 @@ type Filter = "all" | "open" | "paid";
 export default function Challans() {
   const { can } = useSession();
   const [params, setParams] = useSearchParams();
-  const currentFy = fyOfMonth(todayIST().slice(0, 7));
+  const currentFy = fyOfMonth(todayLocal().slice(0, 7));
   const fy = params.get("fy") ?? currentFy;
   const status = (params.get("status") as Filter) ?? "all";
   const [statute, setStatute] = useState("");
@@ -35,7 +35,7 @@ export default function Challans() {
     () => [
       { id: "label", header: "Statute", accessorKey: "label", cell: ({ getValue }) => <span className="font-semibold">{getValue<string>()}</span> },
       { id: "period", header: "Period", accessorKey: "period", cell: ({ getValue }) => monthLabel(getValue<string>()) },
-      { id: "amount", header: "Amount", accessorKey: "amount", meta: { align: "right" }, cell: ({ row: { original: o } }) => <div>{inr(o.challan?.amountPaid ?? o.amount)}{o.challan && o.challan.amountPaid !== o.amount ? <div className="text-muted text-[11.5px]">liability {inr(o.amount)}</div> : null}</div> },
+      { id: "amount", header: "Amount", accessorKey: "amount", meta: { align: "right" }, cell: ({ row: { original: o } }) => <div>{fmtMoney(o.challan?.amountPaid ?? o.amount)}{o.challan && o.challan.amountPaid !== o.amount ? <div className="text-muted text-[11.5px]">liability {fmtMoney(o.amount)}</div> : null}</div> },
       { id: "due", header: "Due", accessorKey: "dueDate", cell: ({ getValue }) => fmtDate(getValue<string>()) },
       { id: "ref", header: "Challan / TRRN", accessorFn: (o) => o.challan?.reference ?? "", cell: ({ row: { original: o } }) => <span className="text-muted text-[12.5px]">{o.challan?.reference ?? "—"}</span> },
       { id: "paidOn", header: "Paid on", accessorFn: (o) => o.challan?.paidOn ?? "", cell: ({ row: { original: o } }) => (o.challan ? fmtDate(o.challan.paidOn) : "—") },

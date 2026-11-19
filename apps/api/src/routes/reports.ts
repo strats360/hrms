@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import { and, asc, eq } from "drizzle-orm";
 import { branches, departments } from "@hrms/db";
-import { can, todayIST } from "@hrms/shared";
+import { can, todayLocal } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
 import { requirePerm } from "../lib/context";
@@ -51,7 +51,7 @@ reportRoutes.get("/:key", requirePerm("reports", "view"), v("query", q), async (
   if (f.format === "json") {
     return c.json({ key: def.key, name: def.name, period: def.usesPeriod ? period.label : null, header: res.header, rows: res.rows.slice(0, 100), total: res.rows.length, note: res.note ?? null, extraSheets: (res.sheets ?? []).map((s) => s.name) });
   }
-  const base = `${def.key}-${def.usesPeriod ? period.label.replace(/\s+/g, "-").toLowerCase() : todayIST()}`;
+  const base = `${def.key}-${def.usesPeriod ? period.label.replace(/\s+/g, "-").toLowerCase() : todayLocal()}`;
   await audit(c, { action: "reports.export", entity: "report", entityId: def.key, summary: `Exported ${def.name}${def.usesPeriod ? ` (${period.label})` : ""} as ${f.format.toUpperCase()}: ${res.rows.length} rows` });
   if (f.format === "xlsx") {
     const file = toXlsx([{ name: def.name, header: res.header, rows: res.rows }, ...(res.sheets ?? [])]);

@@ -9,7 +9,7 @@ import {
   EMPLOYEE_STATUS_LABELS,
   EMPLOYMENT_TYPE_LABELS,
   fmtDate,
-  inr,
+  fmtMoney,
   type DocumentType,
   probationEndDate,
   type EmployeeStatus,
@@ -202,7 +202,7 @@ export default function EmployeeProfile() {
               ["Reports to", e.manager ?? "—"],
               ["Joined", fmtDate(e.dateOfJoining)],
               ...(e.status === "probation" ? [["Probation ends", <Link key="pe" to="/employees/probation">{fmtDate(probationEndDate({ dateOfJoining: e.dateOfJoining, probationMonths: e.probationMonths, confirmationDate: e.confirmationDate }))}</Link>]] : []),
-              ...(e.annualCtc !== null ? [["Annual CTC", <b key="ctc" className="num font-semibold">{inr(e.annualCtc)}</b>]] : []),
+              ...(e.annualCtc !== null ? [["Annual CTC", <b key="ctc" className="num font-semibold">{fmtMoney(e.annualCtc)}</b>]] : []),
               [
                 "Login",
                 e.login ? (

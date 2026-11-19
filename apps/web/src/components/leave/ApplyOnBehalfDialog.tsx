@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { countLeaveDays, todayIST } from "@hrms/shared";
+import { countLeaveDays, todayLocal } from "@hrms/shared";
 import { api, errorMessage } from "@/lib/api";
 import type { Holiday, LeaveType } from "@/lib/types";
 import { Dialog } from "@/components/ui/dialog";
@@ -14,7 +14,7 @@ export function ApplyOnBehalfDialog({ open, onOpenChange }: { open: boolean; onO
   const qc = useQueryClient();
   const lookups = useLookups();
   const types = useQuery({ queryKey: ["leave", "types"], queryFn: () => api.get<LeaveType[]>("/admin/leave/types"), enabled: open });
-  const empty = { employeeId: "", leaveTypeId: "", startDate: todayIST(), endDate: todayIST(), halfDay: false, reason: "" };
+  const empty = { employeeId: "", leaveTypeId: "", startDate: todayLocal(), endDate: todayLocal(), halfDay: false, reason: "" };
   const [f, setF] = useState(empty);
   const [err, setErr] = useState<string | null>(null);
   const year = f.startDate.slice(0, 4);

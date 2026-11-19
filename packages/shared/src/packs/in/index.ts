@@ -10,6 +10,7 @@ export const indiaPack: CountryPack = {
   info: COUNTRIES.IN,
   payroll: {
     statutory: indiaStatutory,
+    roundingDecimals: 0,
     amountInWords: (n) => rupeesInWords(n),
   },
   settlement: (i) => computeSettlement(i),

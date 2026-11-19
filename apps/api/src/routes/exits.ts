@@ -10,11 +10,11 @@ import {
   EXIT_TYPE_LABELS,
   exitCreateSchema,
   exitUpdateSchema,
-  inr,
+  fmtMoney,
   isoDate,
   resignationSchema,
   settlementSchema,
-  todayIST,
+  todayLocal,
   type ExitStatus,
   type ExitType,
 } from "@hrms/shared";
@@ -100,7 +100,7 @@ exitRoutes.get("/", requirePerm("employees", "view"), async (c) => {
       requested: sql<number>`count(*) filter (where ${employeeExits.status} = 'requested')::int`,
       notice: sql<number>`count(*) filter (where ${employeeExits.status} = 'notice')::int`,
       pendingSettlement: sql<number>`count(*) filter (where ${employeeExits.status} in ('settlement','approved'))::int`,
-      leavingThisMonth: sql<number>`count(*) filter (where ${employeeExits.status} not in ('settled','cancelled') and to_char(${employeeExits.lastWorkingDay}, 'YYYY-MM') = ${todayIST().slice(0, 7)})::int`,
+      leavingThisMonth: sql<number>`count(*) filter (where ${employeeExits.status} not in ('settled','cancelled') and to_char(${employeeExits.lastWorkingDay}, 'YYYY-MM') = ${todayLocal().slice(0, 7)})::int`,
     })
     .from(employeeExits)
     .where(eq(employeeExits.tenantId, tid(c)));
@@ -226,7 +226,7 @@ exitRoutes.put("/:id/settlement", requirePerm("payroll", "edit"), v("json", sett
     .where(and(eq(employeeExits.id, x.id), eq(employeeExits.status, x.status)))
     .returning();
   if (!row) throw badRequest("This exit changed. Reload and try again.");
-  await audit(c, { action: "exit.settlement_draft", entity: "employee_exit", entityId: x.id, summary: `Drafted the full and final settlement for ${e.fullName}: net ${inr(s.result.net)}` });
+  await audit(c, { action: "exit.settlement_draft", entity: "employee_exit", entityId: x.id, summary: `Drafted the full and final settlement for ${e.fullName}: net ${fmtMoney(s.result.net)}` });
   return c.json({ ...row, warnings: s.warnings });
 });
 
@@ -236,17 +236,17 @@ exitRoutes.post("/:id/approve", requirePerm("payroll", "approve"), async (c) => 
   if (x.status !== "settlement") throw badRequest(x.status === "approved" ? "Already approved" : "Draft the settlement first");
   const t = c.get("tenant");
   if (x.preparedBy === uid(c) && !(can(t.permissions, "users", "configure") && can(t.permissions, "payroll", "configure"))) throw forbidden("Someone other than the person who drafted this settlement must approve it");
-  if (x.lastWorkingDay > todayIST()) throw badRequest(`Approve the settlement on or after the last working day (${fmt(x.lastWorkingDay)})`);
+  if (x.lastWorkingDay > todayLocal()) throw badRequest(`Approve the settlement on or after the last working day (${fmt(x.lastWorkingDay)})`);
   const pending = x.clearance.filter((i) => !i.done);
   if (pending.length) throw badRequest(`Finish the exit checklist first: ${pending.map((i) => i.label).join("; ")}`);
   // the figures must still be what was drafted (leave, salary or dates may have moved)
   const live = await settlementFor(c.get("db"), x, e);
-  if (Math.abs(live.result.net - Number(x.netAmount)) > 0.5) throw conflict(`The figures have changed since the settlement was drafted (now ${inr(live.result.net)}, drafted ${inr(Number(x.netAmount))}). Save the settlement again, then approve.`);
+  if (Math.abs(live.result.net - Number(x.netAmount)) > 0.5) throw conflict(`The figures have changed since the settlement was drafted (now ${fmtMoney(live.result.net)}, drafted ${fmtMoney(Number(x.netAmount))}). Save the settlement again, then approve.`);
   const fp = live.finalPayroll;
   if (fp && fp.status !== "approved" && fp.status !== "paid") throw badRequest(`Approve the ${monthLabel(fp.month)} payroll first. It pays the last month's salary.`);
   const [row] = await c.get("db").update(employeeExits).set({ status: "approved", approvedBy: uid(c), approvedAt: new Date() }).where(and(eq(employeeExits.id, x.id), eq(employeeExits.status, "settlement"))).returning();
   if (!row) throw badRequest("This exit changed. Reload and try again.");
-  await audit(c, { action: "exit.settlement_approve", entity: "employee_exit", entityId: x.id, summary: `Approved the full and final settlement for ${e.fullName}: net ${inr(Number(x.netAmount))}` });
+  await audit(c, { action: "exit.settlement_approve", entity: "employee_exit", entityId: x.id, summary: `Approved the full and final settlement for ${e.fullName}: net ${fmtMoney(Number(x.netAmount))}` });
   return c.json(row);
 });
 
@@ -290,7 +290,7 @@ exitRoutes.post("/:id/pay", requirePerm("payments", "edit"), v("json", z.object(
     .values({ tenantId: tid(c), batchId: batch!.id, employeeId: e.id, reference: ref(), amount: net, description: "Full and final settlement", beneficiaryName: info!.holder ?? info!.name, bankName: info!.bankName, ifsc: info!.ifsc, accountLast4: info!.last4, status: "pending" })
     .returning();
   await db.update(employeeExits).set({ paymentId: pay!.id }).where(eq(employeeExits.id, x.id));
-  await audit(c, { action: "exit.settlement_pay", entity: "employee_exit", entityId: x.id, summary: `Created ${code} to pay ${e.fullName}'s full and final settlement (${inr(net)})` });
+  await audit(c, { action: "exit.settlement_pay", entity: "employee_exit", entityId: x.id, summary: `Created ${code} to pay ${e.fullName}'s full and final settlement (${fmtMoney(net)})` });
   return c.json({ batchId: batch!.id, batchCode: code, paymentId: pay!.id }, 201);
 });
 
@@ -305,7 +305,7 @@ exitRoutes.post("/:id/settle", requirePerm("payroll", "approve"), v("json", z.ob
   const b = c.req.valid("json");
   const row = await markSettled(c.get("db"), x, { on: b.settledOn, method: b.method, reference: b.reference ?? null });
   if (!row) throw badRequest("This exit changed. Reload and try again.");
-  await audit(c, { action: "exit.settled", entity: "employee_exit", entityId: x.id, summary: `Closed ${e.fullName}'s full and final settlement (${b.method.replace(/_/g, " ")}${b.reference ? ` ${b.reference}` : ""}, net ${inr(Number(x.netAmount))})` });
+  await audit(c, { action: "exit.settled", entity: "employee_exit", entityId: x.id, summary: `Closed ${e.fullName}'s full and final settlement (${b.method.replace(/_/g, " ")}${b.reference ? ` ${b.reference}` : ""}, net ${fmtMoney(Number(x.netAmount))})` });
   return c.json(row);
 });
 
@@ -360,7 +360,7 @@ essExitRoutes.post("/resignation", v("json", resignationSchema), async (c) => {
   if (!e) throw notFound("Employee");
   const [open] = await db.select({ code: employeeExits.code }).from(employeeExits).where(and(eq(employeeExits.employeeId, e.id), sql`${employeeExits.status} not in ('settled','cancelled')`));
   if (open) throw conflict("You already have a resignation in progress");
-  const today = todayIST();
+  const today = todayLocal();
   const noticeDays = defaultNoticeDays(e.status, await noticeSettings(db, e.tenantId));
   const lwd = c.req.valid("json").proposedLastDay ?? addDays(today, Math.max(0, noticeDays - 1));
   checkDates(today, lwd);

@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
-import { inr } from "@hrms/shared";
+import { fmtMoney } from "@hrms/shared";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { ClaimApproval, ExpenseCategory, LimitPeriod } from "@/lib/types";
@@ -27,7 +27,7 @@ export default function Categories() {
       { id: "name", header: "Category", accessorFn: (c) => c.name, cell: ({ row: { original: c } }) => <span className="font-semibold">{c.name}</span> },
       { id: "limit", header: "Limit", accessorFn: (c) => Number(c.limitAmount ?? c.ratePerKm ?? 0), cell: ({ row: { original: c } }) => limitText(c) },
       { id: "gst", header: "GST capture", accessorFn: (c) => (c.gstCapture ? 1 : 0), cell: ({ row: { original: c } }) => (c.gstCapture ? "Yes" : "No") },
-      { id: "receipt", header: "Receipt", accessorFn: (c) => Number(c.receiptRequiredAbove), cell: ({ row: { original: c } }) => (Number(c.receiptRequiredAbove) ? `Above ${inr(c.receiptRequiredAbove)}` : "Always") },
+      { id: "receipt", header: "Receipt", accessorFn: (c) => Number(c.receiptRequiredAbove), cell: ({ row: { original: c } }) => (Number(c.receiptRequiredAbove) ? `Above ${fmtMoney(c.receiptRequiredAbove)}` : "Always") },
       { id: "approval", header: "Approval chain", accessorFn: (c) => c.approval, cell: ({ row: { original: c } }) => APPROVAL_TEXT[c.approval] },
       { id: "active", header: "Status", accessorFn: (c) => (c.active ? 1 : 0), cell: ({ row: { original: c } }) => (c.active ? <Tag tone="ok">Active</Tag> : <Tag>Inactive</Tag>) },
     ],

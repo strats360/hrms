@@ -9,7 +9,8 @@ name: Deploy
 #            BETTER_AUTH_SECRET, ENCRYPTION_KEY, RESEND_API_KEY (optional),
 #            PLATFORM_ADMIN_PASSWORD (only to create the first platform admin),
 #            CASHFREE_APP_ID, CASHFREE_SECRET_KEY (optional, online invoice payments)
-#   Variables CUSTOM_DOMAIN, EMAIL_FROM, WORKER_NAME, CASHFREE_ENV (sandbox | production), all optional
+#   Variables CUSTOM_DOMAIN, EMAIL_FROM, WORKER_NAME, CASHFREE_ENV (sandbox | production),
+#            ALLOWED_COUNTRIES, DEFAULT_TIME_ZONE, DEFAULT_CURRENCY (see docs/MULTI_COUNTRY.md), all optional
 # See docs/DEPLOY.md.
 on:
   workflow_dispatch:
@@ -67,6 +68,9 @@ jobs:
       EMAIL_FROM: ${{ vars.EMAIL_FROM }}
       WORKER_NAME: ${{ vars.WORKER_NAME }}
       CASHFREE_ENV: ${{ vars.CASHFREE_ENV }}
+      ALLOWED_COUNTRIES: ${{ vars.ALLOWED_COUNTRIES }}
+      DEFAULT_TIME_ZONE: ${{ vars.DEFAULT_TIME_ZONE }}
+      DEFAULT_CURRENCY: ${{ vars.DEFAULT_CURRENCY }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

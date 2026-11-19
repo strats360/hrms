@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import postgres from "postgres";
 import { createDb } from "@hrms/db";
-import { todayIST } from "@hrms/shared";
+import { todayLocal } from "@hrms/shared";
 import { Client, env, login, mailer } from "./helpers";
 import { allowedRecipients } from "../src/services/notifications";
 
@@ -14,7 +14,7 @@ let priyaId = "";
 let tenantId = "";
 let el = "";
 const made: string[] = [];
-const year = Number(todayIST().slice(0, 4));
+const year = Number(todayLocal().slice(0, 4));
 
 const count = (to: string, subject: RegExp) => mailer.sent.filter((m) => m.to === to && subject.test(m.subject)).length;
 

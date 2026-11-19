@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { branches, departments, designations, employees, tenants, type Database } from "@hrms/db";
-import { BUILT_IN_LETTERS, COMPONENT_LABELS, letterBlocks, probationEndDate, pronouns, rupeesInWords, todayIST, type LetterTemplate, type LetterValues, type MonthlyComponents } from "@hrms/shared";
+import { BUILT_IN_LETTERS, COMPONENT_LABELS, letterBlocks, probationEndDate, pronouns, rupeesInWords, todayLocal, type LetterTemplate, type LetterValues, type MonthlyComponents } from "@hrms/shared";
 import { A4, colors, MARGIN, PdfWriter } from "../lib/pdf";
 import { getTemplate, resolveStructure, structuresAsOf } from "./payroll";
 
@@ -78,12 +78,12 @@ export async function letterValues(db: Database, tenantId: string, employeeId: s
     "company.state": t?.state ?? "",
     "signatory.name": settings.signatoryName ?? "",
     "signatory.title": settings.signatoryTitle ?? "",
-    today: longDate(todayIST()),
+    today: longDate(todayLocal()),
   };
   let salary: SalaryRow[] | null = null;
   if (withSalary) {
     const book = await getTemplate(db, tenantId);
-    const current = (await structuresAsOf(db, tenantId, [e.id], todayIST())).get(e.id);
+    const current = (await structuresAsOf(db, tenantId, [e.id], todayLocal())).get(e.id);
     const st = resolveStructure(e, current, book);
     if (st.annualCtc > 0) {
       const c: MonthlyComponents = st.components;
@@ -134,7 +134,7 @@ export async function letterPdf(o: { title: string; text: string; reference: str
     }
   };
   w.text(L, y, `Ref: ${o.reference}`, { size: 9, color: colors.muted });
-  w.text(R - 200, y, `Date: ${longDate(todayIST())}`, { size: 9, color: colors.muted, align: "right", width: 200 });
+  w.text(R - 200, y, `Date: ${longDate(todayLocal())}`, { size: 9, color: colors.muted, align: "right", width: 200 });
   y += 26;
 
   for (const b of letterBlocks(o.text)) {

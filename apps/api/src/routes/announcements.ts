@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { announcementReads, announcements, employees } from "@hrms/db";
-import { announcementSchema, inAudience, isLive, todayIST } from "@hrms/shared";
+import { announcementSchema, inAudience, isLive, todayLocal } from "@hrms/shared";
 import type { AppEnv } from "../env";
 import { requireEmployee, requirePerm } from "../lib/context";
 import { v } from "../lib/validate";
@@ -18,7 +18,7 @@ function statusOf(a: Announcement, now = new Date()) {
   if (a.status === "draft") return "draft";
   if (a.status === "archived") return "archived";
   if (a.publishAt && new Date(a.publishAt) > now) return "scheduled";
-  if (a.expiresAt && a.expiresAt < todayIST()) return "expired";
+  if (a.expiresAt && a.expiresAt < todayLocal()) return "expired";
   return "live";
 }
 const out = (a: Announcement) => {
@@ -50,7 +50,7 @@ async function load(c: Context<AppEnv>, id: string) {
 
 function fields(b: ReturnType<typeof announcementSchema.parse>) {
   if (b.publishAt && b.expiresAt && b.expiresAt < b.publishAt.slice(0, 10)) throw badRequest("It would expire before it's published");
-  if (b.expiresAt && b.expiresAt < todayIST()) throw badRequest("The end date has already passed");
+  if (b.expiresAt && b.expiresAt < todayLocal()) throw badRequest("The end date has already passed");
   return { title: b.title, body: b.body, category: b.category, audience: { departmentIds: b.departmentIds, branchIds: b.branchIds }, pinned: b.pinned, requireAck: b.requireAck, emailEveryone: b.emailEveryone, expiresAt: b.expiresAt, status: b.draft ? "draft" : "published", publishAt: b.draft ? (b.publishAt ? new Date(b.publishAt) : null) : b.publishAt ? new Date(b.publishAt) : new Date() };
 }
 
@@ -129,7 +129,7 @@ async function visible(c: Context<AppEnv>) {
   const [me] = await db.select({ departmentId: employees.departmentId, branchId: employees.branchId }).from(employees).where(eq(employees.id, c.get("tenant").employeeId!));
   const rows = await db.select().from(announcements).where(and(eq(announcements.tenantId, tid(c)), eq(announcements.status, "published"))).orderBy(desc(announcements.pinned), desc(announcements.publishAt)).limit(300);
   const now = new Date();
-  return rows.filter((a) => isLive(a, now, todayIST()) && me && inAudience(a.audience, me));
+  return rows.filter((a) => isLive(a, now, todayLocal()) && me && inAudience(a.audience, me));
 }
 
 essAnnouncementRoutes.get("/", async (c) => {

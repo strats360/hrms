@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import postgres from "postgres";
 import { createDb } from "@hrms/db";
-import { addMonthsToDate, todayIST } from "@hrms/shared";
+import { addMonthsToDate, todayLocal } from "@hrms/shared";
 import { Client, env, lastEmailTo, login, mailer } from "./helpers";
 import { probationReminders } from "../src/services/probation";
 
@@ -10,7 +10,7 @@ const db = createDb(env.DATABASE_URL!, { max: 1 });
 let hardik: Client, nisha: Client, amit: Client, priya: Client;
 let priyaId = "";
 let original: any = null;
-const today = todayIST();
+const today = todayLocal();
 const plusDays = (iso: string, n: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 const end = plusDays(today, 10);
 

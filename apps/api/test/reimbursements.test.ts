@@ -1,10 +1,10 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { todayIST } from "@hrms/shared";
+import { todayLocal } from "@hrms/shared";
 import { Client, lastEmailTo, login } from "./helpers";
 
 let priya: Client, hardik: Client, kunal: Client, krupa: Client, nisha: Client;
 let cats: Record<string, any> = {};
-const today = todayIST();
+const today = todayLocal();
 
 function form(data: Record<string, unknown>, files: File[] = []) {
   const f = new FormData();

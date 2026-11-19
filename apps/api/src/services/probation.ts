@@ -1,7 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { createDb, departments, designations, employees, memberships, probationEvents, roles, tenants, user, type Database } from "@hrms/db";
-import { daysUntil, DEFAULT_PROBATION, fmtDate, probationEndDate, todayIST, type ProbationSettings } from "@hrms/shared";
+import { daysUntil, DEFAULT_PROBATION, fmtDate, probationEndDate, todayLocal, type ProbationSettings } from "@hrms/shared";
 import type { Env } from "../env";
 import { mailerFor } from "../lib/context";
 import { layout } from "../lib/email";
@@ -25,7 +25,7 @@ export async function onProbation(db: Database, tenantId: string, only?: string[
     .leftJoin(mgr, eq(mgr.id, employees.managerId))
     .where(and(eq(employees.tenantId, tenantId), eq(employees.status, "probation"), ...(only ? [inArray(employees.id, only)] : [])));
   const events = rows.length ? await db.select().from(probationEvents).where(inArray(probationEvents.employeeId, rows.map((r) => r.e.id))).orderBy(probationEvents.createdAt) : [];
-  const today = todayIST();
+  const today = todayLocal();
   return rows
     .map((r) => {
       const mine = events.filter((x) => x.employeeId === r.e.id);
@@ -54,7 +54,7 @@ export async function onProbation(db: Database, tenantId: string, only?: string[
  * Daily: email the manager and HR once when someone's probation is about to end (or has
  * ended without a decision). Re-arms automatically when probation is extended.
  */
-export async function probationReminders(db: Database, env: Env, today = todayIST()) {
+export async function probationReminders(db: Database, env: Env, today = todayLocal()) {
   const ts = await db.select({ id: tenants.id, name: tenants.name }).from(tenants).where(inArray(tenants.status, ["active", "trial", "past_due"]));
   const mailer = mailerFor(env);
   let sent = 0;

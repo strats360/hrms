@@ -1,3 +1,4 @@
+import { toLocalDate, weekday } from "@hrms/shared";
 import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { platformStaff, supportAccess, supportTickets, user, type Database } from "@hrms/db";
 
@@ -7,10 +8,10 @@ export type Priority = keyof typeof SLA;
 
 export function responseDue(priority: Priority, from = new Date()) {
   if (priority !== "P3") return new Date(from.getTime() + SLA[priority].hours * 3600_000);
-  // next business day, same time (IST weekends skipped)
+  // next business day, same time (weekends in the site's time zone skipped)
   const d = new Date(from.getTime() + 86400_000);
-  const ist = (x: Date) => new Date(x.getTime() + 5.5 * 3600_000).getUTCDay();
-  while (ist(d) === 0 || ist(d) === 6) d.setTime(d.getTime() + 86400_000);
+  const day = (x: Date) => weekday(toLocalDate(x));
+  while (day(d) === 0 || day(d) === 6) d.setTime(d.getTime() + 86400_000);
   return d;
 }
 

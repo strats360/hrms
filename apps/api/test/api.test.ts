@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from "vitest";
 import { Client, lastEmailTo, login } from "./helpers";
-import { todayIST } from "@hrms/shared";
+import { todayLocal } from "@hrms/shared";
 
 let hr: Client, kunal: Client, priya: Client, hardik: Client, platform: Client;
 
@@ -156,11 +156,11 @@ describe("leave", () => {
     const home = await priya.get("/ess/leave");
     const cl = home.body.types.find((t: any) => t.code === "CL");
     // pick next Monday-Wednesday window beyond seeded leave
-    const d = new Date(todayIST() + "T00:00:00Z");
+    const d = new Date(todayLocal() + "T00:00:00Z");
     d.setUTCDate(d.getUTCDate() + ((8 - d.getUTCDay()) % 7 || 7) + 21);
     const start = d.toISOString().slice(0, 10);
     const r = await priya.post("/ess/leave", { leaveTypeId: cl.id, startDate: start, endDate: start, halfDay: false, reason: "Bank work" });
-    if (start.slice(0, 4) !== todayIST().slice(0, 4)) return; // year boundary, skip
+    if (start.slice(0, 4) !== todayLocal().slice(0, 4)) return; // year boundary, skip
     expect(r.status).toBe(201);
     const overlap = await priya.post("/ess/leave", { leaveTypeId: cl.id, startDate: start, endDate: start, halfDay: false });
     expect(overlap.status).toBe(409);
@@ -182,7 +182,7 @@ describe("leave", () => {
     const ravi = (await hr.get("/admin/employees?q=STL-0057")).body.rows[0];
     const types = (await hr.get("/admin/leave/types")).body;
     const lop = types.find((t: any) => t.code === "LOP");
-    const d = new Date(todayIST() + "T00:00:00Z");
+    const d = new Date(todayLocal() + "T00:00:00Z");
     // seeded leave and holidays move with today's date: take the first weekday that works
     let created: Awaited<ReturnType<typeof hr.post>> | null = null;
     for (let i = 0; i < 30 && created?.status !== 201; i++) {
@@ -201,7 +201,7 @@ describe("leave", () => {
   it("refuses leave beyond balance", async () => {
     const home = await priya.get("/ess/leave");
     const sl = home.body.types.find((t: any) => t.code === "SL");
-    const y = todayIST().slice(0, 4);
+    const y = todayLocal().slice(0, 4);
     // seeded leave moves with today's date, so pick a month that's clear of it
     const free = ([["01-02", "01-31"], ["07-01", "07-31"], ["12-01", "12-31"]] as const).map(([a, b]) => [`${y}-${a}`, `${y}-${b}`]).find(([a, b]) => !home.body.requests.some((q: any) => q.status !== "rejected" && q.status !== "cancelled" && q.startDate <= b! && q.endDate >= a!))!;
     const r = await priya.post("/ess/leave", { leaveTypeId: sl.id, startDate: free[0], endDate: free[1], halfDay: false });

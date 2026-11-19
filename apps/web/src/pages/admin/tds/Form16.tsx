@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Download } from "lucide-react";
-import { fmtDate, inr, todayIST } from "@hrms/shared";
+import { fmtDate, fmtMoney, todayLocal } from "@hrms/shared";
 import { api, download, qs } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
@@ -57,8 +57,8 @@ export default function Form16Page() {
     () => [
       { id: "name", header: "Employee", accessorKey: "name", cell: ({ row: { original: e } }) => <div><div className="font-medium">{e.name}</div><div className="text-muted text-[12px]">{e.code}</div></div> },
       { id: "pan", header: "PAN", accessorKey: "pan", cell: ({ getValue }) => getValue<string>() ?? <span style={{ color: "var(--warn-fg)" }}>Missing</span> },
-      { id: "gross", header: "Salary paid", accessorKey: "gross", meta: { align: "right" }, cell: ({ getValue }) => inr(getValue<number>()) },
-      { id: "tds", header: "TDS", accessorKey: "tds", meta: { align: "right" }, cell: ({ getValue }) => inr(getValue<number>()) },
+      { id: "gross", header: "Salary paid", accessorKey: "gross", meta: { align: "right" }, cell: ({ getValue }) => fmtMoney(getValue<number>()) },
+      { id: "tds", header: "TDS", accessorKey: "tds", meta: { align: "right" }, cell: ({ getValue }) => fmtMoney(getValue<number>()) },
     ],
     [],
   );
@@ -73,7 +73,7 @@ export default function Form16Page() {
       ) : (
         <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(240px, 100%), 1fr))" }}>
           {returns.data!.quarters.map((q) => {
-            const overdue = !q.filed && q.due < todayIST() && q.lockedMonths > 0;
+            const overdue = !q.filed && q.due < todayLocal() && q.lockedMonths > 0;
             return (
               <Card key={q.quarter} className="!gap-2 !p-[18px]">
                 <div className="flex items-start justify-between gap-2">
@@ -85,11 +85,11 @@ export default function Form16Page() {
                 </div>
                 <div className="flex justify-between text-[13px]">
                   <span className="text-muted">TDS deducted</span>
-                  <span className="num">{inr(q.tdsDeducted)}</span>
+                  <span className="num">{fmtMoney(q.tdsDeducted)}</span>
                 </div>
                 <div className="flex justify-between text-[13px]">
                   <span className="text-muted">Deposited</span>
-                  <span className="num">{inr(q.tdsDeposited)}</span>
+                  <span className="num">{fmtMoney(q.tdsDeposited)}</span>
                 </div>
                 <div className="text-muted text-[12px]">
                   {q.lockedMonths}/3 months locked{q.filed?.acknowledgement ? ` · ack ${q.filed.acknowledgement}` : ""}
@@ -170,13 +170,13 @@ export default function Form16Page() {
 
 function FilingDialog({ fy, q, onClose }: { fy: string; q: Quarter | null; onClose: () => void }) {
   const qc = useQueryClient();
-  const [form, setForm] = useState({ filedOn: todayIST(), acknowledgement: "", notes: "" });
+  const [form, setForm] = useState({ filedOn: todayLocal(), acknowledgement: "", notes: "" });
   const [error, setError] = useState<string | null>(null);
   const [lastKey, setLastKey] = useState<string | null>(null);
   if (q && lastKey !== q.quarter) {
     setLastKey(q.quarter);
     setError(null);
-    setForm({ filedOn: q.filed?.filedOn ?? todayIST(), acknowledgement: q.filed?.acknowledgement ?? "", notes: q.filed?.notes ?? "" });
+    setForm({ filedOn: q.filed?.filedOn ?? todayLocal(), acknowledgement: q.filed?.acknowledgement ?? "", notes: q.filed?.notes ?? "" });
   }
   if (!q && lastKey) setLastKey(null);
   const save = useMutation({
@@ -206,7 +206,7 @@ function FilingDialog({ fy, q, onClose }: { fy: string; q: Quarter | null; onClo
     >
       {error ? <Notice tone="bad">{error}</Notice> : null}
       <Field label="Filed on">
-        <Input type="date" max={todayIST()} value={form.filedOn} onChange={(e) => setForm({ ...form, filedOn: e.target.value })} />
+        <Input type="date" max={todayLocal()} value={form.filedOn} onChange={(e) => setForm({ ...form, filedOn: e.target.value })} />
       </Field>
       <Field label="Token / provisional receipt number">
         <Input value={form.acknowledgement} onChange={(e) => setForm({ ...form, acknowledgement: e.target.value })} />

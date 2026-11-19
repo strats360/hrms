@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { fmtDate, inr, structureRevisionSchema, todayIST } from "@hrms/shared";
+import { fmtDate, fmtMoney, structureRevisionSchema, todayLocal } from "@hrms/shared";
 import { api, ApiError } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { ExtraComponent, Structure } from "@/lib/types";
@@ -32,7 +32,7 @@ export function Breakdown({ s }: { s: Structure }) {
       {COMP.filter(([k]) => k !== "special").map(([k, l]) => (
         <div key={k} className="flex justify-between py-1">
           <span>{l}</span>
-          <span className="num">{inr(s.components[k])}</span>
+          <span className="num">{fmtMoney(s.components[k])}</span>
         </div>
       ))}
       {(s.components.extras ?? []).map((x) => (
@@ -41,24 +41,24 @@ export function Breakdown({ s }: { s: Structure }) {
             {x.label}
             {x.taxable === false ? <span className="text-muted text-[12px]"> · not taxable</span> : null}
           </span>
-          <span className="num">{inr(x.amount)}</span>
+          <span className="num">{fmtMoney(x.amount)}</span>
         </div>
       ))}
       <div className="flex justify-between py-1">
         <span>Special allowance</span>
-        <span className="num">{inr(s.components.special)}</span>
+        <span className="num">{fmtMoney(s.components.special)}</span>
       </div>
       <div className="flex justify-between border-t border-[var(--color-divider)] py-1.5 font-semibold">
         <span>Monthly gross</span>
-        <span className="num">{inr(s.gross)}</span>
+        <span className="num">{fmtMoney(s.gross)}</span>
       </div>
       <div className="text-muted flex justify-between py-1">
         <span>Employer PF{s.esiApplicable ? " · ESI" : ""}</span>
-        <span className="num">{inr(s.employer.pf + s.employer.esi)}</span>
+        <span className="num">{fmtMoney(s.employer.pf + s.employer.esi)}</span>
       </div>
       <div className="flex justify-between py-1 font-semibold">
         <span>Monthly CTC</span>
-        <span className="num">{inr(s.monthlyCtc)}</span>
+        <span className="num">{fmtMoney(s.monthlyCtc)}</span>
       </div>
     </div>
   );
@@ -159,7 +159,7 @@ export function EmployeeStructureDialog({ employeeId, onClose }: { employeeId: s
           {error ? <Notice tone="bad">{error}</Notice> : null}
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Effective from" hint="Use the first of a month that isn't locked yet">
-              <Input type="date" value={effectiveFrom} min={todayIST().slice(0, 8) + "01"} onChange={(e) => setEffectiveFrom(e.target.value)} />
+              <Input type="date" value={effectiveFrom} min={todayLocal().slice(0, 8) + "01"} onChange={(e) => setEffectiveFrom(e.target.value)} />
             </Field>
             <Field label="Annual CTC (₹)" hint={custom ? "Worked out from the components below" : "Split using the salary template"}>
               <Input inputMode="numeric" value={ctc} onChange={(e) => setCtc(e.target.value)} disabled={custom} />
@@ -191,7 +191,7 @@ export function EmployeeStructureDialog({ employeeId, onClose }: { employeeId: s
                   </div>
                 ))}
               </div>
-              <div className="text-muted self-end text-[13px]">Monthly gross {inr(customGross)}</div>
+              <div className="text-muted self-end text-[13px]">Monthly gross {fmtMoney(customGross)}</div>
             </div>
           ) : null}
           <Field label="Reason (optional)">
@@ -216,7 +216,7 @@ export function EmployeeStructureDialog({ employeeId, onClose }: { employeeId: s
                     <div key={h.id} className="rounded-[var(--radius-md)] px-3 py-2 text-[13px]" style={{ background: "var(--tint-1)" }}>
                       <div className="flex justify-between gap-2">
                         <span className="font-medium">From {fmtDate(h.effectiveFrom)}</span>
-                        <span className="num">{inr(h.annualCtc)} / yr</span>
+                        <span className="num">{fmtMoney(h.annualCtc)} / yr</span>
                       </div>
                       <div className="text-muted text-[12px]">
                         {h.components ? <Tag tone="accent">Custom</Tag> : "Template"} {h.reason ? `· ${h.reason}` : ""}

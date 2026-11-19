@@ -2,7 +2,7 @@ import { ApiError, badRequest, notFound } from "../lib/errors";
 import { countLeaveDays } from "@hrms/shared";
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { employees, holidays, leaveBalances, leaveRequests, leaveTypes, tenants, type Database } from "@hrms/db";
-import { accruedLeave, availableBalance, todayIST } from "@hrms/shared";
+import { accruedLeave, availableBalance, todayLocal } from "@hrms/shared";
 
 type Tx = Database;
 
@@ -10,7 +10,7 @@ type Tx = Database;
  * Make sure balance rows exist for an employee/year and refresh the accrued
  * amount from the leave type rules. Returns balances keyed by leave type.
  */
-export async function ensureBalances(db: Tx, tenantId: string, employeeId: string, year: number, asOf = todayIST()) {
+export async function ensureBalances(db: Tx, tenantId: string, employeeId: string, year: number, asOf = todayLocal()) {
   const [emp] = await db.select({ doj: employees.dateOfJoining }).from(employees).where(eq(employees.id, employeeId));
   const types = await db.select().from(leaveTypes).where(and(eq(leaveTypes.tenantId, tenantId), eq(leaveTypes.active, true)));
   const existing = await db

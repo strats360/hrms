@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Download, Mail, Send } from "lucide-react";
-import { fmtDate, inr } from "@hrms/shared";
+import { fmtDate, fmtMoney } from "@hrms/shared";
 import { api, download, errorMessage, qs } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { PayrollItem, PayrollRun } from "@/lib/types";
@@ -95,8 +95,8 @@ export default function Payslips() {
       },
       { id: "month", header: "Month", enableSorting: false, cell: () => (run ? monthLabel(run.month) : "") },
       { id: "paid", header: "Paid days", accessorFn: (r) => r.paidDays, cell: ({ row: { original: r } }) => `${r.paidDays} / ${r.daysInMonth}` },
-      { id: "gross", header: "Gross", accessorFn: (r) => r.gross, meta: { align: "right" }, cell: ({ getValue }) => inr(getValue<number>()) },
-      { id: "net", header: "Net pay", accessorFn: (r) => r.net, meta: { align: "right" }, cell: ({ getValue }) => <span className="font-semibold">{inr(getValue<number>())}</span> },
+      { id: "gross", header: "Gross", accessorFn: (r) => r.gross, meta: { align: "right" }, cell: ({ getValue }) => fmtMoney(getValue<number>()) },
+      { id: "net", header: "Net pay", accessorFn: (r) => r.net, meta: { align: "right" }, cell: ({ getValue }) => <span className="font-semibold">{fmtMoney(getValue<number>())}</span> },
       {
         id: "delivery",
         header: "Delivery",

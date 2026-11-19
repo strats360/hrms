@@ -1,4 +1,4 @@
-import { fmtDate, inr } from "@hrms/shared";
+import { fmtDate, fmtMoney } from "@hrms/shared";
 import type { Form16Data } from "@/lib/types";
 import { Tag } from "@/components/ui/tag";
 import { TaxStatementView } from "./TaxStatementView";
@@ -61,17 +61,17 @@ export function Form16View({ f }: { f: Form16Data }) {
                 <tr key={q.quarter}>
                   <td>{q.quarter}</td>
                   <td>{q.receipt ?? "—"}</td>
-                  <td className="num text-right">{inr(q.amountPaid)}</td>
-                  <td className="num text-right">{inr(q.tdsDeducted)}</td>
-                  <td className="num text-right">{inr(q.tdsDeposited)}</td>
+                  <td className="num text-right">{fmtMoney(q.amountPaid)}</td>
+                  <td className="num text-right">{fmtMoney(q.tdsDeducted)}</td>
+                  <td className="num text-right">{fmtMoney(q.tdsDeposited)}</td>
                 </tr>
               ))}
               <tr>
                 <td className="font-semibold" colSpan={3}>
                   Total
                 </td>
-                <td className="num text-right font-semibold">{inr(totalDeducted)}</td>
-                <td className="num text-right font-semibold">{inr(totalDeposited)}</td>
+                <td className="num text-right font-semibold">{fmtMoney(totalDeducted)}</td>
+                <td className="num text-right font-semibold">{fmtMoney(totalDeposited)}</td>
               </tr>
             </tbody>
           </table>
@@ -92,7 +92,7 @@ export function Form16View({ f }: { f: Form16Data }) {
         <TaxStatementView s={f.statement} compact />
         <div className="mt-2 flex justify-between border-t border-[var(--color-divider)] pt-2 font-semibold">
           <span>Tax deducted at source by this employer</span>
-          <span className="num">{inr(f.tdsDeducted)}</span>
+          <span className="num">{fmtMoney(f.tdsDeducted)}</span>
         </div>
       </div>
       <div className="text-muted text-[11.5px]">

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { addMonthsToDate, fmtDate, PROBATION_RECOMMENDATION_LABEL, todayIST, type ProbationRecommendation, type ProbationSettings } from "@hrms/shared";
+import { addMonthsToDate, fmtDate, PROBATION_RECOMMENDATION_LABEL, todayLocal, type ProbationRecommendation, type ProbationSettings } from "@hrms/shared";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
@@ -102,7 +102,7 @@ export default function Probation() {
 function ActionDialog({ action, onClose, onDone }: { action: Action; onClose: () => void; onDone: (letterTemplate?: string) => void }) {
   const qc = useQueryClient();
   const r = action.row;
-  const [f, setF] = useState({ recommendation: (r.review?.recommendation ?? "confirm") as ProbationRecommendation, note: "", date: r.endDate < todayIST() ? todayIST() : r.endDate, until: addMonthsToDate(r.endDate, 1) });
+  const [f, setF] = useState({ recommendation: (r.review?.recommendation ?? "confirm") as ProbationRecommendation, note: "", date: r.endDate < todayLocal() ? todayLocal() : r.endDate, until: addMonthsToDate(r.endDate, 1) });
   const [letter, setLetter] = useState(true);
   const save = useMutation({
     mutationFn: () =>

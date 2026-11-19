@@ -1,6 +1,6 @@
 import { gte, inArray, lte } from "drizzle-orm";
 import { attendanceRecords, holidays, leaveRequests, shiftRoster } from "@hrms/db";
-import { dateRange, todayIST, weekday, type AttendanceStatus } from "@hrms/shared";
+import { dateRange, todayLocal, weekday, type AttendanceStatus, zonedDateTime } from "@hrms/shared";
 import { holidaySet } from "./leave";
 import { and, eq } from "drizzle-orm";
 import { employees, shifts, type Database } from "@hrms/db";
@@ -47,9 +47,9 @@ export async function shiftsById(db: Database, tenantId: string) {
   return { map: new Map(all.map((s) => [s.id, s])), def };
 }
 
-/** Build a Date from an IST date (YYYY-MM-DD) and time (HH:MM). */
-export function istDateTime(date: string, hhmm: string) {
-  return new Date(`${date}T${hhmm}:00+05:30`);
+/** Build a Date from a local date (YYYY-MM-DD) and time (HH:MM), in `tz` or the site's time zone. */
+export function localDateTime(date: string, hhmm: string, tz?: string) {
+  return zonedDateTime(date, hhmm, tz);
 }
 
 // ---------------------------------------------------------------------------
@@ -69,7 +69,7 @@ export interface CalendarEmployee {
 
 export async function buildCalendar(db: Database, tenantId: string, emps: CalendarEmployee[], from: string, to: string) {
   const ids = emps.map((e) => e.id);
-  const today = todayIST();
+  const today = todayLocal();
   const { map: shiftMap, def } = await shiftsById(db, tenantId);
   const [records, leaves, hol, roster] = await Promise.all([
     ids.length

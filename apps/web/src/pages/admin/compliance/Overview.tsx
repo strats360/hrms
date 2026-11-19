@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import { fmtDate, inr, inrCompact } from "@hrms/shared";
+import { fmtDate, fmtMoney, fmtMoneyCompact } from "@hrms/shared";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { ComplianceOverview, Obligation } from "@/lib/types";
@@ -45,8 +45,8 @@ export default function ComplianceOverviewPage() {
               </div>
               <ObligationTag o={o} />
             </div>
-            <div className="stat-value !text-[26px]">{inr(o.amount)}</div>
-            <div className="text-muted text-[12px]">{o.breakup.length > 1 ? o.breakup.map((b) => `${b.label.split(" · ").pop()} ${inrCompact(b.amount)}`).join(" · ") : o.breakup[0]?.label}</div>
+            <div className="stat-value !text-[26px]">{fmtMoney(o.amount)}</div>
+            <div className="text-muted text-[12px]">{o.breakup.length > 1 ? o.breakup.map((b) => `${b.label.split(" · ").pop()} ${fmtMoneyCompact(b.amount)}`).join(" · ") : o.breakup[0]?.label}</div>
             <div className="mt-1 flex items-center justify-between gap-2">
               <span className="text-muted text-[12.5px]">{o.challan ? `Paid ${fmtDate(o.challan.paidOn)}${o.challan.reference ? ` · ${o.challan.reference}` : ""}` : `Due ${fmtDate(o.dueDate)}`}</span>
               {canPay ? (
@@ -76,7 +76,7 @@ export default function ComplianceOverviewPage() {
                 <div key={c.date + c.title} className="flex items-center justify-between gap-3 rounded-[var(--radius-md)] px-3 py-2.5" style={{ background: c.daysLeft < 0 ? "var(--bad-bg)" : c.daysLeft <= 7 ? "var(--warn-bg)" : "var(--tint-1)" }}>
                   <div className="min-w-0">
                     <div className="font-semibold">{fmtDate(c.date)} · {c.title}</div>
-                    {c.amount !== null ? <div className="text-muted text-[12px]">{inr(c.amount)}</div> : <div className="text-muted text-[12px]">Return filing</div>}
+                    {c.amount !== null ? <div className="text-muted text-[12px]">{fmtMoney(c.amount)}</div> : <div className="text-muted text-[12px]">Return filing</div>}
                   </div>
                   <ObligationTag o={{ status: c.daysLeft < 0 ? "overdue" : c.daysLeft <= 7 ? "due_soon" : "upcoming", daysLeft: c.daysLeft }} />
                 </div>
@@ -87,7 +87,7 @@ export default function ComplianceOverviewPage() {
         <Card className="!gap-3">
           <CardHeader title="Also tracked" />
           <div className="flex flex-col gap-2.5 text-[13.5px]">
-            <Row label={`Gratuity provision (5+ years · ${d.tracked.gratuityEligible} employees)`} value={`${inrCompact(d.tracked.gratuityProvision)} accrued`} />
+            <Row label={`Gratuity provision (5+ years · ${d.tracked.gratuityEligible} employees)`} value={`${fmtMoneyCompact(d.tracked.gratuityProvision)} accrued`} />
             <Row label="EDLI cover" value={<Tag tone="ok">Active · {d.tracked.edliMembers} members</Tag>} />
             <Row label={`Overtime logged (${monthLabel(d.latestMonth)})`} value={`${d.tracked.overtimeHours} h`} />
             <Row label="Statutory bonus and minimum wages" value={<Tag tone="neutral">Planned</Tag>} />

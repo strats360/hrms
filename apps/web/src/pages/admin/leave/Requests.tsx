@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { fmtDate, todayIST } from "@hrms/shared";
+import { fmtDate, todayLocal } from "@hrms/shared";
 import { api, qs } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { LeaveRequest } from "@/lib/types";
@@ -34,7 +34,7 @@ export default function Requests() {
   const [cancel, setCancel] = useState<LeaveRequest | null>(null);
   const all = useQuery({ queryKey: ["leave", "requests"], queryFn: () => api.get<LeaveRequest[]>(`/admin/leave/requests${qs({})}`) });
   const canApprove = can("leave", "approve");
-  const today = todayIST();
+  const today = todayLocal();
   const month = today.slice(0, 7);
   const weekEnd = addDays(today, 7);
 

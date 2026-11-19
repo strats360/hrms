@@ -12,7 +12,7 @@ import {
   TAX_SECTION_LABELS,
   taxDeclarationDataSchema,
   tdsReturnDueDates,
-  todayIST,
+  todayLocal,
   type Regime,
   type TaxDeclarationData,
   type TaxSection,
@@ -329,7 +329,7 @@ tdsRoutes.put(
     const { fy, quarter } = c.req.param();
     if (!QUARTERS[quarter]) throw badRequest("Unknown quarter");
     const b = c.req.valid("json");
-    if (b.filedOn > todayIST()) throw badRequest("The filing date can't be in the future");
+    if (b.filedOn > todayLocal()) throw badRequest("The filing date can't be in the future");
     const [row] = await c
       .get("db")
       .insert(tdsReturns)

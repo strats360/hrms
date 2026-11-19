@@ -41,3 +41,34 @@ describe("country packs", () => {
     expect(packFor("IN").payroll.amountInWords(105)).toBe("One hundred five rupees only");
   });
 });
+
+describe("time zones and money", () => {
+  it("works out local dates and times in any zone", async () => {
+    const { toLocalDate, toLocalTime, localMinutes, zonedDateTime, zoneOffsetMinutes } = await import("../src");
+    const at = new Date("2026-11-05T20:30:00Z");
+    expect(toLocalDate(at, "Asia/Kolkata")).toBe("2026-11-06"); // 02:00 next day in India
+    expect(toLocalDate(at, "Asia/Dubai")).toBe("2026-11-06"); // 00:30 in Dubai
+    expect(toLocalDate(at, "Asia/Riyadh")).toBe("2026-11-05"); // 23:30 in Riyadh
+    expect(toLocalTime(at, "Asia/Kolkata")).toBe("02:00");
+    expect(toLocalTime(at, "Europe/London")).toBe("20:30");
+    expect(localMinutes(at, "Asia/Dubai")).toBe(30);
+    expect(zoneOffsetMinutes("Asia/Dubai", at)).toBe(240);
+    expect(zonedDateTime("2026-11-05", "09:00", "Asia/Kolkata").toISOString()).toBe("2026-11-05T03:30:00.000Z");
+    expect(zonedDateTime("2026-11-05", "09:00", "Asia/Dubai").toISOString()).toBe("2026-11-05T05:00:00.000Z");
+    // daylight saving: London is UTC+1 in July, New York UTC-4
+    expect(zonedDateTime("2026-07-01", "09:00", "Europe/London").toISOString()).toBe("2026-07-01T08:00:00.000Z");
+    expect(zonedDateTime("2026-07-01", "09:00", "America/New_York").toISOString()).toBe("2026-07-01T13:00:00.000Z");
+  });
+
+  it("formats and rounds money per currency", async () => {
+    const { fmtMoney, fmtMoneyCompact, roundMoney, currencyDecimals } = await import("../src");
+    expect(fmtMoney(123456, { currency: "INR" })).toBe("₹1,23,456");
+    expect(fmtMoney(12345.5, { currency: "AED" })).toBe("AED 12,345.50");
+    expect(fmtMoney(1234.5678, { currency: "KWD" })).toBe("KWD 1,234.568");
+    expect(fmtMoney(1234.5, { currency: "USD" })).toBe("$1,234.50");
+    expect(fmtMoneyCompact(14_40_000, { currency: "INR" })).toBe("₹14.40 L");
+    expect(fmtMoneyCompact(1_420_000, { currency: "USD" })).toBe("$1.4M");
+    expect(currencyDecimals("OMR")).toBe(3);
+    expect(roundMoney(10.0006, 3)).toBe(10.001);
+  });
+});

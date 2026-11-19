@@ -10,8 +10,8 @@ import {
   decisionSchema,
   evaluateAttendance,
   manualAttendanceSchema,
-  todayIST,
-  toISTTime,
+  todayLocal,
+  toLocalTime,
   type AttendanceStatus,
 } from "@hrms/shared";
 import { z } from "zod";
@@ -23,7 +23,8 @@ import { badRequest, forbidden, notFound } from "../lib/errors";
 import { audit } from "../lib/audit";
 import { toCsv } from "../lib/csv";
 import { getFile } from "../lib/storage";
-import { buildCalendar, istDateTime, shiftFor, upsertAttendance } from "../services/attendance";
+import { buildCalendar, localDateTime, shiftFor, upsertAttendance } from "../services/attendance";
+import { entityOf, zoneOfEmployee } from "../services/entities";
 import { inScope, teamScope } from "../services/scope";
 import { approvalPolicy, approvalScope, chainFor, recordDecision, waitingOn } from "../services/approvals";
 
@@ -63,7 +64,7 @@ export async function scopedEmployees(c: Context<AppEnv>, extra?: { departmentId
 
 /** Today: one row per employee with derived status, plus counts. */
 attendanceRoutes.get("/today", requirePerm("attendance", "view"), v("query", z.object({ date: z.string().optional() })), async (c) => {
-  const date = c.req.valid("query").date ?? todayIST();
+  const date = c.req.valid("query").date ?? todayLocal();
   const emps = await scopedEmployees(c);
   const cal = await buildCalendar(c.get("db"), c.get("tenant").tenantId, emps, date, date);
   const rows = emps.map((e) => {
@@ -76,8 +77,8 @@ attendanceRoutes.get("/today", requirePerm("attendance", "view"), v("query", z.o
       designation: e.designation,
       branch: e.branch,
       status: cal.status(e, date),
-      checkIn: rec?.checkIn ? toISTTime(rec.checkIn) : null,
-      checkOut: rec?.checkOut ? toISTTime(rec.checkOut) : null,
+      checkIn: rec?.checkIn ? toLocalTime(rec.checkIn) : null,
+      checkOut: rec?.checkOut ? toLocalTime(rec.checkOut) : null,
       source: rec?.source ?? null,
       lateMinutes: rec?.lateMinutes ?? 0,
       workMinutes: rec?.workMinutes ?? 0,
@@ -129,7 +130,7 @@ const monthQuery = z.object({
 });
 
 async function monthly(c: Context<AppEnv>, q: z.infer<typeof monthQuery>) {
-  const month = q.month ?? todayIST().slice(0, 7);
+  const month = q.month ?? todayLocal().slice(0, 7);
   const [y, m] = month.split("-").map(Number) as [number, number];
   const from = `${month}-01`;
   const to = `${month}-${String(daysInMonth(y, m)).padStart(2, "0")}`;
@@ -190,12 +191,13 @@ attendanceRoutes.post("/manual", requirePerm("attendance", "edit"), v("json", ma
   const tid = c.get("tenant").tenantId;
   const [emp] = await db.select().from(employees).where(and(eq(employees.id, body.employeeId), eq(employees.tenantId, tid)));
   if (!emp) throw notFound("Employee");
-  if (body.date > todayIST()) throw badRequest("You can't mark attendance for a future date");
+  if (body.date > todayLocal()) throw badRequest("You can't mark attendance for a future date");
   const shift = await shiftFor(db, tid, emp.id, body.date);
-  const checkIn = body.checkIn ? istDateTime(body.date, body.checkIn) : null;
-  const checkOut = body.checkOut ? istDateTime(body.date, body.checkOut) : null;
+  const tz = (await entityOf(db, tid, emp.entityId)).timeZone;
+  const checkIn = body.checkIn ? localDateTime(body.date, body.checkIn, tz) : null;
+  const checkOut = body.checkOut ? localDateTime(body.date, body.checkOut, tz) : null;
   if (checkIn && checkOut && checkOut <= checkIn) throw badRequest("Check-out must be after check-in");
-  const ev = checkIn ? evaluateAttendance(shift, checkIn, checkOut, { wfh: body.status === "wfh" }) : null;
+  const ev = checkIn ? evaluateAttendance(shift, checkIn, checkOut, { wfh: body.status === "wfh", timeZone: tz }) : null;
   const row = await upsertAttendance(db, {
     tenantId: tid,
     employeeId: emp.id,
@@ -269,10 +271,11 @@ async function decideCorrection(c: Context<AppEnv>, id: string, decision: "appro
       .from(attendanceRecords)
       .where(and(eq(attendanceRecords.tenantId, t.tenantId), eq(attendanceRecords.employeeId, corr.employeeId), eq(attendanceRecords.date, corr.date)));
     const shift = await shiftFor(db, t.tenantId, corr.employeeId, corr.date);
-    const checkIn = corr.requestedCheckIn ? istDateTime(corr.date, corr.requestedCheckIn) : (existing?.checkIn ?? null);
-    const checkOut = corr.requestedCheckOut ? istDateTime(corr.date, corr.requestedCheckOut) : (existing?.checkOut ?? null);
+    const tz = await zoneOfEmployee(db, t.tenantId, corr.employeeId);
+    const checkIn = corr.requestedCheckIn ? localDateTime(corr.date, corr.requestedCheckIn, tz) : (existing?.checkIn ?? null);
+    const checkOut = corr.requestedCheckOut ? localDateTime(corr.date, corr.requestedCheckOut, tz) : (existing?.checkOut ?? null);
     const wfh = corr.requestedStatus === "wfh" || existing?.source === "wfh";
-    const ev = evaluateAttendance(shift, checkIn, checkOut, { wfh });
+    const ev = evaluateAttendance(shift, checkIn, checkOut, { wfh, timeZone: tz });
     await upsertAttendance(db, {
       tenantId: t.tenantId,
       employeeId: corr.employeeId,

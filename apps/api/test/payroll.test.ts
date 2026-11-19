@@ -1,9 +1,9 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { todayIST } from "@hrms/shared";
+import { todayLocal } from "@hrms/shared";
 import { Client, lastEmailTo, login } from "./helpers";
 
 let krupa: Client, kunal: Client, nisha: Client, priya: Client;
-const month = todayIST().slice(0, 7);
+const month = todayLocal().slice(0, 7);
 let runId = "";
 let priyaId = "";
 
@@ -129,7 +129,7 @@ describe("payroll run lifecycle", () => {
     expect(slip.employee.name).toBe("Priya Vaghela");
   });
   it("exports a bank file without held salaries", async () => {
-    expect((await kunal.post(`/admin/payroll/runs/${runId}/mark-paid`, { paidOn: todayIST() })).status).toBe(400);
+    expect((await kunal.post(`/admin/payroll/runs/${runId}/mark-paid`, { paidOn: todayLocal() })).status).toBe(400);
     const csv = await kunal.get(`/admin/payroll/runs/${runId}/bank-file.csv`);
     expect(csv.status).toBe(200);
     expect(csv.body).toContain("034501512345"); // Priya's full account in the bank file
@@ -139,7 +139,7 @@ describe("payroll run lifecycle", () => {
   it("pays salary through a payment batch and marks the run paid", async () => {
     const accounts = (await kunal.get("/admin/payments/accounts")).body;
     const hdfc = accounts.find((a: any) => a.isDefault);
-    const body = { type: "salary", payrollRunId: runId, bankAccountId: hdfc.id, paymentDate: todayIST() };
+    const body = { type: "salary", payrollRunId: runId, bankAccountId: hdfc.id, paymentDate: todayLocal() };
     const prev = await krupa.post("/admin/payments/batches/preview", body);
     expect(prev.status).toBe(200);
     expect(prev.body.warnings.join(" ")).toMatch(/on hold/);
@@ -148,7 +148,7 @@ describe("payroll run lifecycle", () => {
     expect(b.body.code).toMatch(/^PB-\d{4}-S/);
     expect((await krupa.post("/admin/payments/batches", body)).status).toBe(409); // one batch per payroll
     // old run-level paths are closed once a batch pays the run
-    expect((await kunal.post(`/admin/payroll/runs/${runId}/mark-paid`, { paidOn: todayIST() })).status).toBe(400);
+    expect((await kunal.post(`/admin/payroll/runs/${runId}/mark-paid`, { paidOn: todayLocal() })).status).toBe(400);
     expect((await kunal.post(`/admin/payroll/runs/${runId}/reopen`, { reason: "Need to fix an error" })).status).toBe(400);
     expect((await krupa.post(`/admin/payments/batches/${b.body.id}/approve`)).status).toBe(403); // payroll admin can't approve
     expect((await kunal.post(`/admin/payments/batches/${b.body.id}/approve`)).body.status).toBe("approved");

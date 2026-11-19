@@ -1,10 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import postgres from "postgres";
-import { todayIST } from "@hrms/shared";
+import { todayLocal } from "@hrms/shared";
 import { Client, env, lastEmailTo, login } from "./helpers";
 
 const sql = postgres(env.DATABASE_URL!, { max: 1, onnotice: () => {} });
-const addDays = (n: number) => new Date(Date.parse(todayIST()) + n * 86400000).toISOString().slice(0, 10);
+const addDays = (n: number) => new Date(Date.parse(todayLocal()) + n * 86400000).toISOString().slice(0, 10);
 let kunal: Client, nisha: Client, krupa: Client, priya: Client, hardik: Client;
 let emp: { id: string; employee_code: string; full_name: string; status: string };
 
@@ -83,10 +83,10 @@ describe("Full and final settlement", () => {
   it("pays through a payment batch and closes when the payment clears", async () => {
     const accounts = (await kunal.get("/admin/payments/accounts")).body;
     const account = (accounts.rows ?? accounts).find((a: any) => a.active);
-    const pay = await krupa.post(`/admin/exits/${exitId}/pay`, { bankAccountId: account.id, paymentDate: todayIST() });
+    const pay = await krupa.post(`/admin/exits/${exitId}/pay`, { bankAccountId: account.id, paymentDate: todayLocal() });
     expect(pay.status).toBe(201);
-    expect((await krupa.post(`/admin/exits/${exitId}/pay`, { bankAccountId: account.id, paymentDate: todayIST() })).status).toBe(409);
-    expect((await kunal.post(`/admin/exits/${exitId}/settle`, { settledOn: todayIST(), method: "cheque" })).status).toBe(400); // in a batch
+    expect((await krupa.post(`/admin/exits/${exitId}/pay`, { bankAccountId: account.id, paymentDate: todayLocal() })).status).toBe(409);
+    expect((await kunal.post(`/admin/exits/${exitId}/settle`, { settledOn: todayLocal(), method: "cheque" })).status).toBe(400); // in a batch
     const [{ amount }] = await sql`select amount::float from payments where id = ${pay.body.paymentId}`;
     const [{ net_amount }] = await sql`select net_amount::float from employee_exits where id = ${exitId}`;
     expect(amount).toBe(net_amount);
@@ -143,8 +143,8 @@ describe("Full and final settlement", () => {
     expect((await kunal.post(`/admin/exits/${x.id}/approve`)).status).toBe(200);
     const accounts = (await kunal.get("/admin/payments/accounts")).body;
     const account = (accounts.rows ?? accounts).find((a: any) => a.active);
-    expect((await krupa.post(`/admin/exits/${x.id}/pay`, { bankAccountId: account.id, paymentDate: todayIST() })).status).toBe(400);
-    const s = await kunal.post(`/admin/exits/${x.id}/settle`, { settledOn: todayIST(), method: "recovered", reference: "Cheque 004512" });
+    expect((await krupa.post(`/admin/exits/${x.id}/pay`, { bankAccountId: account.id, paymentDate: todayLocal() })).status).toBe(400);
+    const s = await kunal.post(`/admin/exits/${x.id}/settle`, { settledOn: todayLocal(), method: "recovered", reference: "Cheque 004512" });
     expect(s.status).toBe(200);
     expect(s.body.status).toBe("settled");
   });

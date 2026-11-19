@@ -2,29 +2,7 @@ import { Hono, type Context } from "hono";
 import { sendNotification } from "../services/notifications";
 import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, notInArray, sql, type SQL } from "drizzle-orm";
 import { companyBankAccounts, employees, paymentBatches, payments, payrollItems, payrollRuns, reimbursementClaims, tenants, type Database } from "@hrms/db";
-import {
-  bankAccountSchema,
-  batchCreateSchema,
-  BANK_FORMAT_LABEL,
-  buildBankFile,
-  bulkPaymentUpdateSchema,
-  can,
-  decryptField,
-  encryptField,
-  inr,
-  parseBankResponse,
-  paymentUpdateSchema,
-  todayIST,
-  BANK_FILE_FORMATS,
-  DEFAULT_EXPORT_LAYOUT,
-  EXPORT_COLUMNS,
-  EXPORT_FILE_TYPE_LABEL,
-  exportLayoutSchema,
-  layoutText,
-  type BankFileFormat,
-  type BankFileLine,
-  type ExportLayout,
-} from "@hrms/shared";
+import { bankAccountSchema, batchCreateSchema, BANK_FORMAT_LABEL, buildBankFile, bulkPaymentUpdateSchema, can, decryptField, encryptField, fmtMoney, parseBankResponse, paymentUpdateSchema, todayLocal, BANK_FILE_FORMATS, DEFAULT_EXPORT_LAYOUT, EXPORT_COLUMNS, EXPORT_FILE_TYPE_LABEL, exportLayoutSchema, layoutText, type BankFileFormat, type BankFileLine, type ExportLayout, zonedDateTime } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
 import { requirePerm } from "../lib/context";
@@ -321,7 +299,7 @@ paymentRoutes.post("/batches", requirePerm("payments", "edit"), v("json", batchC
       await db.update(reimbursementClaims).set({ paymentId: pay.id }).where(and(inArray(reimbursementClaims.id, l.claimIds ?? []), isNull(reimbursementClaims.paymentId), isNull(reimbursementClaims.payrollRunId)));
     }
   }
-  await audit(c, { action: "payments.batch_create", entity: "payment_batch", entityId: batch!.id, summary: `Created ${code} (${p.label}): ${p.summary.count} payments, ${inr(p.summary.amount)}${p.summary.missingBank ? `, ${p.summary.missingBank} held for bank details` : ""}` });
+  await audit(c, { action: "payments.batch_create", entity: "payment_batch", entityId: batch!.id, summary: `Created ${code} (${p.label}): ${p.summary.count} payments, ${fmtMoney(p.summary.amount)}${p.summary.missingBank ? `, ${p.summary.missingBank} held for bank details` : ""}` });
   return c.json({ ...batch, summary: p.summary, warnings: p.warnings }, 201);
 });
 
@@ -469,7 +447,7 @@ paymentRoutes.get("/batches/:id/file", requirePerm("payments", "export"), v("que
     .where(inArray(payments.reference, lines.map((l) => l.reference)));
   await db.update(paymentBatches).set({ status: "processing", exportedAt: batch.exportedAt ?? now, exportCount: sql`${paymentBatches.exportCount} + 1` }).where(eq(paymentBatches.id, batch.id));
   if (batch.payrollRunId) await db.update(payrollRuns).set({ bankFileExportedAt: now }).where(and(eq(payrollRuns.id, batch.payrollRunId), isNull(payrollRuns.bankFileExportedAt)));
-  await audit(c, { action: "payments.file_export", entity: "payment_batch", entityId: batch.id, summary: `Exported ${BANK_FORMAT_LABEL[format]} file for ${batch.code}: ${lines.length} payments, ${inr(lines.reduce((s, l) => s + l.amount, 0))}${batch.exportCount ? " (re-export)" : ""}` });
+  await audit(c, { action: "payments.file_export", entity: "payment_batch", entityId: batch.id, summary: `Exported ${BANK_FORMAT_LABEL[format]} file for ${batch.code}: ${lines.length} payments, ${fmtMoney(lines.reduce((s, l) => s + l.amount, 0))}${batch.exportCount ? " (re-export)" : ""}` });
   return c.body(body as never, 200, { "Content-Type": file.mime, "Content-Disposition": `attachment; filename="${batch.code}${batch.exportCount ? `-retry${batch.exportCount}` : ""}.${file.ext}"`, "Cache-Control": "no-store" });
 });
 
@@ -486,7 +464,7 @@ async function notifyFailed(c: Context<AppEnv>, list: Payment[]) {
       const { html, text } = layout({
         company: e.company,
         heading: "We couldn't credit your payment",
-        paragraphs: [`Hi ${e.first},`, `A payment of ${inr(Number(p.amount))} (reference ${p.reference}) was returned by the bank${p.failureReason ? `: ${p.failureReason}` : ""}.`, "Please check your bank details in self-service or with HR. We'll retry once they're correct."],
+        paragraphs: [`Hi ${e.first},`, `A payment of ${fmtMoney(Number(p.amount))} (reference ${p.reference}) was returned by the bank${p.failureReason ? `: ${p.failureReason}` : ""}.`, "Please check your bank details in self-service or with HR. We'll retry once they're correct."],
         cta: { label: "Check my bank details", url: `${c.env.APP_URL}/me/profile` },
       });
       await sendNotification(c, "payment_returned", { to: e.email, subject: `Payment ${p.reference} returned by the bank`, html, text });
@@ -514,7 +492,7 @@ async function updatePayments(c: Context<AppEnv>, ids: string[], u: z.infer<type
       continue;
     }
     const patch: Partial<Payment> = { status: u.status, updatedBy: uid(c) };
-    if (u.status === "paid") Object.assign(patch, { utr: u.utr ?? p.utr, paidAt: u.paidOn ? new Date(u.paidOn + "T12:00:00+05:30") : new Date(), note: p.status !== "pending" ? (u.reason ?? "Paid outside the bank file") : (u.reason ?? null), failureReason: null });
+    if (u.status === "paid") Object.assign(patch, { utr: u.utr ?? p.utr, paidAt: u.paidOn ? zonedDateTime(u.paidOn, "12:00") : new Date(), note: p.status !== "pending" ? (u.reason ?? "Paid outside the bank file") : (u.reason ?? null), failureReason: null });
     if (u.status === "failed") Object.assign(patch, { failureReason: u.reason });
     if (u.status === "held") Object.assign(patch, { failureReason: u.reason ?? p.failureReason ?? "On hold" });
     if (u.status === "cancelled") Object.assign(patch, { note: u.reason ?? null });
@@ -567,7 +545,7 @@ paymentRoutes.post("/batches/:id/mark-all-paid", requirePerm("payments", "edit")
   if (batch.status !== "processing") throw badRequest("Export the bank file first");
   const ids = (await c.get("db").select({ id: payments.id }).from(payments).where(and(eq(payments.batchId, batch.id), eq(payments.status, "pending")))).map((r) => r.id);
   if (!ids.length) throw badRequest("No payments are pending");
-  return c.json(await updatePayments(c, ids, { status: "paid", paidOn: c.req.valid("json").paidOn ?? todayIST(), utr: null, reason: null }));
+  return c.json(await updatePayments(c, ids, { status: "paid", paidOn: c.req.valid("json").paidOn ?? todayLocal(), utr: null, reason: null }));
 });
 
 /** Reconcile from the bank's status file: matches on reference, marks paid or failed. */
@@ -597,7 +575,7 @@ paymentRoutes.post("/batches/:id/reconcile", requirePerm("payments", "edit"), as
   }
   const errors: string[] = [...parsed.errors];
   // UTRs differ per row, so paid rows go one by one; failures group by reason
-  for (const p of paid) errors.push(...(await updatePayments(c, [p.id], { status: "paid", utr: p.utr, paidOn: todayIST(), reason: null })).errors.map((e) => e.message));
+  for (const p of paid) errors.push(...(await updatePayments(c, [p.id], { status: "paid", utr: p.utr, paidOn: todayLocal(), reason: null })).errors.map((e) => e.message));
   for (const p of failed) errors.push(...(await updatePayments(c, [p.id], { status: "failed", reason: p.reason, utr: null, paidOn: null })).errors.map((e) => e.message));
   return c.json({ rows: parsed.rows.length, paid: paid.length, failed: failed.length, unknown, alreadyUpdated: already.length, errors });
 });
@@ -640,7 +618,7 @@ paymentRoutes.get("/report", requirePerm("payments", "export"), v("query", repor
   const header = ["Batch", "Type", "Description", "Payment date", "Reference", "Employee ID", "Employee", "Beneficiary", "Bank", "IFSC", "Account", "Amount", "Status", "UTR", "Paid on", "Reason / note", "Attempts"];
   const data = rows.map((r) => [r.batchCode, r.batchType, r.p.description ?? r.batchLabel, r.date, r.p.reference, r.code, r.name, r.p.beneficiaryName, r.p.bankName, r.p.ifsc, r.p.accountLast4 ? `····${r.p.accountLast4}` : "", Number(r.p.amount), r.p.status, r.p.utr, r.p.paidAt ? r.p.paidAt.toISOString().slice(0, 10) : "", r.p.failureReason ?? r.p.note, r.p.attempts]);
   await audit(c, { action: "payments.report", entity: "payment", summary: `Exported payments report (${rows.length} rows, ${q.format})` });
-  const name = `payments-${todayIST()}`;
+  const name = `payments-${todayLocal()}`;
   if (q.format === "xlsx") return c.body(toXlsx([{ name: "Payments", header, rows: data }]) as unknown as ArrayBuffer, 200, { "Content-Type": XLSX_MIME, "Content-Disposition": `attachment; filename="${name}.xlsx"` });
   return c.body(toCsv(header, data), 200, { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="${name}.csv"` });
 });

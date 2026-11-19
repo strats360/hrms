@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import postgres from "postgres";
-import { todayIST } from "@hrms/shared";
+import { todayLocal } from "@hrms/shared";
 import { Client, env, login } from "./helpers";
 
 const sql = postgres(env.DATABASE_URL!, { max: 1, onnotice: () => {} });
@@ -8,7 +8,7 @@ let nisha: Client, hardik: Client;
 let a: { id: string; code: string }, b: { id: string; code: string }, c: { id: string; code: string }, d: { id: string; code: string };
 let lockedDay = "";
 let locks: { id: string; status: string }[] = [];
-const today = todayIST();
+const today = todayLocal();
 const dmy = (iso: string) => iso.split("-").reverse().join("-");
 // punch times earlier today, as a fraction of the time since midnight IST (never in the future)
 const at = (f: number) => new Date(Date.parse(`${today}T00:00:00+05:30`) + Math.floor((Date.now() - Date.parse(`${today}T00:00:00+05:30`)) * f / 1000) * 1000);

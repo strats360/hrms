@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ArrowLeft, FileText, Plus, Printer, Trash2 } from "lucide-react";
-import { fmtDate, inr, todayIST } from "@hrms/shared";
+import { fmtDate, fmtMoney, todayLocal } from "@hrms/shared";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -98,7 +98,7 @@ export default function ExitDetail() {
   const money = can("payroll", "view");
   const isOpen = OPEN.includes(x.status);
   const paymentLive = x.payment && x.payment.status !== "cancelled";
-  const ended = x.lastWorkingDay <= todayIST();
+  const ended = x.lastWorkingDay <= todayLocal();
 
   const actions = (
     <>
@@ -163,7 +163,7 @@ export default function ExitDetail() {
       {x.status === "requested" ? <Notice tone="sel">{e.name} submitted this resignation. Accept it to confirm the last working day, or decline it.</Notice> : null}
       {paymentLive ? (
         <Notice tone={x.payment!.status === "paid" ? "ok" : "sel"}>
-          Payment {x.payment!.reference} for {inr(x.payment!.amount)} is {x.payment!.status} in{" "}
+          Payment {x.payment!.reference} for {fmtMoney(x.payment!.amount)} is {x.payment!.status} in{" "}
           <Link to={`/payments/batches/${x.payment!.batchId}`} className="underline">
             {x.payment!.batchCode}
           </Link>
@@ -336,8 +336,8 @@ function SettlementCard({ x, onSaved }: { x: ExitDetailView; onSaved: () => void
       ) : null}
       {view ? (
         <div className="text-muted grid grid-cols-2 gap-2 text-[12.5px] sm:grid-cols-4">
-          <span>Basic {inr(view.structure.basic)}/mo</span>
-          <span>Gross {inr(view.structure.gross)}/mo</span>
+          <span>Basic {fmtMoney(view.structure.basic)}/mo</span>
+          <span>Gross {fmtMoney(view.structure.gross)}/mo</span>
           <span>Service {r.service.years} yrs</span>
           <span>{r.gratuityEligible ? "Gratuity eligible" : "No gratuity (under 4 yrs 240 days)"}</span>
         </div>
@@ -349,8 +349,8 @@ function SettlementCard({ x, onSaved }: { x: ExitDetailView; onSaved: () => void
       </div>
       <div className="flex flex-wrap items-baseline justify-between gap-2 rounded-[var(--radius-md)] px-3.5 py-3" style={{ background: r.net >= 0 ? "var(--ok-bg)" : "var(--warn-bg, var(--tint-2))" }}>
         <span className="font-medium">{r.net >= 0 ? "Net payable to the employee" : "Net recoverable from the employee"}</span>
-        <span className="num text-[18px] font-semibold">{inr(Math.abs(r.net))}</span>
-        {r.taxable > 0 ? <span className="text-muted w-full text-[12px]">Taxable part: {inr(r.taxable)} (gratuity up to ₹20 lakh and leave encashment up to ₹25 lakh are exempt)</span> : null}
+        <span className="num text-[18px] font-semibold">{fmtMoney(Math.abs(r.net))}</span>
+        {r.taxable > 0 ? <span className="text-muted w-full text-[12px]">Taxable part: {fmtMoney(r.taxable)} (gratuity up to ₹20 lakh and leave encashment up to ₹25 lakh are exempt)</span> : null}
       </div>
 
       {editable && view ? (
@@ -419,7 +419,7 @@ function LineList({ title, lines, total }: { title: string; lines: FnfLine[]; to
               {l.label}
               {l.note ? <span className="text-muted block text-[11.5px]">{l.note}</span> : null}
             </span>
-            <span className="num">{inr(l.amount)}</span>
+            <span className="num">{fmtMoney(l.amount)}</span>
           </div>
         ))
       ) : (
@@ -427,7 +427,7 @@ function LineList({ title, lines, total }: { title: string; lines: FnfLine[]; to
       )}
       <div className="flex justify-between py-1.5 font-medium">
         <span>Total</span>
-        <span className="num">{inr(total)}</span>
+        <span className="num">{fmtMoney(total)}</span>
       </div>
     </div>
   );
@@ -517,7 +517,7 @@ function PayDialog({ open, x, onClose, onDone }: { open: boolean; x: ExitDetailV
   const accounts = useAccounts();
   const active = (accounts.data ?? []).filter((a) => (a as { active?: boolean }).active !== false);
   const [account, setAccount] = useState("");
-  const [date, setDate] = useState(todayIST());
+  const [date, setDate] = useState(todayLocal());
   useEffect(() => {
     if (!account && active[0]) setAccount(active[0].id);
   }, [active, account]);
@@ -536,7 +536,7 @@ function PayDialog({ open, x, onClose, onDone }: { open: boolean; x: ExitDetailV
       open={open}
       onOpenChange={(v) => !v && onClose()}
       title="Pay the settlement"
-      description={`Creates a payment batch for ${inr(Number(x.netAmount))} to ${x.employee.name}. It goes through the usual approval and bank file, and the exit closes when the payment is marked paid.`}
+      description={`Creates a payment batch for ${fmtMoney(Number(x.netAmount))} to ${x.employee.name}. It goes through the usual approval and bank file, and the exit closes when the payment is marked paid.`}
       footer={
         <>
           <Button onClick={onClose}>Cancel</Button>
@@ -565,7 +565,7 @@ function PayDialog({ open, x, onClose, onDone }: { open: boolean; x: ExitDetailV
 function SettleDialog({ open, x, onClose, onDone }: { open: boolean; x: ExitDetailView; onClose: () => void; onDone: () => void }) {
   const net = Number(x.netAmount);
   const [method, setMethod] = useState(net < 0 ? "recovered" : net === 0 ? "nothing_due" : "cheque");
-  const [on, setOn] = useState(todayIST());
+  const [on, setOn] = useState(todayLocal());
   const [ref, setRef] = useState("");
   const settle = useMutation({
     mutationFn: () => api.post(`/admin/exits/${x.id}/settle`, { settledOn: on, method, reference: ref.trim() || null }),
@@ -581,7 +581,7 @@ function SettleDialog({ open, x, onClose, onDone }: { open: boolean; x: ExitDeta
       open={open}
       onOpenChange={(v) => !v && onClose()}
       title="Mark settled"
-      description={net < 0 ? `${x.employee.name} owes ${inr(-net)}. Record how it was recovered.` : `Record how the ${inr(net)} was paid outside a payment batch.`}
+      description={net < 0 ? `${x.employee.name} owes ${fmtMoney(-net)}. Record how it was recovered.` : `Record how the ${fmtMoney(net)} was paid outside a payment batch.`}
       footer={
         <>
           <Button onClick={onClose}>Cancel</Button>

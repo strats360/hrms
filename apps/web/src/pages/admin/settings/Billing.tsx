@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
-import { fmtDate, inr } from "@hrms/shared";
+import { fmtDate, fmtMoney } from "@hrms/shared";
 import { api, errorMessage } from "@/lib/api";
 import { openCheckout } from "@/lib/cashfree";
 import { useSession } from "@/lib/session";
@@ -96,9 +96,9 @@ export default function Billing() {
       { id: "number", header: "Invoice", accessorFn: (i) => i.number, cell: ({ getValue }) => <span className="font-medium">{getValue<string>()}</span> },
       { id: "period", header: "Period", accessorFn: (i) => i.period, cell: ({ row: { original: i } }) => i.periodLabel },
       { id: "seats", header: "Seats", accessorFn: (i) => i.seats, meta: { align: "right" } },
-      { id: "subtotal", header: "Subtotal", accessorFn: (i) => Number(i.subtotal), meta: { align: "right" }, cell: ({ getValue }) => inr(getValue<number>()) },
-      { id: "gst", header: "GST 18%", accessorFn: (i) => Number(i.cgst) + Number(i.sgst) + Number(i.igst), meta: { align: "right" }, cell: ({ getValue }) => inr(getValue<number>()) },
-      { id: "total", header: "Total", accessorFn: (i) => Number(i.total), meta: { align: "right" }, cell: ({ getValue }) => <span className="font-medium">{inr(getValue<number>())}</span> },
+      { id: "subtotal", header: "Subtotal", accessorFn: (i) => Number(i.subtotal), meta: { align: "right" }, cell: ({ getValue }) => fmtMoney(getValue<number>()) },
+      { id: "gst", header: "GST 18%", accessorFn: (i) => Number(i.cgst) + Number(i.sgst) + Number(i.igst), meta: { align: "right" }, cell: ({ getValue }) => fmtMoney(getValue<number>()) },
+      { id: "total", header: "Total", accessorFn: (i) => Number(i.total), meta: { align: "right" }, cell: ({ getValue }) => <span className="font-medium">{fmtMoney(getValue<number>())}</span> },
       { id: "status", header: "Status", accessorFn: (i) => i.displayStatus, cell: ({ row: { original: i } }) => <div className="flex items-center gap-1.5"><InvoiceStatusTag status={i.displayStatus} /><span className="text-muted text-[12px]">{i.status === "paid" && i.paidOn ? fmtDate(i.paidOn, false) : `due ${fmtDate(i.dueOn, false)}`}</span></div> },
     ],
     [],
@@ -124,7 +124,7 @@ export default function Billing() {
       {d.status === "past_due" || d.overdue > 0 ? (
         <Notice tone="bad">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span>{inr(d.overdue)} is overdue. Please pay to avoid your account being suspended.</span>
+            <span>{fmtMoney(d.overdue)} is overdue. Please pay to avoid your account being suspended.</span>
             {d.payOnline && !readOnly ? (
               <Button size="sm" loading={!!paying} onClick={() => pay(d.invoices.find((i) => i.displayStatus === "overdue")!.id)}>
                 Pay now
@@ -140,7 +140,7 @@ export default function Billing() {
       ) : null}
       {d.status === "trial" ? <Notice tone="sel">You're on a free trial{d.trialEndsAt ? ` until ${fmtDate(d.trialEndsAt.slice(0, 10))}` : ""}. Billing starts when you pick a plan.</Notice> : null}
       <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(190px, 100%), 1fr))" }}>
-        <StatCard label="Plan" value={d.plan.name} meta={d.plan.price ? `${inr(d.plan.price)} / employee / month${d.plan.custom ? " (contract rate)" : ""} · billed monthly` : "No charge"} />
+        <StatCard label="Plan" value={d.plan.name} meta={d.plan.price ? `${fmtMoney(d.plan.price)} / employee / month${d.plan.custom ? " (contract rate)" : ""} · billed monthly` : "No charge"} />
         <Card className="!gap-1" style={{ padding: "14px 16px" }}>
           <div className="card-kicker">Seats used</div>
           <div className="stat-value">{d.seats.active}</div>
@@ -154,7 +154,7 @@ export default function Billing() {
             {d.seats.billable > d.seats.active ? `billed at the plan minimum of ${d.seats.billable}` : "active employees are billed"}
           </div>
         </Card>
-        <StatCard label="Next invoice" value={d.nextInvoice ? inr(d.nextInvoice.total) : "—"} meta={d.nextInvoice ? `${fmtDate(d.nextInvoice.date)} · ${inr(d.nextInvoice.subtotal)} + 18% GST` : "Nothing due"} />
+        <StatCard label="Next invoice" value={d.nextInvoice ? fmtMoney(d.nextInvoice.total) : "—"} meta={d.nextInvoice ? `${fmtDate(d.nextInvoice.date)} · ${fmtMoney(d.nextInvoice.subtotal)} + 18% GST` : "Nothing due"} />
         <StatCard label="Payment method" value={d.billing.paymentMethod?.split(" · ")[0] ?? (d.payOnline ? "Pay online" : "Bank transfer")} meta={d.billing.paymentMethod?.split(" · ").slice(1).join(" · ") || (d.payOnline ? "UPI, cards or netbanking through Cashfree" : "UPI or NEFT against each invoice")} />
       </div>
       <AutopayCard />

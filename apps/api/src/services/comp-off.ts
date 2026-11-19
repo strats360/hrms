@@ -1,6 +1,6 @@
 import { and, asc, eq, gte, inArray, lt, lte, ne, sql } from "drizzle-orm";
 import { attendanceRecords, compOffRequests, employees, leaveBalances, leaveTypes, tenants, type Database } from "@hrms/db";
-import { todayIST, weekday } from "@hrms/shared";
+import { todayLocal, weekday } from "@hrms/shared";
 import { holidaySet, isDayOff, shiftFor } from "./attendance";
 import { ensureBalances } from "./leave";
 
@@ -38,7 +38,7 @@ export async function eligibility(db: Database, tenantId: string, emp: typeof em
 /** Off days the employee worked recently and hasn't claimed yet. */
 export async function claimableDays(db: Database, tenantId: string, emp: typeof employees.$inferSelect) {
   const { claimWithinDays } = await compOffSettings(db, tenantId);
-  const today = todayIST();
+  const today = todayLocal();
   const from = addDays(today, -claimWithinDays);
   const worked = await db
     .select({ date: attendanceRecords.date })
@@ -60,7 +60,7 @@ export class CompOffError extends Error {}
 export async function requestCompOff(db: Database, tenantId: string, emp: typeof employees.$inferSelect, b: { date: string; days?: number; reason: string }, userId: string) {
   if (!(await compOffType(db, tenantId))) throw new CompOffError("Comp off isn't set up: add a leave type with code CO under leave policies");
   const { claimWithinDays } = await compOffSettings(db, tenantId);
-  const today = todayIST();
+  const today = todayLocal();
   if (b.date > today) throw new CompOffError("You can claim comp off only after you've worked the day");
   if (b.date < addDays(today, -claimWithinDays)) throw new CompOffError(`Comp off has to be claimed within ${claimWithinDays} days of the work`);
   const e = await eligibility(db, tenantId, emp, b.date);
@@ -80,7 +80,7 @@ export async function approveCompOff(db: Database, row: CompOff, userId: string,
   const expiresOn = addDays(row.workDate, expiryDays);
   const [updated] = await db.update(compOffRequests).set({ status: "approved", decidedBy: userId, decidedAt: new Date(), decisionNote: note, expiresOn }).where(and(eq(compOffRequests.id, row.id), eq(compOffRequests.status, "pending"))).returning();
   if (!updated) throw new CompOffError("This request has already been decided");
-  const year = Number(todayIST().slice(0, 4));
+  const year = Number(todayLocal().slice(0, 4));
   await ensureBalances(db, row.tenantId, row.employeeId, year);
   await db.update(leaveBalances).set({ adjusted: sql`${leaveBalances.adjusted} + ${row.days}` }).where(and(eq(leaveBalances.employeeId, row.employeeId), eq(leaveBalances.leaveTypeId, type.id), eq(leaveBalances.year, year)));
   return updated;
@@ -91,7 +91,7 @@ export async function approveCompOff(db: Database, row: CompOff, userId: string,
  * so what's left of a balance after setting aside the still-valid later credits is what
  * remains of the expired one.
  */
-export async function expireCompOff(db: Database, tenantId?: string, today = todayIST()) {
+export async function expireCompOff(db: Database, tenantId?: string, today = todayLocal()) {
   const due = await db
     .select()
     .from(compOffRequests)

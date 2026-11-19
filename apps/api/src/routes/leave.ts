@@ -13,7 +13,7 @@ import {
   leaveAdjustSchema,
   leaveApplySchema,
   leaveTypeSchema,
-  todayIST,
+  todayLocal,
 } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
@@ -161,7 +161,7 @@ const balQuery = z.object({ year: z.coerce.number().int().optional(), q: z.strin
 async function balances(c: Context<AppEnv>, qy: z.infer<typeof balQuery>) {
   const db = c.get("db");
   const tid = c.get("tenant").tenantId;
-  const year = qy.year ?? Number(todayIST().slice(0, 4));
+  const year = qy.year ?? Number(todayLocal().slice(0, 4));
   const scope = await teamScope(c, "leave");
   const conds = [eq(employees.tenantId, tid), sql`${employees.status} not in ('exited','inactive')`];
   if (scope) conds.push(inArray(employees.id, scope.length ? scope : ["-"]));
@@ -245,7 +245,7 @@ leaveRoutes.patch("/types/:id", requirePerm("leave", "configure"), vPatch(leaveT
 
 // ---------- holidays ----------
 leaveRoutes.get("/holidays", async (c) => {
-  const year = Number(c.req.query("year") ?? todayIST().slice(0, 4));
+  const year = Number(c.req.query("year") ?? todayLocal().slice(0, 4));
   const rows = await c
     .get("db")
     .select()

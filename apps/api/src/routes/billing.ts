@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import { and, asc, desc, eq, gte, ilike, inArray, lte, ne, or, sql, type SQL } from "drizzle-orm";
 import { invoices, memberships, platformSettings, plans, tenants } from "@hrms/db";
-import { billingRunSchema, DEFAULT_DUNNING, dunningStage, inr, invoicePaymentSchema, invoicingEntitySchema, planSchema, STATE_BY_CODE, tenantBillingSchema, todayIST } from "@hrms/shared";
+import { billingRunSchema, DEFAULT_DUNNING, dunningStage, fmtMoney, invoicePaymentSchema, invoicingEntitySchema, planSchema, STATE_BY_CODE, tenantBillingSchema, todayLocal } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
 import { requirePerm, requirePlatform } from "../lib/context";
@@ -25,21 +25,21 @@ async function emailInvoice(c: Context<AppEnv>, inv: Invoice, kind: "issued" | "
     const to = t?.billingEmail ?? t?.contactEmail;
     if (!t || !to) return false;
     const entity = await getEntity(c.get("db"));
-    const overdue = daysBetween(inv.dueOn, todayIST());
+    const overdue = daysBetween(inv.dueOn, todayLocal());
     const { html, text } = layout({
       company: entity.legalName,
       heading: kind === "issued" ? `Invoice ${inv.number} for ${periodLabel(inv.period)}` : `Payment reminder: ${inv.number}`,
       paragraphs: [
         `Hello ${t.name} team,`,
         kind === "issued"
-          ? `Your invoice for ${periodLabel(inv.period)} is ${inr(Number(inv.total))} (${inv.seats} employees on the ${inv.planName} plan, GST included). It's due on ${inv.dueOn}.`
-          : `Invoice ${inv.number} for ${inr(Number(inv.total))} was due on ${inv.dueOn}${overdue > 0 ? ` and is ${overdue} day${overdue === 1 ? "" : "s"} overdue` : ""}. Please pay to keep your account active.`,
+          ? `Your invoice for ${periodLabel(inv.period)} is ${fmtMoney(Number(inv.total))} (${inv.seats} employees on the ${inv.planName} plan, GST included). It's due on ${inv.dueOn}.`
+          : `Invoice ${inv.number} for ${fmtMoney(Number(inv.total))} was due on ${inv.dueOn}${overdue > 0 ? ` and is ${overdue} day${overdue === 1 ? "" : "s"} overdue` : ""}. Please pay to keep your account active.`,
         ...(kind === "issued" && (await activeMandate(c.get("db"), inv.tenantId)) ? ["It will be collected by autopay after your bank's pre-debit notice, unless it's above your autopay limit."] : []),
         ...(entity.upiId ? [`Pay by UPI to ${entity.upiId}${entity.bankDetails ? ` or by bank transfer: ${entity.bankDetails}` : ""}. Quote ${inv.number} as the reference.`] : []),
       ],
       cta: cashfreeConfig(c.env) ? { label: "Pay online", url: `${c.env.APP_URL}/settings/billing?pay=${inv.id}` } : { label: "View invoice", url: `${c.env.APP_URL}/settings/billing` },
     });
-    await c.get("mailer").send({ to, subject: kind === "issued" ? `Invoice ${inv.number} · ${inr(Number(inv.total))}` : `Reminder: invoice ${inv.number} is overdue`, html, text });
+    await c.get("mailer").send({ to, subject: kind === "issued" ? `Invoice ${inv.number} · ${fmtMoney(Number(inv.total))}` : `Reminder: invoice ${inv.number} is overdue`, html, text });
     return true;
   } catch (err) {
     console.error("invoice email failed", err);
@@ -98,7 +98,7 @@ platformBillingRoutes.patch("/tenants/:id", finance, vPatch(tenantBillingSchema)
 // ---- summary and invoices ----
 platformBillingRoutes.get("/summary", v("query", z.object({ period: z.string().regex(/^\d{4}-\d{2}$/).optional() })), async (c) => {
   const db = c.get("db");
-  const today = todayIST();
+  const today = todayLocal();
   const [latest] = await db.select({ p: sql<string>`max(${invoices.period})` }).from(invoices).where(ne(invoices.status, "void"));
   const period = c.req.valid("query").period ?? latest?.p ?? today.slice(0, 7);
   const [s] = await db
@@ -132,7 +132,7 @@ platformBillingRoutes.get("/invoices", v("query", listQ), async (c) => {
   const conds: SQL[] = [];
   if (q.period) conds.push(eq(invoices.period, q.period));
   if (q.tenantId) conds.push(eq(invoices.tenantId, q.tenantId));
-  if (q.status === "overdue") conds.push(eq(invoices.status, "issued"), sql`${invoices.dueOn} < ${todayIST()}`);
+  if (q.status === "overdue") conds.push(eq(invoices.status, "issued"), sql`${invoices.dueOn} < ${todayLocal()}`);
   else if (q.status) conds.push(inArray(invoices.status, q.status.split(",")));
   if (q.q) conds.push(or(ilike(tenants.name, `%${q.q}%`), ilike(invoices.number, `%${q.q}%`), ilike(tenants.gstin, `%${q.q}%`))!);
   const rows = await c.get("db").select({ inv: invoices, name: tenants.name }).from(invoices).innerJoin(tenants, eq(tenants.id, invoices.tenantId)).where(conds.length ? and(...conds) : undefined).orderBy(desc(invoices.period), asc(invoices.number)).limit(2000);
@@ -186,7 +186,7 @@ platformBillingRoutes.post("/run/preview", finance, v("json", billingRunSchema),
 });
 platformBillingRoutes.post("/run", finance, v("json", billingRunSchema), async (c) => {
   const b = c.req.valid("json");
-  if (b.period >= todayIST().slice(0, 7)) throw badRequest("Bill a month after it ends. The current month can be billed from the 1st of next month.");
+  if (b.period >= todayLocal().slice(0, 7)) throw badRequest("Bill a month after it ends. The current month can be billed from the 1st of next month.");
   const created = await issueInvoices(c.get("db"), b.period, uid(c), { tenantIds: b.tenantIds });
   let emailed = 0;
   let autopay = 0;
@@ -196,7 +196,7 @@ platformBillingRoutes.post("/run", finance, v("json", billingRunSchema), async (
     if (cfg && (await scheduleAutopay(c.get("db"), cfg, inv, uid(c))).scheduled) autopay++;
     if (await emailInvoice(c, inv, "issued")) emailed++;
   }
-  await audit(c, { tenantId: null, action: "platform.billing_run", entity: "invoice", summary: `Billing run for ${periodLabel(b.period)}: ${created.length} invoices, ${inr(created.reduce((s, i) => s + Number(i.total), 0))}` });
+  await audit(c, { tenantId: null, action: "platform.billing_run", entity: "invoice", summary: `Billing run for ${periodLabel(b.period)}: ${created.length} invoices, ${fmtMoney(created.reduce((s, i) => s + Number(i.total), 0))}` });
   return c.json({ created: created.length, emailed, autopay, total: created.reduce((s, i) => s + Number(i.total), 0) }, 201);
 });
 
@@ -208,7 +208,7 @@ platformBillingRoutes.post("/invoices/:id/payment", finance, v("json", invoicePa
   if (!row) throw badRequest("Only an unpaid invoice can be marked paid");
   const restored = await restoreIfClear(db, row.tenantId);
   const autopay = await withdrawAutopay(c, row, `Paid by ${b.method}`);
-  await audit(c, { tenantId: row.tenantId, action: "platform.invoice_paid", entity: "invoice", entityId: row.id, summary: `Recorded payment for ${row.number} (${inr(Number(row.total))}, ${b.method}${b.reference ? ` ${b.reference}` : ""})${restored ? "; account restored" : ""}` });
+  await audit(c, { tenantId: row.tenantId, action: "platform.invoice_paid", entity: "invoice", entityId: row.id, summary: `Recorded payment for ${row.number} (${fmtMoney(Number(row.total))}, ${b.method}${b.reference ? ` ${b.reference}` : ""})${restored ? "; account restored" : ""}` });
   return c.json({ ...shape(row), restored, autopay: autopay ? { cancelled: autopay.cancelled.length, stillScheduled: autopay.pending.length } : null });
 });
 platformBillingRoutes.post("/invoices/:id/void", requirePlatform("super_admin"), v("json", z.object({ reason: z.string().trim().min(3).max(300) })), async (c) => {
@@ -230,7 +230,7 @@ platformBillingRoutes.post("/invoices/:id/remind", finance, async (c) => {
 
 // ---- dunning ----
 async function dunningPlan(c: Context<AppEnv>) {
-  const today = todayIST();
+  const today = todayLocal();
   const rows = await overdueInvoices(c.get("db"), today);
   return rows.map((r) => {
     const days = daysBetween(r.inv.dueOn, today);
@@ -292,7 +292,7 @@ tenantBillingRoutes.get("/", requirePerm("billing", "view"), async (c) => {
   const [plan] = await db.select().from(plans).where(eq(plans.key, t.plan));
   const active = (await activeEmployeeCounts(db, [t.id])).get(t.id) ?? 0;
   const [admins] = await db.select({ n: sql<number>`count(*)::int` }).from(memberships).where(and(eq(memberships.tenantId, t.id), eq(memberships.status, "active"), sql`${memberships.roleId} is not null`));
-  const month = todayIST().slice(0, 7);
+  const month = todayLocal().slice(0, 7);
   const [usage] = await db
     .select({ payslips: sql<number>`(select count(*)::int from payroll_items i join payroll_runs r on r.id = i.run_id where r.tenant_id = ${t.id} and r.month = ${month} and r.status in ('approved','paid'))`, bankFiles: sql<number>`(select coalesce(sum(export_count),0)::int from payment_batches b where b.tenant_id = ${t.id} and to_char(b.created_at, 'YYYY-MM') = ${month})` })
     .from(tenants)

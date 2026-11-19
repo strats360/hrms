@@ -7,7 +7,7 @@ import {
   fyOfMonth,
   professionalTax,
   STATUTORY,
-  todayIST,
+  todayLocal,
   type Regime,
   type TaxDeclarationData,
   type Verified,
@@ -22,7 +22,7 @@ export const fyMonths = (fy: string) => {
     return `${m >= 4 ? y : y + 1}-${String(m).padStart(2, "0")}`;
   });
 };
-export const currentFy = () => fyOfMonth(todayIST().slice(0, 7));
+export const currentFy = () => fyOfMonth(todayLocal().slice(0, 7));
 export const QUARTERS: Record<string, number[]> = { Q1: [4, 5, 6], Q2: [7, 8, 9], Q3: [10, 11, 12], Q4: [1, 2, 3] };
 export const quarterOf = (month: string) => Object.entries(QUARTERS).find(([, ms]) => ms.includes(Number(month.slice(5, 7))))![0];
 
@@ -69,7 +69,7 @@ export async function employeeTax(db: Database, tenantId: string, employeeId: st
   const struct = resolveStructure(emp, (await structuresAsOf(db, tenantId, [emp.id], months[11] + "-28")).get(emp.id), template);
   const [t] = await db.select({ state: tenants.state }).from(tenants).where(eq(tenants.id, tenantId));
   // rules in force now, or at the edge of the FY when looking at another year
-  const now = todayIST().slice(0, 7);
+  const now = todayLocal().slice(0, 7);
   const rules = await rulesFor(db, now > months[11]! ? months[11]! : now < months[0]! ? months[0]! : now);
 
   const locked = new Map(items.map((x) => [x.month, x]));

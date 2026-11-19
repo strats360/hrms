@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 import { branches, statutoryRules, tenants } from "@hrms/db";
-import { builtInValue, describeRule, RULE_CATEGORY_LABEL, ruleKey, statutoryRuleSchema, todayIST, type RuleCategory } from "@hrms/shared";
+import { builtInValue, describeRule, RULE_CATEGORY_LABEL, ruleKey, statutoryRuleSchema, todayLocal, type RuleCategory } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
 import { requirePlatform } from "../lib/context";
@@ -35,7 +35,7 @@ async function reach(db: AppEnv["Variables"]["db"], r: Pick<Row, "category" | "s
 
 statutoryRoutes.get("/", async (c) => {
   const rows = await c.get("db").select().from(statutoryRules).orderBy(asc(statutoryRules.category), asc(statutoryRules.scope), desc(statutoryRules.effectiveFrom));
-  const today = todayIST();
+  const today = todayLocal();
   // which live version is in force today for each key
   const current = new Map<string, string>();
   for (const r of rows) if (r.status === "live" && r.effectiveFrom <= today && !current.has(r.key)) current.set(r.key, r.id);

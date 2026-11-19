@@ -129,8 +129,8 @@ Cloudflare is one account for all instances. Neon is roughly $19 a month per pro
 
 **Phase 1. Make the core country neutral.** India keeps working throughout.
 1. Legal entities, with employees linked to an entity ✅ Settings › Legal entities. Each instance limits entity countries with the `ALLOWED_COUNTRIES` Worker variable (default `IN`), and only countries with a finished pack can be picked.
-2. Money with currency everywhere, and rounding per currency (3 decimals for KWD and OMR)
-3. Company time zone in place of the hardcoded Indian time
+2. Money with currency everywhere, and rounding per currency (3 decimals for KWD and OMR) ✅ `fmtMoney` and `roundMoney` know each currency's symbol and decimals, money columns hold 3 decimals, and payslips round the way the country pack says (whole rupees in India). Each site sets its default currency with `DEFAULT_CURRENCY`, and the web app takes it from the company's default entity.
+3. Company time zone in place of the hardcoded Indian time ✅ `todayLocal`, `toLocalDate`, `toLocalTime`, `localMinutes` and `zonedDateTime` work in any zone, daylight saving included. Each site sets its default with `DEFAULT_TIME_ZONE`. Attendance (punches, device imports, CSV imports, corrections, rosters) reads shift times in the employee's entity zone. Screens still show times in the site's zone; per entity display comes with the first site that mixes zones (Gulf).
 4. Country driven ID and document types, with visa and permit expiry reminders
 5. Holiday calendars per country
 6. Translation support, ready for Arabic and right to left layout

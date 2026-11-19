@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
-import { fmtDate, GST_STATE_CODES, todayIST } from "@hrms/shared";
+import { fmtDate, GST_STATE_CODES, todayLocal } from "@hrms/shared";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { TableCard } from "@/components/ui/card";
@@ -141,7 +141,7 @@ function RuleDialog({ value, onClose, onSaved }: { value: Rule | "new" | null; o
   const readOnly = !!existing && existing.status !== "draft";
   const [category, setCategory] = useState<Category>("pf");
   const [scope, setScope] = useState("");
-  const [effectiveFrom, setFrom] = useState(todayIST().slice(0, 8) + "01");
+  const [effectiveFrom, setFrom] = useState(todayLocal().slice(0, 8) + "01");
   const [source, setSource] = useState("");
   const [notes, setNotes] = useState("");
   const [val, setVal] = useState<Record<string, any> | null>(null);

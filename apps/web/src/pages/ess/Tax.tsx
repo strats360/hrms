@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ChevronDown, Download, FileText, Lock, Trash2, Upload } from "lucide-react";
-import { CAPS, declaredBySection, fmtDate, inr, taxDeclarationDataSchema, TAX_SECTION_LABELS, todayIST, type TaxSection } from "@hrms/shared";
+import { CAPS, declaredBySection, fmtDate, fmtMoney, taxDeclarationDataSchema, TAX_SECTION_LABELS, todayLocal, type TaxSection } from "@hrms/shared";
 import { api, ApiError, download, errorMessage, qs } from "@/lib/api";
 import type { EmployeeTax, Form16Data, TaxDeclarationData, TaxProof, TaxStatement } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -76,7 +76,7 @@ function clean(d: TaxDeclarationData): TaxDeclarationData {
 
 export default function EssTax() {
   const qc = useQueryClient();
-  const currentFy = fyOf(todayIST());
+  const currentFy = fyOf(todayLocal());
   const [fy, setFy] = useState(currentFy);
   const q = useQuery({ queryKey: ["ess", "tax", fy], queryFn: () => api.get<TaxResp>(`/ess/tax${qs({ fy })}`) });
   const [regime, setRegime] = useState<Regime>("new");
@@ -182,11 +182,11 @@ export default function EssTax() {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <Fig label="TDS deducted so far" v={inr(t.deducted)} />
-          {t.excess ? <Fig label="Deducted more than your tax" v={inr(t.excess)} /> : <Fig label="Still to deduct this year" v={inr(t.remaining)} />}
-          <Fig label={t.projectedMonths ? `Estimated TDS per month (${t.projectedMonths} left)` : "Estimated TDS per month"} v={t.projectedMonths ? inr(t.monthlyEstimate) : "No months left"} />
+          <Fig label="TDS deducted so far" v={fmtMoney(t.deducted)} />
+          {t.excess ? <Fig label="Deducted more than your tax" v={fmtMoney(t.excess)} /> : <Fig label="Still to deduct this year" v={fmtMoney(t.remaining)} />}
+          <Fig label={t.projectedMonths ? `Estimated TDS per month (${t.projectedMonths} left)` : "Estimated TDS per month"} v={t.projectedMonths ? fmtMoney(t.monthlyEstimate) : "No months left"} />
         </div>
-        {t.excess ? <div className="text-muted text-[12.5px]">No more TDS will be deducted this year. You can claim the extra {inr(t.excess)} as a refund when you file your income tax return.</div> : null}
+        {t.excess ? <div className="text-muted text-[12.5px]">No more TDS will be deducted this year. You can claim the extra {fmtMoney(t.excess)} as a refund when you file your income tax return.</div> : null}
       </Card>
 
       {!editable ? (
@@ -221,9 +221,9 @@ export default function EssTax() {
               >
                 <div className="flex w-full items-center justify-between gap-2">
                   <span className="font-semibold">{r === "new" ? "New regime" : "Old regime"}</span>
-                  {best ? <Tag tone="ok">Saves you {inr(p!.saving)}</Tag> : null}
+                  {best ? <Tag tone="ok">Saves you {fmtMoney(p!.saving)}</Tag> : null}
                 </div>
-                <span className="text-[22px] font-medium num">{tax === undefined ? "…" : inr(tax)}</span>
+                <span className="text-[22px] font-medium num">{tax === undefined ? "…" : fmtMoney(tax)}</span>
                 <span className="text-muted text-[12px]">{r === "new" ? "Estimated tax for the year · default if you don't choose" : "Estimated tax with the deductions below"}</span>
               </button>
             );
@@ -254,7 +254,7 @@ export default function EssTax() {
             <Checkbox label="I live in a metro city (Delhi, Mumbai, Kolkata or Chennai)" checked={!!data.rent?.metro} onChange={(v) => update({ rent: { monthlyRent: 0, months: 12, ...data.rent, metro: v } })} disabled={!editable} />
           </SectionCard>
 
-          <SectionCard title="80C investments" hint={`Old regime only. Limit ${inr(CAPS.sec80C)} a year. Your PF contribution already counts towards the ₹1.5 lakh limit.`} dimmed={oldOnly}>
+          <SectionCard title="80C investments" hint={`Old regime only. Limit ${fmtMoney(CAPS.sec80C)} a year. Your PF contribution already counts towards the ₹1.5 lakh limit.`} dimmed={oldOnly}>
             <div className={grid2}>
               {C80.map(([k, label]) => (
                 <Field key={k} label={label}>
@@ -264,7 +264,7 @@ export default function EssTax() {
             </div>
           </SectionCard>
 
-          <SectionCard title="Health insurance (80D)" hint={`Old regime only. Up to ${inr(CAPS.sec80D)} each for self/family and parents, ${inr(CAPS.sec80DSenior)} if senior citizens.`} dimmed={oldOnly}>
+          <SectionCard title="Health insurance (80D)" hint={`Old regime only. Up to ${fmtMoney(CAPS.sec80D)} each for self/family and parents, ${fmtMoney(CAPS.sec80DSenior)} if senior citizens.`} dimmed={oldOnly}>
             <div className={grid2}>
               <div className="flex flex-col gap-2">
                 <Field label="Self, spouse and children">
@@ -283,10 +283,10 @@ export default function EssTax() {
 
           <SectionCard title="Other deductions" hint="Old regime only." dimmed={oldOnly}>
             <div className={grid2}>
-              <Field label="80CCD(1B) NPS contribution" hint={`Limit ${inr(CAPS.sec80CCD1B)}, on top of 80C`}>
+              <Field label="80CCD(1B) NPS contribution" hint={`Limit ${fmtMoney(CAPS.sec80CCD1B)}, on top of 80C`}>
                 <MoneyInput value={data.sec80CCD1B} onChange={(v) => update({ sec80CCD1B: v })} />
               </Field>
-              <Field label="24(b) home loan interest" hint={`Self-occupied house, limit ${inr(CAPS.homeLoanInterest)}`}>
+              <Field label="24(b) home loan interest" hint={`Self-occupied house, limit ${fmtMoney(CAPS.homeLoanInterest)}`}>
                 <MoneyInput value={data.homeLoanInterest} onChange={(v) => update({ homeLoanInterest: v })} />
               </Field>
               <Field label="80E education loan interest" hint="No upper limit">
@@ -295,7 +295,7 @@ export default function EssTax() {
               <Field label="80G donations (eligible amount)" hint="Enter the amount that qualifies after the 50% or 100% rule">
                 <MoneyInput value={data.sec80G} onChange={(v) => update({ sec80G: v })} />
               </Field>
-              <Field label="80TTA savings account interest" hint={`Limit ${inr(CAPS.sec80TTA)}`}>
+              <Field label="80TTA savings account interest" hint={`Limit ${fmtMoney(CAPS.sec80TTA)}`}>
                 <MoneyInput value={data.sec80TTA} onChange={(v) => update({ sec80TTA: v })} />
               </Field>
             </div>
@@ -435,7 +435,7 @@ function ProofRow({ section, amount, proofs, editable, onUpload, uploading, onDe
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <div className="font-semibold">{TAX_SECTION_LABELS[section]}</div>
-          <div className="text-muted text-[12px]">Declared {inr(amount)}{section === "hra" ? " a year" : ""}</div>
+          <div className="text-muted text-[12px]">Declared {fmtMoney(amount)}{section === "hra" ? " a year" : ""}</div>
         </div>
         {editable ? (
           <>
@@ -493,7 +493,7 @@ function ComputationCard({ tax }: { tax: EmployeeTax }) {
         <div>
           <div className="card-title text-[17px]">Your tax computation</div>
           <div className="text-muted text-[13px]">
-            {tax.statement.regime === "new" ? "New" : "Old"} regime · tax for the year {inr(tax.statement.tax.total)} · based on what's saved
+            {tax.statement.regime === "new" ? "New" : "Old"} regime · tax for the year {fmtMoney(tax.statement.tax.total)} · based on what's saved
           </div>
         </div>
         <ChevronDown size={18} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
@@ -517,8 +517,8 @@ function ComputationCard({ tax }: { tax: EmployeeTax }) {
                   <tr key={m.month}>
                     <td className="whitespace-nowrap">{monthLabel(m.month)}</td>
                     <td>{m.status === "locked" ? <Tag tone="ok">Paid</Tag> : <Tag tone="neutral">Projected</Tag>}</td>
-                    <td className="num text-right">{inr(m.gross)}</td>
-                    <td className="num text-right">{m.status === "locked" ? inr(m.tds) : tax.projectedMonths ? `~${inr(tax.monthlyEstimate)}` : "—"}</td>
+                    <td className="num text-right">{fmtMoney(m.gross)}</td>
+                    <td className="num text-right">{m.status === "locked" ? fmtMoney(m.tds) : tax.projectedMonths ? `~${fmtMoney(tax.monthlyEstimate)}` : "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -569,7 +569,7 @@ function Form16Card({ currentFy }: { currentFy: string }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="text-[13.5px]">
             <div className="font-semibold">
-              FY {f.fy} · TDS {inr(f.tdsDeducted)}
+              FY {f.fy} · TDS {fmtMoney(f.tdsDeducted)}
             </div>
             <div className="text-muted text-[12.5px]">{f.provisional ? "Provisional: the year isn't over, so figures will change" : `Assessment year ${f.assessmentYear}`}</div>
           </div>

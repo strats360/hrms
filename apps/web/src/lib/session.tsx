@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
+import { setLocalDefaults } from "@hrms/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { can as canDo, MODULES, type Action, type Module, type PermissionMatrix } from "@hrms/shared";
 import { api, ApiError, getActiveTenant, setActiveTenant } from "./api";
@@ -17,6 +18,10 @@ export interface Membership {
   employeeName: string | null;
   employeeCode: string | null;
   plan?: string;
+  /** The company's default legal entity: drives dates and money in the app. */
+  timeZone?: string;
+  currency?: string;
+  country?: string;
   /** Feature flags for this company (plan gates and staged rollouts). */
   features?: Record<string, boolean>;
   /** The company requires two-factor sign-in for this person. */
@@ -121,7 +126,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const active = getActiveTenant();
     // support sessions are only used when explicitly opened, never as the default company
     const support = (me.supportSessions ?? []).find((x) => x.tenantId === active);
-    return me.memberships.find((m) => m.tenantId === active) ?? (support ? supportMembership(support) : null) ?? me.memberships[0] ?? null;
+    const t = me.memberships.find((m) => m.tenantId === active) ?? (support ? supportMembership(support) : null) ?? me.memberships[0] ?? null;
+    // set before children render, so the first paint already uses the right zone and currency
+    setLocalDefaults({ timeZone: t?.timeZone, currency: t?.currency });
+    return t;
   }, [me]);
 
   useEffect(() => {

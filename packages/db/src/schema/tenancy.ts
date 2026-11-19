@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { numeric, boolean, index, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import type { NotificationPrefs, PermissionMatrix, TenantSettings } from "@hrms/shared";
 import { user } from "./auth";
-import { id, timestamps } from "./_helpers";
+import { id, timestamps, money } from "./_helpers";
 
 export type StatutoryRegistration = { enabled: boolean; registration?: string | null };
 export type TenantStatutory = Partial<Record<"epf" | "esi" | "pt" | "lwf" | "tds" | "bonus", StatutoryRegistration>>;
@@ -30,7 +30,7 @@ export const tenants = pgTable(
     status: text("status").notNull().default("trial"), // trial | active | past_due | suspended | cancelled
     trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
     /** Billing: negotiated rate per employee (overrides the plan), billing email, how they pay. */
-    customPrice: numeric("custom_price", { precision: 14, scale: 2, mode: "number" }),
+    customPrice: money("custom_price"),
     billingEmail: text("billing_email"),
     paymentMethod: text("payment_method"),
     setupStep: text("setup_step").notNull().default("0"),
