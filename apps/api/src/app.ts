@@ -45,6 +45,7 @@ import { paymentRoutes } from "./routes/payments";
 import { reportRoutes } from "./routes/reports";
 import { platformBillingRoutes, tenantBillingRoutes } from "./routes/billing";
 import { flagRoutes, RELEASE } from "./routes/flags";
+import { controlRoutes } from "./routes/control";
 import { createDb } from "@hrms/db";
 import { sql } from "drizzle-orm";
 import { statutoryRoutes } from "./routes/statutory";
@@ -119,6 +120,8 @@ export function buildApp() {
     return c.json({ ...base, ok, checks, migrations }, ok ? 200 : 503);
   });
   api.use("*", services);
+  // the control plane's view of this site: company level only, token protected
+  api.route("/control", controlRoutes);
 
   api.on(["GET", "POST"], "/auth/*", (c) => {
     const path = new URL(c.req.url).pathname;

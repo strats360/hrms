@@ -141,9 +141,18 @@ jobs:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           CASHFREE_APP_ID: ${{ secrets.CASHFREE_APP_ID }}
           CASHFREE_SECRET_KEY: ${{ secrets.CASHFREE_SECRET_KEY }}
+          # repository secret shared with the control plane; each site gets its own derived token
+          CONTROL_PLANE_KEY: ${{ secrets.CONTROL_PLANE_KEY }}
+          SITE_KEY: ${{ steps.provision.outputs.site_key }}
         run: |
           umask 077
-          node -e 'const s={BETTER_AUTH_SECRET:process.env.BETTER_AUTH_SECRET,ENCRYPTION_KEY:process.env.ENCRYPTION_KEY}; for (const k of ["RESEND_API_KEY","CASHFREE_APP_ID","CASHFREE_SECRET_KEY"]) if(process.env[k]) s[k]=process.env[k]; require("fs").writeFileSync(process.env.RUNNER_TEMP+"/secrets.json", JSON.stringify(s))'
+          node -e '
+            const s = { BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET, ENCRYPTION_KEY: process.env.ENCRYPTION_KEY };
+            for (const k of ["RESEND_API_KEY", "CASHFREE_APP_ID", "CASHFREE_SECRET_KEY"]) if (process.env[k]) s[k] = process.env[k];
+            // same derivation as siteControlToken in @hrms/shared
+            if (process.env.CONTROL_PLANE_KEY) s.CONTROL_TOKEN = require("crypto").createHmac("sha256", process.env.CONTROL_PLANE_KEY).update("saralix-site:" + process.env.SITE_KEY).digest("hex");
+            require("fs").writeFileSync(process.env.RUNNER_TEMP + "/secrets.json", JSON.stringify(s));
+          '
           npx wrangler secret bulk "$RUNNER_TEMP/secrets.json" -c wrangler.deploy.json
           rm -f "$RUNNER_TEMP/secrets.json"
 

@@ -28,6 +28,8 @@ export interface Env {
   INSTANCE_KEY?: string;
   INSTANCE_NAME?: string;
   INSTANCE_REGION?: string;
+  /** Token the control plane uses for /api/control, derived from CONTROL_PLANE_KEY at deploy. Unset turns the control API off. */
+  CONTROL_TOKEN?: string;
   /** Cashfree Payment Gateway (subscription invoices). App ID and secret are Worker secrets. */
   CASHFREE_APP_ID?: string;
   CASHFREE_SECRET_KEY?: string;

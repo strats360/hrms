@@ -61,3 +61,25 @@ export function randomToken(bytes = 32): string {
   const b = crypto.getRandomValues(new Uint8Array(bytes));
   return bytesToB64(b).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
+
+/** HMAC-SHA256 hex. */
+export async function hmacHex(key: string, message: string): Promise<string> {
+  const k = await crypto.subtle.importKey("raw", enc.encode(key), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = new Uint8Array(await crypto.subtle.sign("HMAC", k, enc.encode(message)));
+  return Array.from(sig, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * The token a site accepts from the control plane. Both sides derive it from the one shared
+ * CONTROL_PLANE_KEY, so each site has its own token and only one secret needs managing.
+ * See docs/MULTI_COUNTRY.md.
+ */
+export const siteControlToken = (controlPlaneKey: string, siteKey: string) => hmacHex(controlPlaneKey, `saralix-site:${siteKey}`);
+
+/** Compare two strings in constant time (for tokens). */
+export function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}

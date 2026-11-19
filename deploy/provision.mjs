@@ -186,7 +186,7 @@ async function main() {
   writeFileSync(out, JSON.stringify(config, null, 2) + "\n");
   log(`Wrote ${out}`);
   log(`App URL: ${appUrl}`);
-  if (env.GITHUB_OUTPUT) appendFileSync(env.GITHUB_OUTPUT, `app_url=${appUrl}\nworker_name=${worker}\nhyperdrive_id=${hyperdriveId}\nsite_name=${site?.name ?? target}\n`);
+  if (env.GITHUB_OUTPUT) appendFileSync(env.GITHUB_OUTPUT, `app_url=${appUrl}\nworker_name=${worker}\nhyperdrive_id=${hyperdriveId}\nsite_name=${site?.name ?? target}\nsite_key=${site?.key ?? target}\n`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
