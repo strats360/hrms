@@ -14,6 +14,7 @@ interface DashboardBadges {
   pendingClaimCount?: number;
   awaitingVerification: number;
   probationDue?: number;
+  idsExpiring?: number;
 }
 
 function useCollapsed(key: string) {
@@ -103,6 +104,7 @@ export function AdminLayout() {
             { label: "Expense claims", to: "/reimbursements", count: b?.pendingClaimCount ?? 0 },
             { label: "Onboarding to verify", to: "/employees/onboarding", count: b?.awaitingVerification ?? 0 },
             { label: "Probation reviews due", to: "/employees/probation", count: b?.probationDue ?? 0 },
+            { label: "Expiring IDs and visas", to: "/employees/expiring-ids", count: b?.idsExpiring ?? 0 },
           ]}
         />
         <main className="flex w-full max-w-[1440px] flex-col gap-5 px-4 pb-12 pt-6 sm:px-7">

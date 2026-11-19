@@ -51,6 +51,7 @@ import { ApiError, badRequest, notFound } from "../lib/errors";
 import { audit } from "../lib/audit";
 import { buildCalendar, localDateTime, shiftFor, upsertAttendance } from "../services/attendance";
 import { entityOf } from "../services/entities";
+import { identitiesView } from "../services/identities";
 import { approvalPolicy, chainFor, waitingOn } from "../services/approvals";
 import { applyLeave, balanceSummary, cancelLeave } from "../services/leave";
 import { bankFields } from "../services/employees";
@@ -356,6 +357,13 @@ essRoutes.get("/holidays", async (c) => {
 });
 
 // ---------- profile & documents ----------
+/** Your own passports, visas and permits, with expiry dates. HR adds and updates them. */
+essRoutes.get("/identities", async (c) => {
+  const { tid, eid } = me(c);
+  const [e] = await c.get("db").select({ entityId: employees.entityId }).from(employees).where(eq(employees.id, eid));
+  return c.json(await identitiesView(c.get("db"), tid, eid, e?.entityId ?? null));
+});
+
 essRoutes.get("/profile", async (c) => {
   const p = await loadMe(c);
   const docs = await c.get("db").select().from(employeeDocuments).where(and(eq(employeeDocuments.tenantId, me(c).tid), eq(employeeDocuments.employeeId, me(c).eid))).orderBy(asc(employeeDocuments.createdAt));

@@ -6,6 +6,7 @@ import {
   departments,
   designations,
   employeeDocuments,
+  employeeIdentities,
   legalEntities,
   employees,
   memberships,
@@ -22,17 +23,23 @@ import {
   employeeUpdateSchema,
   EMPLOYEE_STATUS_LABELS,
   EMPLOYMENT_TYPE_LABELS,
+  daysToExpiry,
+  expiryState,
+  identitySchema,
+  idType,
+  todayLocal,
   type EmployeeStatus,
 } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
 import { requirePerm } from "../lib/context";
 import { v, vPatch } from "../lib/validate";
-import { badRequest, notFound } from "../lib/errors";
+import { badRequest, forbidden, notFound } from "../lib/errors";
 import { audit } from "../lib/audit";
 import { ALLOWED_TYPES, deleteFile, MAX_UPLOAD_BYTES, putFile, safeName } from "../lib/storage";
 import { canSeePrivate } from "../services/scope";
 import { entityOf } from "../services/entities";
+import { identitiesView } from "../services/identities";
 import { bankFields, linkExistingLogin, nextEmployeeCode, sendOnboardingInvite } from "../services/employees";
 import { toCsv, parseCsv } from "../lib/csv";
 
@@ -338,6 +345,71 @@ employeeRoutes.delete("/documents/:docId", requirePerm("employees", "edit"), asy
   if (!doc) throw notFound("Document");
   await deleteFile(c.env, doc.fileKey);
   await audit(c, { action: "document.delete", entity: "employee_document", entityId: doc.id, summary: `Deleted ${doc.name}` });
+  return c.json({ ok: true });
+});
+
+// ---------- identity documents (passports, visas, Emirates ID, Iqama...) ----------
+// Private details: HR, payroll, the employee's manager and the employee. See canSeePrivate.
+
+async function identityOwner(c: Context<AppEnv>, employeeId: string) {
+  const t = c.get("tenant");
+  const [emp] = await c.get("db").select({ id: employees.id, entityId: employees.entityId, name: employees.fullName }).from(employees).where(and(eq(employees.id, employeeId), eq(employees.tenantId, t.tenantId)));
+  if (!emp) throw notFound("Employee");
+  if (!(await canSeePrivate(c, emp.id))) throw forbidden("Only HR and their manager can see ID documents");
+  return emp;
+}
+
+/** HR: every ID that expires soon (inside its reminder window) or already has, soonest first. */
+employeeRoutes.get("/identities/expiring", requirePerm("employees", "edit"), async (c) => {
+  const db = c.get("db");
+  const tid = c.get("tenant").tenantId;
+  const rows = await db
+    .select({ i: employeeIdentities, name: employees.fullName, code: employees.employeeCode })
+    .from(employeeIdentities)
+    .innerJoin(employees, eq(employees.id, employeeIdentities.employeeId))
+    .where(and(eq(employeeIdentities.tenantId, tid), sql`${employeeIdentities.expiresOn} is not null`, sql`${employees.status} not in ('exited','inactive')`))
+    .orderBy(asc(employeeIdentities.expiresOn));
+  const today = todayLocal();
+  return c.json(
+    rows
+      .filter((r) => ["due", "expired"].includes(expiryState(r.i, today)))
+      .map((r) => ({ id: r.i.id, employeeId: r.i.employeeId, employeeName: r.name, employeeCode: r.code, label: r.i.type === "other" ? (r.i.name ?? "Other") : idType(r.i.type).label, numberEnding: r.i.number.slice(-4), expiresOn: r.i.expiresOn, daysLeft: daysToExpiry(r.i.expiresOn!, today), state: expiryState(r.i, today) })),
+  );
+});
+
+employeeRoutes.get("/:id/identities", requirePerm("employees", "view"), async (c) => {
+  const emp = await identityOwner(c, c.req.param("id"));
+  return c.json(await identitiesView(c.get("db"), c.get("tenant").tenantId, emp.id, emp.entityId));
+});
+
+employeeRoutes.post("/:id/identities", requirePerm("employees", "edit"), v("json", identitySchema), async (c) => {
+  const emp = await identityOwner(c, c.req.param("id"));
+  const b = c.req.valid("json");
+  const [row] = await c.get("db").insert(employeeIdentities).values({ ...b, tenantId: c.get("tenant").tenantId, employeeId: emp.id }).returning();
+  await audit(c, { action: "identity.add", entity: "employee", entityId: emp.id, summary: `Added ${idType(b.type).label} for ${emp.name}` });
+  return c.json(row, 201);
+});
+
+async function ownIdentity(c: Context<AppEnv>) {
+  const [row] = await c.get("db").select().from(employeeIdentities).where(and(eq(employeeIdentities.id, c.req.param("iid")!), eq(employeeIdentities.tenantId, c.get("tenant").tenantId)));
+  if (!row) throw notFound("ID document");
+  const emp = await identityOwner(c, row.employeeId);
+  return { row, emp };
+}
+
+employeeRoutes.patch("/identities/:iid", requirePerm("employees", "edit"), v("json", identitySchema), async (c) => {
+  const { row, emp } = await ownIdentity(c);
+  const b = c.req.valid("json");
+  // a new expiry date gets its own reminder
+  const [out] = await c.get("db").update(employeeIdentities).set({ ...b, remindedFor: b.expiresOn === row.expiresOn ? row.remindedFor : null, updatedAt: new Date() }).where(eq(employeeIdentities.id, row.id)).returning();
+  await audit(c, { action: "identity.update", entity: "employee", entityId: emp.id, summary: `Updated ${idType(b.type).label} for ${emp.name}` });
+  return c.json(out);
+});
+
+employeeRoutes.delete("/identities/:iid", requirePerm("employees", "edit"), async (c) => {
+  const { row, emp } = await ownIdentity(c);
+  await c.get("db").delete(employeeIdentities).where(eq(employeeIdentities.id, row.id));
+  await audit(c, { action: "identity.delete", entity: "employee", entityId: emp.id, summary: `Removed ${idType(row.type).label} for ${emp.name}` });
   return c.json({ ok: true });
 });
 

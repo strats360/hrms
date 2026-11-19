@@ -116,6 +116,34 @@ export const employeeDocuments = pgTable(
   (t) => [index("employee_documents_emp_idx").on(t.tenantId, t.employeeId)],
 );
 
+/**
+ * Identity and work documents with numbers and expiry dates: passports, visas, Emirates ID,
+ * Iqama and so on (see ID_TYPES in @hrms/shared). India's PAN, Aadhaar and UAN stay on the
+ * employee. A daily job reminds HR and the employee before something expires.
+ */
+export const employeeIdentities = pgTable(
+  "employee_identities",
+  {
+    id: id(),
+    tenantId: tenantId(),
+    employeeId: text("employee_id")
+      .notNull()
+      .references(() => employees.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    /** Label for type "other". */
+    name: text("name"),
+    number: text("number").notNull(),
+    issuingCountry: text("issuing_country"),
+    issuedOn: date("issued_on", { mode: "string" }),
+    expiresOn: date("expires_on", { mode: "string" }),
+    note: text("note"),
+    /** The expiry date the last reminder was for, so each expiry is reminded once. */
+    remindedFor: date("reminded_for", { mode: "string" }),
+    ...timestamps,
+  },
+  (t) => [index("employee_identities_emp_idx").on(t.tenantId, t.employeeId), index("employee_identities_expiry_idx").on(t.tenantId, t.expiresOn)],
+);
+
 /** Email-based self-onboarding for new joiners. */
 export const onboardingInvites = pgTable(
   "onboarding_invites",

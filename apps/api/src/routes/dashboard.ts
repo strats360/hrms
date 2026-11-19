@@ -1,3 +1,4 @@
+import { expiringCount } from "../services/identities";
 import { Hono } from "hono";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { attendanceCorrections, departments, employees, leaveRequests, leaveTypes, onboardingInvites, reimbursementClaims } from "@hrms/db";
@@ -103,6 +104,7 @@ dashboardRoutes.get("/", async (c) => {
     pendingClaimCount,
     awaitingVerification: ob?.n ?? 0,
     // probation ending soon (or ended) without a decision, for people this user can see
+    idsExpiring: can(c.get("tenant").permissions, "employees", "edit") ? await expiringCount(c.get("db"), c.get("tenant").tenantId) : 0,
     probationDue: can(c.get("tenant").permissions, "employees", "view") ? (await onProbation(c.get("db"), c.get("tenant").tenantId, await teamScope(c, "employees"))).filter((p) => p.due).length : 0,
     celebrations: [...celebrations],
   });

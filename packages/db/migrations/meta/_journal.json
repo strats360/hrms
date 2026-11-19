@@ -260,6 +260,20 @@
       "when": 1795107673803,
       "tag": "0036_money_three_decimals",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1795108196402,
+      "tag": "0037_statutory_rules_country",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1795108289628,
+      "tag": "0038_employee_identities",
+      "breakpoints": true
     }
   ]
 }

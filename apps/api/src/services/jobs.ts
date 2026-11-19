@@ -1,3 +1,4 @@
+import { runIdExpiryReminders } from "./identities";
 import { runHelpdeskAutoClose } from "./helpdesk";
 import { and, eq, isNotNull, lte } from "drizzle-orm";
 import { auditLogs, createDb, invoicePayments, invoices, tenants, type Database } from "@hrms/db";
@@ -110,5 +111,11 @@ export async function runScheduled(env: Env) {
     if (p.sent) console.log(`probation reminders: ${p.sent} sent`);
   } catch (e) {
     console.error("probation reminders failed", e);
+  }
+  try {
+    const r = await runIdExpiryReminders(env);
+    if (r.sent) console.log(`ID expiry reminders: ${r.sent} sent`);
+  } catch (e) {
+    console.error("ID expiry reminders failed", e);
   }
 }

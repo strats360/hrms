@@ -36,6 +36,8 @@ export const statutoryRules = pgTable(
   {
     id: id(),
     key: text("key").notNull(),
+    /** Country whose pack reads this rule (ISO 3166 alpha 2). See docs/MULTI_COUNTRY.md. */
+    country: text("country").notNull().default("IN"),
     category: text("category").notNull(), // pf | esi | pt | lwf | tax | minwage
     scope: text("scope").notNull().default("All India"),
     value: jsonb("value").$type<Record<string, unknown>>().notNull(),
@@ -48,7 +50,7 @@ export const statutoryRules = pgTable(
     publishedAt: timestamp("published_at", { withTimezone: true }),
     ...timestamps,
   },
-  (t) => [index("statutory_rules_key_idx").on(t.key, t.status, t.effectiveFrom), uniqueIndex("statutory_rules_live_uq").on(t.key, t.effectiveFrom).where(sql`status = 'live'`)],
+  (t) => [index("statutory_rules_key_idx").on(t.country, t.key, t.status, t.effectiveFrom), uniqueIndex("statutory_rules_live_uq").on(t.country, t.key, t.effectiveFrom).where(sql`status = 'live'`)],
 );
 
 /** Tenant support tickets. Number is a platform-wide running number (#4812). */

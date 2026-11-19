@@ -9,6 +9,7 @@ import {
   claimReceipts,
   compOffRequests,
   employeeDocuments,
+  employeeIdentities,
   employeeExits,
   employeeLoans,
   employees,
@@ -104,6 +105,7 @@ export async function exportEmployeeData(db: Database, env: Env, tenantId: strin
     company: t?.legalName ?? t?.name ?? "",
     profile: { ...profile, bankAccount: e.accountLast4 ? `ending ${e.accountLast4}` : null },
     documents: clean(docs),
+    idDocuments: clean(await db.select().from(employeeIdentities).where(own(employeeIdentities))),
     attendance: clean(await db.select().from(attendanceRecords).where(own(attendanceRecords)).orderBy(attendanceRecords.date)),
     attendanceCorrections: clean(await db.select().from(attendanceCorrections).where(own(attendanceCorrections))),
     devicePunches: clean(await db.select().from(attendancePunches).where(own(attendancePunches)).orderBy(attendancePunches.punchedAt)),
@@ -183,6 +185,9 @@ export async function eraseEmployee(db: Database, env: Env, tenantId: string, em
   for (const d of docs) await deleteFile(env, d.key).catch(() => {});
   if (docs.length) await db.delete(employeeDocuments).where(inArray(employeeDocuments.id, docs.map((d) => d.id)));
   summary.documents = docs.length;
+  // passports, visas and permits: personal ID numbers, nothing the company has to keep
+  const ids = await db.delete(employeeIdentities).where(eq(employeeIdentities.employeeId, e.id)).returning({ id: employeeIdentities.id });
+  summary.idDocuments = ids.length;
 
   if (e.photoKey) await deleteFile(env, e.photoKey).catch(() => {});
   summary.photo = e.photoKey ? 1 : 0;

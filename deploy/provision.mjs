@@ -5,7 +5,7 @@
  * and updates what exists.
  *
  *   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID   Cloudflare credentials
- *   DATABASE_URL                                  Neon *direct* connection string (sslmode=require)
+ *   DATABASE_URL                                  Postgres 14+ *direct* connection string with sslmode=require (Neon, or any provider)
  *   DEPLOY_ENV                                    production | staging (default production)
  *   WORKER_NAME                                   default saralix, or saralix-staging
  *   CUSTOM_DOMAIN                                 optional, e.g. hrms.strats360.com (zone must be on this account)
@@ -44,7 +44,7 @@ const log = (msg) => console.log(`• ${msg}`);
 // Database URL
 // ---------------------------------------------------------------------------
 export function parseDatabaseUrl(raw) {
-  if (!raw) throw new Error("DATABASE_URL is not set (the Neon direct connection string)");
+  if (!raw) throw new Error("DATABASE_URL is not set (the direct Postgres connection string, e.g. from Neon)");
   let u;
   try {
     u = new URL(raw);
@@ -53,10 +53,12 @@ export function parseDatabaseUrl(raw) {
   }
   if (!/^postgres(ql)?:$/.test(u.protocol)) throw new Error("DATABASE_URL must start with postgres:// or postgresql://");
   if (!u.username || !u.password) throw new Error("DATABASE_URL needs a user and password");
-  const database = decodeURIComponent(u.pathname.replace(/^\//, "")) || "neondb";
+  const neon = u.hostname.endsWith(".neon.tech");
+  const database = decodeURIComponent(u.pathname.replace(/^\//, "")) || (neon ? "neondb" : "postgres");
   const warnings = [];
   if (u.hostname.includes("-pooler.")) warnings.push("This is Neon's pooled endpoint. Hyperdrive pools connections itself, so use the direct endpoint (without -pooler) for best results.");
-  if (u.hostname.endsWith(".neon.tech") && u.searchParams.get("sslmode") !== "require") warnings.push("Add ?sslmode=require to the Neon connection string.");
+  const local = ["localhost", "127.0.0.1"].includes(u.hostname);
+  if (!local && !["require", "verify-full", "verify-ca"].includes(u.searchParams.get("sslmode") ?? "")) warnings.push("Add ?sslmode=require to the connection string, so the database connection is encrypted.");
   return { host: u.hostname, port: Number(u.port || 5432), database, user: decodeURIComponent(u.username), password: decodeURIComponent(u.password), warnings };
 }
 

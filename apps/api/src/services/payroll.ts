@@ -212,7 +212,6 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
     declarationsFor(db, tenantId, fyOfMonth(run.month), ids),
   ]);
   const claims = await claimsForRun(db, tenantId, runId, end, ids);
-  const rules = await rulesFor(db, run.month);
   const prev = new Map(existing.map((i) => [i.employeeId, i]));
   const cal = opts.assumePresent ? null : await buildCalendar(db, tenantId, emps.map((x) => ({ id: x.e.id, shiftId: x.e.shiftId, branchId: x.e.branchId, dateOfJoining: x.e.dateOfJoining, lastWorkingDay: x.e.lastWorkingDay })), start, end);
   // Each employee's legal entity decides the country pack and which schemes apply.
@@ -223,6 +222,9 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
   const entityFor = (id: string | null) => (id && entityById.get(id)) || fallback;
   const currencies = new Set(emps.map((x) => entityFor(x.e.entityId).currency));
   if (currencies.size > 1) throw badRequest(`This payroll has employees paid in ${[...currencies].join(" and ")}. Payroll for each legal entity separately is coming with the next country.`);
+  const countries = new Set(emps.map((x) => entityFor(x.e.entityId).country));
+  if (countries.size > 1) throw badRequest("This payroll has employees in more than one country. Payroll for each legal entity separately is coming with the next country.");
+  const rules = await rulesFor(db, run.month, [...countries][0] ?? fallback.country);
   const statOn = (entity: { statutory: Record<string, { enabled?: boolean }> }, k: string) => entity.statutory?.[k]?.enabled ?? statutory[k as keyof typeof statutory]?.enabled ?? true;
 
   const rows: (typeof payrollItems.$inferInsert)[] = [];

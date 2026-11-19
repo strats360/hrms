@@ -23,6 +23,7 @@ import { StatusTag, Tag } from "@/components/ui/tag";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { EmployeeDetail } from "@/lib/types";
+import { IdentitiesCard } from "@/components/employees/IdentitiesCard";
 import { AttendanceMonth } from "@/components/employees/AttendanceMonth";
 import { ResetTwoFactorDialog } from "@/components/account/ResetTwoFactorDialog";
 import { PhotoEditor } from "@/components/account/PhotoEditor";
@@ -31,7 +32,7 @@ import { Menu } from "@/components/ui/menu";
 import { DecideDialog, downloadEmployeeData } from "./DataRequests";
 import { confirmAction } from "@/components/ui/confirm";
 
-type Tab = "personal" | "employment" | "bank" | "statutory" | "documents" | "attendance";
+type Tab = "personal" | "employment" | "bank" | "statutory" | "ids" | "documents" | "attendance";
 
 const yesNo = (v: boolean) => (v ? "Applicable" : "Not applicable");
 const gender = (g: string | null) => (g ? { male: "Male", female: "Female", other: "Other", undisclosed: "Prefer not to say" }[g] ?? g : null);
@@ -110,6 +111,7 @@ export default function EmployeeProfile() {
     { value: "employment", label: "Employment" },
     { value: "bank", label: "Bank" },
     { value: "statutory", label: "Statutory" },
+    { value: "ids", label: "IDs & visas" },
     { value: "documents", label: `Documents${e.documents.length ? ` (${e.documents.length})` : ""}` },
     ...(can("attendance") ? [{ value: "attendance" as Tab, label: "Attendance" }] : []),
   ];
@@ -301,6 +303,7 @@ export default function EmployeeProfile() {
             </div>
           ) : null}
 
+          {shownTab === "ids" ? <IdentitiesCard employeeId={e.id} editable={edit} /> : null}
           {shownTab === "documents" ? (
             <div className="flex flex-col gap-2">
               {e.documents.length === 0 ? <div className="text-muted py-2 text-[13px]">No documents yet.</div> : null}

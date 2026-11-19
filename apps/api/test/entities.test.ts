@@ -72,3 +72,24 @@ describe("legal entities", () => {
     expect((await kunal.del(`/admin/org/entities/${secondId}`)).status).toBe(200);
   });
 });
+
+describe("statutory rules per country", () => {
+  it("keeps each country's rules apart", async () => {
+    const { createDb } = await import("@hrms/db");
+    const { rulesFor, invalidateRules } = await import("../src/services/statutory");
+    const db = createDb(env.DATABASE_URL!, { max: 1 });
+    const id = crypto.randomUUID();
+    try {
+      const before = await rulesFor(db, "2026-11", "IN");
+      // a made up rule for another country, effective earlier, must not touch India
+      await sql`insert into statutory_rules (id, key, country, category, scope, value, effective_from, status) values (${id}, 'pf', 'AE', 'pf', 'All India', ${sql.json({ employeeRate: 0.5, employerRate: 0.5, epsRate: 0, edliRate: 0, adminRate: 0, wageCeiling: 1 })}, '2026-01-01', 'live')`;
+      invalidateRules();
+      expect((await rulesFor(db, "2026-11", "IN")).pf).toEqual(before.pf);
+      expect((await rulesFor(db, "2026-11", "AE")).pf.employeeRate).toBe(0.5);
+    } finally {
+      await sql`delete from statutory_rules where id = ${id}`;
+      invalidateRules();
+      await db.$client.end();
+    }
+  });
+});

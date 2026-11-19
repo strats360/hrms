@@ -1,3 +1,4 @@
+import { IdentitiesCard } from "@/components/employees/IdentitiesCard";
 import { useEffect, useRef, useState } from "react";
 import { PhotoEditor } from "@/components/account/PhotoEditor";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -118,6 +119,10 @@ export default function EssProfilePage() {
         </div>
       </Card>
 
+      <Card className="!gap-3">
+        <CardHeader title="IDs & visas" />
+        <IdentitiesCard />
+      </Card>
       <Documents docs={p.documents} />
       <MyAssets />
       <ResignationCard />
