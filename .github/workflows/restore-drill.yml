@@ -1,0 +1,71 @@
+name: Restore drill
+
+# Once a month, for every live site: restore its database to an hour ago in a new Neon branch,
+# check it (migrations and row counts against live), time it, and delete the branch. Only counts
+# are read and the copy stays inside Neon, so no personal data leaves the site's region.
+# A failed drill opens an issue labelled "restore-drill".
+#
+# Needs on each site's GitHub environment: NEON_API_KEY and NEON_PROJECT_ID (and the
+# NEON_DATABASE_URL it already has). Sites without them are skipped with a notice.
+# If an environment has required reviewers, approve the drill's run when GitHub asks.
+# See docs/MULTI_COUNTRY.md.
+on:
+  schedule:
+    - cron: "0 3 1 * *" # 08:30 IST on the 1st
+  workflow_dispatch:
+    inputs:
+      hours_ago:
+        description: Restore the database as it was this many hours ago
+        type: number
+        default: 1
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  sites:
+    runs-on: ubuntu-latest
+    outputs:
+      sites: ${{ steps.live.outputs.sites }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: live
+        run: node deploy/instances.mjs live
+
+  drill:
+    needs: sites
+    if: ${{ needs.sites.outputs.sites != '[]' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        site: ${{ fromJSON(needs.sites.outputs.sites) }}
+    name: Drill · ${{ matrix.site.name }}
+    runs-on: ubuntu-latest
+    environment: ${{ matrix.site.environment }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Restore, check and clean up
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+          DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+          RESTORE_HOURS_AGO: ${{ inputs.hours_ago || 1 }}
+          SITE_NAME: ${{ matrix.site.name }}
+        run: node deploy/restore-drill.mjs
+      - name: Raise an issue if the drill failed
+        if: ${{ failure() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SITE: ${{ matrix.site.name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # the REST API creates the label the first time
+          gh api "repos/$GITHUB_REPOSITORY/issues" \
+            -f title="Restore drill failed: $SITE" \
+            -f body="The monthly restore drill for **$SITE** failed. See $RUN_URL for what went wrong. Until a drill passes, don't rely on restoring this site's database: check the Neon project's history retention and the API key." \
+            -f "labels[]=restore-drill"

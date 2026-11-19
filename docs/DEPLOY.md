@@ -120,6 +120,17 @@ Every site is listed in `deploy/instances.json`: its name, where its data lives,
 
 **Undo on one site:** **Rollback** with that site's environment.
 
+**Backups and restore drills:** Neon keeps every change and can restore a database to any moment inside its history window (set it as long as your plan allows: project settings › history retention; seven days or more for production). Once a month the **Restore drill** workflow proves it works for each live site: it restores the database to an hour ago in a new Neon branch, checks the migrations and row counts against live, times it, and deletes the branch. Only counts are read and the copy stays inside Neon, so no personal data leaves the site's region. To turn it on, add two secrets to each site's environment:
+
+| Secret | Where to find it |
+| --- | --- |
+| `NEON_API_KEY` | Neon › Account settings › API keys › Create (or an organization API key) |
+| `NEON_PROJECT_ID` | Neon › the project › Settings › General › Project ID |
+
+A failed drill opens an issue labelled `restore-drill`. To restore for real, see "Restore data" in Day to day operations below.
+
+For a site whose database isn't on Neon (for example a provider inside Saudi Arabia), do the same by hand each month and note the result in an issue: restore the provider's backup or point in time copy to a new database, run `select count(*) from drizzle.__drizzle_migrations` and counts of `tenants`, `employees` and `payroll_runs` there and on live, check they match, time it, then delete the copy.
+
 **Monitoring:** the **Monitor** workflow checks every live site every 10 minutes: the deep health check (database, storage, secrets) and the login page, with a few retries so a blip doesn't count. A site that stays down gets a GitHub issue labelled `outage` and `site:<key>`, and GitHub emails everyone watching the repo (Watch › All activity, or Custom › Issues). When the site is back, the issue gets a comment and closes. To also get a message in Slack or Teams, add an incoming webhook URL as the repository secret `ALERT_WEBHOOK_URL`. The run summary shows each site's version, and warns when sites are on different versions.
 
 ## Customer demo account

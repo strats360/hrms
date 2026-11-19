@@ -71,7 +71,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: node deploy/instances.mjs check && node --test deploy/instances.test.mjs deploy/monitor.test.mjs
+      - run: node deploy/instances.mjs check && node --test deploy/instances.test.mjs deploy/monitor.test.mjs deploy/restore-drill.test.mjs
       - run: pnpm typecheck
       - run: pnpm test
 

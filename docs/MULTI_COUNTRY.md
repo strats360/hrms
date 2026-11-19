@@ -143,7 +143,7 @@ Cloudflare is one account for all instances. Neon is roughly $19 a month per pro
 1. Instance settings: name, region, domain, allowed packs ✅ `deploy/instances.json`, checked in CI. Deploy reads the site for its GitHub environment.
 2. Wave rollouts across instances from one click ✅ The **Rollout** workflow: tests once, then each wave only after the one before passed, with sites that can be held.
 3. Monitoring and alerts per instance ✅ The **Monitor** workflow: every 10 minutes, an `outage` issue (and optional Slack or Teams message) when a site stays down, closed on recovery, plus a version drift warning.
-4. Backups and restore drills per instance
+4. Backups and restore drills per instance ✅ Neon point in time restore, proven monthly by the **Restore drill** workflow (restore to an hour ago in a branch, check counts, time it, delete). Manual drill steps for other providers in DEPLOY.md.
 5. Golden payroll tests for every pack in CI
 
 **Phase 3. Control plane**
