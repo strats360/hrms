@@ -111,6 +111,8 @@ The existing versioned rule table gains a `country` column. Rates and thresholds
 
 ## How we test it
 
+Golden payroll files live in `packages/shared/golden/`. To add a country's: write its cases (inputs and why each one is there), run `pnpm --filter @hrms/shared golden -- <CODE>` to fill in the figures, have the local expert check every case by hand, and fill in `signedOff`. When a law changes, run the same command, review the printed differences, and get the file signed off again (changed figures clear the old sign off).
+
 - Every pack has **golden payroll tests**: real payslip examples signed off by a local payroll expert. They run on every change, so an India fix can't break UAE payroll.
 - Each new country runs alongside a pilot customer's old payroll for two or three months before general launch.
 
@@ -139,12 +141,12 @@ Cloudflare is one account for all instances. Neon is roughly $19 a month per pro
 9. Database layer that works with any Postgres provider ✅ The app only needs Postgres 14 or later behind Hyperdrive. Nothing in the code is Neon specific; the deploy script accepts any provider's direct connection string and asks for `sslmode=require`.
 10. Statutory rule table per country ✅ Rules carry a `country` (default IN), and payroll reads the rules for the country of the employees being paid.
 
-**Phase 2. Running several instances**
+**Phase 2. Running several instances** ✅ Done
 1. Instance settings: name, region, domain, allowed packs ✅ `deploy/instances.json`, checked in CI. Deploy reads the site for its GitHub environment.
 2. Wave rollouts across instances from one click ✅ The **Rollout** workflow: tests once, then each wave only after the one before passed, with sites that can be held.
 3. Monitoring and alerts per instance ✅ The **Monitor** workflow: every 10 minutes, an `outage` issue (and optional Slack or Teams message) when a site stays down, closed on recovery, plus a version drift warning.
 4. Backups and restore drills per instance ✅ Neon point in time restore, proven monthly by the **Restore drill** workflow (restore to an hour ago in a branch, check counts, time it, delete). Manual drill steps for other providers in DEPLOY.md.
-5. Golden payroll tests for every pack in CI
+5. Golden payroll tests for every pack in CI ✅ `packages/shared/golden/<COUNTRY>.json`: at least five real payslip cases per pack with every line written out, checked on every change and before every deploy. India has 11 cases, waiting for a payroll consultant's sign off.
 
 **Phase 3. Control plane**
 1. Company directory

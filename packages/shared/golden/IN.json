@@ -1,0 +1,436 @@
+{
+  "country": "IN",
+  "signedOff": {
+    "by": null,
+    "on": null,
+    "note": "Figures were generated from the engine on 2026-11-19 and match the existing payroll tests. A CA or payroll consultant must check each case by hand and sign off here before the India pack is relied on after a change in law."
+  },
+  "cases": [
+    {
+      "name": "Mid salary, Gujarat, full month",
+      "why": "Basic PF at the wage ceiling, Gujarat PT of 200, new regime TDS spread over the year.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": true,
+        "esiApplicable": true,
+        "ptApplicable": true,
+        "annualCtc": 1200000,
+        "month": "2026-11",
+        "state": "Gujarat"
+      },
+      "expect": {
+        "gross": 98200,
+        "totalDeductions": 2000,
+        "net": 96200,
+        "tds": 0,
+        "employerCost": 1950,
+        "lines": {
+          "earn.basic": 49100,
+          "earn.hra": 19640,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 26610,
+          "ded.pf": 1800,
+          "ded.pt": 200,
+          "emp.epf_er": 550,
+          "emp.eps": 1250,
+          "emp.edli": 75,
+          "emp.pf_admin": 75
+        }
+      }
+    },
+    {
+      "name": "Loss of pay days",
+      "why": "Three unpaid days prorate every earning, and PF follows the lower basic.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 27,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": true,
+        "esiApplicable": true,
+        "ptApplicable": true,
+        "annualCtc": 1200000,
+        "month": "2026-11",
+        "state": "Gujarat"
+      },
+      "expect": {
+        "gross": 88380,
+        "totalDeductions": 2000,
+        "net": 86380,
+        "tds": 0,
+        "employerCost": 1950,
+        "lines": {
+          "earn.basic": 44190,
+          "earn.hra": 17676,
+          "earn.conveyance": 1440,
+          "earn.medical": 1125,
+          "earn.special": 23949,
+          "ded.pf": 1800,
+          "ded.pt": 200,
+          "emp.epf_er": 550,
+          "emp.eps": 1250,
+          "emp.edli": 75,
+          "emp.pf_admin": 75
+        }
+      }
+    },
+    {
+      "name": "ESI eligible, Maharashtra, woman",
+      "why": "Gross under 21,000 brings ESI in; Maharashtra exempts women from PT below 25,000.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "female",
+        "regime": "new",
+        "pfApplicable": true,
+        "esiApplicable": true,
+        "ptApplicable": true,
+        "annualCtc": 240000,
+        "month": "2026-11",
+        "state": "Maharashtra"
+      },
+      "expect": {
+        "gross": 18307,
+        "totalDeductions": 1236,
+        "net": 17071,
+        "tds": 0,
+        "employerCost": 1785,
+        "lines": {
+          "earn.basic": 9154,
+          "earn.hra": 3662,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 2641,
+          "ded.pf": 1098,
+          "ded.esi": 138,
+          "emp.epf_er": 335,
+          "emp.eps": 763,
+          "emp.edli": 46,
+          "emp.pf_admin": 46,
+          "emp.esi_er": 595
+        }
+      }
+    },
+    {
+      "name": "Maharashtra February PT",
+      "why": "February's PT is 300 in Maharashtra to make up the year.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": true,
+        "esiApplicable": true,
+        "ptApplicable": true,
+        "annualCtc": 600000,
+        "month": "2027-02",
+        "state": "Maharashtra"
+      },
+      "expect": {
+        "gross": 48200,
+        "totalDeductions": 2100,
+        "net": 46100,
+        "tds": 0,
+        "employerCost": 1950,
+        "lines": {
+          "earn.basic": 24100,
+          "earn.hra": 9640,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 11610,
+          "ded.pf": 1800,
+          "ded.pt": 300,
+          "emp.epf_er": 550,
+          "emp.eps": 1250,
+          "emp.edli": 75,
+          "emp.pf_admin": 75
+        }
+      }
+    },
+    {
+      "name": "Gujarat LWF in December",
+      "why": "Labour welfare fund is only taken in June and December.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": true,
+        "esiApplicable": true,
+        "ptApplicable": true,
+        "annualCtc": 600000,
+        "month": "2026-12",
+        "state": "Gujarat"
+      },
+      "expect": {
+        "gross": 48200,
+        "totalDeductions": 2006,
+        "net": 46194,
+        "tds": 0,
+        "employerCost": 1962,
+        "lines": {
+          "earn.basic": 24100,
+          "earn.hra": 9640,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 11610,
+          "ded.pf": 1800,
+          "ded.pt": 200,
+          "ded.lwf": 6,
+          "emp.epf_er": 550,
+          "emp.eps": 1250,
+          "emp.edli": 75,
+          "emp.pf_admin": 75,
+          "emp.lwf_er": 12
+        }
+      }
+    },
+    {
+      "name": "Old regime with declarations",
+      "why": "Rent (HRA exemption), 80C and 80D lower tax under the old regime.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "old",
+        "pfApplicable": true,
+        "esiApplicable": true,
+        "ptApplicable": true,
+        "annualCtc": 1800000,
+        "month": "2026-11",
+        "state": "Karnataka",
+        "declaration": {
+          "rent": {
+            "monthlyRent": 25000,
+            "months": 12,
+            "metro": false
+          },
+          "sec80C": {
+            "ppf": 150000
+          },
+          "sec80D": {
+            "self": 25000
+          }
+        }
+      },
+      "expect": {
+        "gross": 148200,
+        "totalDeductions": 20588,
+        "net": 127612,
+        "tds": 18588,
+        "employerCost": 1950,
+        "lines": {
+          "earn.basic": 74100,
+          "earn.hra": 29640,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 41610,
+          "ded.pf": 1800,
+          "ded.pt": 200,
+          "ded.tds": 18588,
+          "emp.epf_er": 550,
+          "emp.eps": 1250,
+          "emp.edli": 75,
+          "emp.pf_admin": 75
+        }
+      }
+    },
+    {
+      "name": "High earner",
+      "why": "Income over 50 lakh adds surcharge on top of the slab tax.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": true,
+        "esiApplicable": true,
+        "ptApplicable": true,
+        "annualCtc": 7500000,
+        "month": "2026-11",
+        "state": "Karnataka"
+      },
+      "expect": {
+        "gross": 623200,
+        "totalDeductions": 173697,
+        "net": 449503,
+        "tds": 171697,
+        "employerCost": 1950,
+        "lines": {
+          "earn.basic": 311600,
+          "earn.hra": 124640,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 184110,
+          "ded.pf": 1800,
+          "ded.pt": 200,
+          "ded.tds": 171697,
+          "emp.epf_er": 550,
+          "emp.eps": 1250,
+          "emp.edli": 75,
+          "emp.pf_admin": 75
+        }
+      }
+    },
+    {
+      "name": "Year to date history",
+      "why": "With seven months already paid and taxed, TDS is the year's remaining tax over the five months left.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": true,
+        "esiApplicable": true,
+        "ptApplicable": true,
+        "annualCtc": 2400000,
+        "month": "2026-11",
+        "state": "Gujarat",
+        "ytd": {
+          "taxableGross": 1300000,
+          "tds": 90000,
+          "employeePf": 12600,
+          "professionalTax": 1400
+        }
+      },
+      "expect": {
+        "gross": 198200,
+        "totalDeductions": 36832,
+        "net": 161368,
+        "tds": 34832,
+        "employerCost": 1950,
+        "lines": {
+          "earn.basic": 99100,
+          "earn.hra": 39640,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 56610,
+          "ded.pf": 1800,
+          "ded.pt": 200,
+          "ded.tds": 34832,
+          "emp.epf_er": 550,
+          "emp.eps": 1250,
+          "emp.edli": 75,
+          "emp.pf_admin": 75
+        }
+      }
+    },
+    {
+      "name": "No PF, West Bengal",
+      "why": "PF switched off for the employee; West Bengal's PT slabs.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": true,
+        "ptApplicable": true,
+        "annualCtc": 480000,
+        "month": "2026-11",
+        "state": "West Bengal"
+      },
+      "expect": {
+        "gross": 40000,
+        "totalDeductions": 150,
+        "net": 39850,
+        "tds": 0,
+        "employerCost": 0,
+        "lines": {
+          "earn.basic": 20000,
+          "earn.hra": 8000,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 9150,
+          "ded.pt": 150
+        }
+      }
+    },
+    {
+      "name": "Annual bonus outside ESI wages",
+      "why": "A bonus paid with salary counts for TDS but not for ESI contributions.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": true,
+        "esiApplicable": true,
+        "ptApplicable": true,
+        "annualCtc": 240000,
+        "month": "2026-11",
+        "state": "Gujarat",
+        "adjustments": [
+          {
+            "label": "Annual bonus",
+            "kind": "earning",
+            "amount": 8000,
+            "esiWage": false
+          }
+        ]
+      },
+      "expect": {
+        "gross": 26307,
+        "totalDeductions": 1436,
+        "net": 24871,
+        "tds": 0,
+        "employerCost": 1785,
+        "lines": {
+          "earn.basic": 9154,
+          "earn.hra": 3662,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 2641,
+          "earn.adj_e0": 8000,
+          "ded.pf": 1098,
+          "ded.esi": 138,
+          "ded.pt": 200,
+          "emp.epf_er": 335,
+          "emp.eps": 763,
+          "emp.edli": 46,
+          "emp.pf_admin": 46,
+          "emp.esi_er": 595
+        }
+      }
+    },
+    {
+      "name": "Delhi, no professional tax",
+      "why": "Delhi has no PT, and no warning is raised for it.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": true,
+        "esiApplicable": true,
+        "ptApplicable": true,
+        "annualCtc": 900000,
+        "month": "2026-11",
+        "state": "Delhi"
+      },
+      "expect": {
+        "gross": 73200,
+        "totalDeductions": 1800,
+        "net": 71400,
+        "tds": 0,
+        "employerCost": 1950,
+        "lines": {
+          "earn.basic": 36600,
+          "earn.hra": 14640,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 19110,
+          "ded.pf": 1800,
+          "emp.epf_er": 550,
+          "emp.eps": 1250,
+          "emp.edli": 75,
+          "emp.pf_admin": 75
+        }
+      }
+    }
+  ]
+}

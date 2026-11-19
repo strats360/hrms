@@ -31,5 +31,7 @@ jobs:
       - name: Check the list of sites
         run: node deploy/instances.mjs check && node --test deploy/instances.test.mjs deploy/monitor.test.mjs deploy/restore-drill.test.mjs
       - run: pnpm typecheck
+      - name: Golden payroll (every country pack)
+        run: pnpm --filter @hrms/shared exec vitest run test/golden.test.ts
       - run: pnpm test
       - run: pnpm build
