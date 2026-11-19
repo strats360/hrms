@@ -1,0 +1,264 @@
+{
+  "country": "AE",
+  "signedOff": {
+    "by": null,
+    "on": null,
+    "note": "Built from Federal Decree-Law No. 57 of 2023 (GPSSA), Abu Dhabi Law No. 2 of 2000 (ADPF) and Federal Decree-Law No. 33 of 2021 (Labour Law). A UAE payroll expert must check every case by hand, especially GPSSA rates for people insured before 31 Oct 2023, the contribution salary definition and ADPF's current rates, before UAE payroll is used for real pay."
+  },
+  "cases": [
+    {
+      "name": "Expat in Dubai",
+      "why": "No income tax and no pension for expats: net equals gross.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 240000,
+        "month": "2026-11",
+        "profile": {
+          "nationality": "IN",
+          "region": "Dubai"
+        }
+      },
+      "expect": {
+        "gross": 20000,
+        "totalDeductions": 0,
+        "net": 20000,
+        "tds": 0,
+        "employerCost": 0,
+        "lines": {
+          "earn.basic": 10000,
+          "earn.hra": 4000,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 3150
+        }
+      }
+    },
+    {
+      "name": "UAE national in Dubai",
+      "why": "GPSSA: 11% from the employee and 12.5% from the employer on the contribution salary.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 360000,
+        "month": "2026-11",
+        "profile": {
+          "nationality": "AE",
+          "region": "Dubai"
+        }
+      },
+      "expect": {
+        "gross": 30000,
+        "totalDeductions": 3300,
+        "net": 26700,
+        "tds": 0,
+        "employerCost": 3750,
+        "lines": {
+          "earn.basic": 15000,
+          "earn.hra": 6000,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 6150,
+          "ded.pension": 3300,
+          "emp.pension_er": 3750
+        }
+      }
+    },
+    {
+      "name": "UAE national above the salary cap",
+      "why": "Contributions stop at a contribution salary of AED 70,000 a month.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 1200000,
+        "month": "2026-11",
+        "profile": {
+          "nationality": "AE",
+          "region": "Sharjah"
+        }
+      },
+      "expect": {
+        "gross": 100000,
+        "totalDeductions": 7700,
+        "net": 92300,
+        "tds": 0,
+        "employerCost": 8750,
+        "lines": {
+          "earn.basic": 50000,
+          "earn.hra": 20000,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 27150,
+          "ded.pension": 7700,
+          "emp.pension_er": 8750
+        }
+      }
+    },
+    {
+      "name": "UAE national in Abu Dhabi",
+      "why": "Abu Dhabi employers pay into ADPF instead of GPSSA.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 360000,
+        "month": "2026-11",
+        "profile": {
+          "nationality": "AE",
+          "region": "Abu Dhabi"
+        }
+      },
+      "expect": {
+        "gross": 30000,
+        "totalDeductions": 1500,
+        "net": 28500,
+        "tds": 0,
+        "employerCost": 4500,
+        "lines": {
+          "earn.basic": 15000,
+          "earn.hra": 6000,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 6150,
+          "ded.pension": 1500,
+          "emp.pension_er": 4500
+        }
+      }
+    },
+    {
+      "name": "Expat with unpaid days",
+      "why": "Three unpaid days prorate every allowance.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 27,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 180000,
+        "month": "2026-11",
+        "profile": {
+          "nationality": "PH",
+          "region": "Dubai"
+        }
+      },
+      "expect": {
+        "gross": 13500,
+        "totalDeductions": 0,
+        "net": 13500,
+        "tds": 0,
+        "employerCost": 0,
+        "lines": {
+          "earn.basic": 6750,
+          "earn.hra": 2700,
+          "earn.conveyance": 1440,
+          "earn.medical": 1125,
+          "earn.special": 1485
+        }
+      }
+    },
+    {
+      "name": "National with unpaid days",
+      "why": "The pension is taken on the prorated contribution salary.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 15,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 360000,
+        "month": "2026-11",
+        "profile": {
+          "nationality": "AE",
+          "region": "Dubai"
+        }
+      },
+      "expect": {
+        "gross": 15000,
+        "totalDeductions": 1650,
+        "net": 13350,
+        "tds": 0,
+        "employerCost": 1875,
+        "lines": {
+          "earn.basic": 7500,
+          "earn.hra": 3000,
+          "earn.conveyance": 800,
+          "earn.medical": 625,
+          "earn.special": 3075,
+          "ded.pension": 1650,
+          "emp.pension_er": 1875
+        }
+      }
+    },
+    {
+      "name": "Expat with overtime",
+      "why": "Overtime is paid with salary; no tax or pension on it.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 144000,
+        "month": "2026-11",
+        "profile": {
+          "nationality": "EG",
+          "region": "Ajman"
+        },
+        "adjustments": [
+          {
+            "label": "Overtime",
+            "kind": "earning",
+            "amount": 1350
+          }
+        ]
+      },
+      "expect": {
+        "gross": 13350,
+        "totalDeductions": 0,
+        "net": 13350,
+        "tds": 0,
+        "employerCost": 0,
+        "lines": {
+          "earn.basic": 6000,
+          "earn.hra": 2400,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 750,
+          "earn.adj_e0": 1350
+        }
+      }
+    }
+  ]
+}

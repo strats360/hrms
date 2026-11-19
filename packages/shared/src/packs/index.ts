@@ -1,11 +1,12 @@
 import { COUNTRIES, type CountryCode } from "../countries";
 import { indiaPack } from "./in";
+import { uaePack } from "./ae";
 import type { CountryPack } from "./types";
 
 export type { CountryPack, StatutoryContext, StatutoryResult } from "./types";
 
-/** Every finished country pack. A country is listed here only once a local expert has signed it off. */
-const PACKS: Partial<Record<CountryCode, CountryPack>> = { IN: indiaPack };
+/** Every built country pack. Packs still waiting for a local expert's sign off say so in `review`. */
+const PACKS: Partial<Record<CountryCode, CountryPack>> = { IN: indiaPack, AE: uaePack };
 
 /** Countries with a finished pack, e.g. for golden payroll tests. */
 export const PACK_CODES = Object.keys(PACKS) as CountryCode[];
@@ -18,3 +19,9 @@ export function packFor(country: string | null | undefined = "IN"): CountryPack 
 }
 
 export const hasPackFor = (country: string) => !!PACKS[country as CountryCode];
+
+export { EMIRATES } from "./ae";
+export { buildWpsSif, checkWps, type WpsEmployee, type WpsFile } from "./ae/wps";
+export { emiratisationStatus } from "./ae/emiratisation";
+export { uaeGratuity } from "./ae/settlement";
+export { EMIRATISATION_CONFIRM, EMIRATISATION_MIN_EMPLOYEES, GPSSA, ADPF } from "./ae/rules";

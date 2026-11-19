@@ -29,6 +29,8 @@ export interface GoldenCase {
     ytd?: PayslipInput["ytd"];
     adjustments?: Adjustment[];
     declaration?: TaxDeclarationData;
+    /** Nationality and state or emirate, for packs that need them. */
+    profile?: { nationality?: string | null; region?: string | null };
   };
   expect?: Figures;
 }
@@ -66,6 +68,7 @@ export function run(country: CountryCode, c: GoldenCase): PayslipResult {
     ytd: i.ytd,
     adjustments: i.adjustments,
     taxProfile: i.declaration ? { declaration: i.declaration } : undefined,
+    profile: i.profile,
   });
 }
 

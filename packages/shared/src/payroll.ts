@@ -441,6 +441,11 @@ export interface PayslipInput {
   month: string; // YYYY-MM
   /** Country of the employee's legal entity; picks the country pack (default India). */
   country?: CountryCode;
+  /**
+   * Facts some country packs need: nationality (ISO 3166 alpha 2) decides who pays into a
+   * national pension scheme in the Gulf; region is the entity's state or emirate.
+   */
+  profile?: { nationality?: string | null; region?: string | null };
   structure: Structure;
   template?: SalaryTemplate;
   daysInMonth: number;
@@ -494,7 +499,8 @@ export function computePayslip(input: PayslipInput): PayslipResult {
   const factor = input.daysInMonth > 0 ? Math.max(0, Math.min(1, input.paidDays / input.daysInMonth)) : 0;
   const c = input.structure.components;
 
-  const std = (k: Exclude<keyof MonthlyComponents, "extras">) => ({ code: k, label: COMPONENT_LABELS[k], amount: r(c[k] * factor) });
+  const labels = { ...COMPONENT_LABELS, ...(pack.payroll.componentLabels ?? {}) };
+  const std = (k: Exclude<keyof MonthlyComponents, "extras">) => ({ code: k, label: labels[k], amount: r(c[k] * factor) });
   const extras = (c.extras ?? []).map((x) => ({ code: `x_${x.code}`, label: x.label, amount: r(x.amount * factor), taxable: x.taxable !== false, esiWage: x.esiWage !== false }));
   const earnings: PayLine[] = [std("basic"), std("hra"), std("conveyance"), std("medical"), ...extras.map(({ code, label, amount }) => ({ code, label, amount })), std("special")].filter((e) => e.amount > 0);
   const adj = input.adjustments ?? [];

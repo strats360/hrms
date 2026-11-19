@@ -8,6 +8,8 @@ import { indiaStatutory } from "./payroll";
 export const indiaPack: CountryPack = {
   code: "IN",
   info: COUNTRIES.IN,
+  review: { status: "pending", note: "India's figures are locked by golden/IN.json, waiting for a payroll consultant's sign off." },
+  regions: { label: "State", list: [] },
   payroll: {
     statutory: indiaStatutory,
     roundingDecimals: 0,

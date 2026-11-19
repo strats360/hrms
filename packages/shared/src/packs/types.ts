@@ -10,9 +10,15 @@ import type { FnfInput, FnfResult } from "../fnf";
 export interface CountryPack {
   code: CountryCode;
   info: CountryInfo;
+  /** "pending" until a local payroll expert signs off the golden cases; the app warns HR meanwhile. */
+  review?: { status: "pending" | "signed_off"; note: string };
+  /** The country's states or emirates, where they change the rules (PT in India, the pension fund in Abu Dhabi). */
+  regions?: { label: string; list: string[] };
   payroll: {
     /** Statutory deductions, employer contributions and income tax for one payslip. */
     statutory(ctx: StatutoryContext): StatutoryResult;
+    /** Names for the standard salary parts where the country uses other words (housing for HRA). */
+    componentLabels?: Partial<Record<"basic" | "hra" | "conveyance" | "medical" | "special", string>>;
     /** Decimals payslip lines are rounded to: 0 for whole rupees, 3 for Kuwaiti fils. */
     roundingDecimals: number;
     /** Net pay in words on payslips, in the country's style. */
