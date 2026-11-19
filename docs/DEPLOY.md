@@ -104,6 +104,30 @@ From the platform console, create your first company under Tenants, or let compa
   - SSL/TLS › Edge Certificates: turn on Always Use HTTPS and set Minimum TLS to 1.2.
 - **Logs:** Workers & Pages › your Worker › Logs. Errors and slow requests show there (observability is on).
 
+## Customer demo account
+
+Use this to show Saralix to prospects on the live site. It loads the sample company, Strats360 Technolabs LLP, with 250 employees, payroll history, attendance, leave, claims and payments.
+
+1. On the GitHub environment, add a secret `DEMO_PASSWORD`. This is the password you'll give prospects, at least 10 characters. Don't reuse a password you use anywhere else.
+2. Actions › **Demo account** › Run workflow. Pick the environment and leave **reset** off the first time.
+3. Sign in with any of these and `DEMO_PASSWORD`:
+
+| Login | What they see |
+| --- | --- |
+| `kunal.shah@demo.saralix.com` | Company super admin, everything |
+| `nisha.trivedi@demo.saralix.com` | HR admin |
+| `krupa.joshi@demo.saralix.com` | Payroll admin |
+| `hardik.mehta@demo.saralix.com` | Manager, sees their own team |
+| `priya.vaghela@demo.saralix.com` | Employee self service |
+
+To clean up after a demo, run the workflow again with **reset** on. It deletes the demo company and loads it fresh. Run it now and then, too, so the dates stay current.
+
+Why it's safe on a live site:
+- The logins use `demo.saralix.com`, a domain the app never emails. Invites, payslips and resets from the demo go nowhere.
+- The demo company is never invoiced, and no platform staff logins or support tickets are created.
+- Reset only removes the company marked as the demo, so real customers are never touched.
+- Prospects only get into the demo company. They can't see real tenants or the platform console.
+
 ## Online payments with Cashfree
 
 Tenants pay their subscription invoices from Settings › Billing & invoices, or from the "Pay online" link in the invoice email. They pay by UPI, card or netbanking on Cashfree's checkout. The invoice is marked paid as soon as Cashfree confirms it, and a past-due account is restored.

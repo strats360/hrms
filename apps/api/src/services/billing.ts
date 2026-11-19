@@ -76,6 +76,7 @@ export async function draftInvoices(db: Database, period: string, tenantIds?: st
     let skip: string | null = null;
     if (existing.has(t.id)) skip = "Already invoiced for this period";
     else if (t.status === "cancelled") skip = "Cancelled";
+    else if ((t.settings as { demo?: boolean } | null)?.demo) skip = "Customer demo account";
     else if (t.status === "trial" || t.plan === "trial") skip = t.trialEndsAt ? `On trial until ${t.trialEndsAt.toISOString().slice(0, 10)}` : "On trial";
     else if (!plan) skip = `Unknown plan "${t.plan}"`;
     else if (!rate) skip = "No price: set a custom rate for this tenant";

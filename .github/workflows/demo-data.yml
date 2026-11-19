@@ -1,0 +1,73 @@
+name: Demo account
+
+# Loads (or resets) the customer demo account on a live site: the Strats360 Technolabs
+# sample company with 250 employees, payroll history, attendance and leave.
+#
+# Safe on production:
+#   - logins use the reserved demo.saralix.com domain, and the app never emails it
+#   - no platform staff, support tickets or invoices are created, and the company is never billed
+#   - reset only removes the company marked as the demo
+#
+# Needs on the GitHub environment: NEON_DATABASE_URL, ENCRYPTION_KEY (the same ones the
+# Deploy workflow uses) and DEMO_PASSWORD (the password you give customers, at least 10 characters).
+# Run Deploy at least once first, so the database is migrated. See docs/DEPLOY.md.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Which site
+        type: choice
+        options: [production, staging]
+        default: production
+      reset:
+        description: Wipe the demo account first and load it fresh (use this after demos)
+        type: boolean
+        default: false
+
+concurrency:
+  group: demo-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+      ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+      SEED_PASSWORD: ${{ secrets.DEMO_PASSWORD }}
+      ENVIRONMENT: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Check configuration
+        run: |
+          missing=""
+          for v in DATABASE_URL ENCRYPTION_KEY SEED_PASSWORD; do [ -n "${!v}" ] || missing="$missing $v"; done
+          if [ -n "$missing" ]; then
+            missing=${missing/DATABASE_URL/NEON_DATABASE_URL}
+            echo "::error::Missing on the '${ENVIRONMENT}' environment:${missing/SEED_PASSWORD/DEMO_PASSWORD}. See docs/DEPLOY.md."
+            exit 1
+          fi
+          [ ${#SEED_PASSWORD} -ge 10 ] || { echo "::error::DEMO_PASSWORD must be at least 10 characters"; exit 1; }
+
+      - name: Load the demo account
+        run: pnpm --filter @hrms/api seed -- --demo ${{ inputs.reset && '--reset' || '' }}
+
+      - name: Summary
+        run: |
+          {
+            echo "### Demo account ready on ${ENVIRONMENT}"
+            echo "Sign in with any of these and the DEMO_PASSWORD secret:"
+            echo "- kunal.shah@demo.saralix.com (company super admin)"
+            echo "- nisha.trivedi@demo.saralix.com (HR admin)"
+            echo "- krupa.joshi@demo.saralix.com (payroll admin)"
+            echo "- hardik.mehta@demo.saralix.com (manager)"
+            echo "- priya.vaghela@demo.saralix.com (employee self service)"
+          } >> "$GITHUB_STEP_SUMMARY"

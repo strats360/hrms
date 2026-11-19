@@ -6,11 +6,17 @@
  * Creates the "Strats360 Technolabs LLP" tenant from the design, 250 employees,
  * two months of attendance, leave requests, onboarding invites and demo logins.
  * Refuses to run when ENVIRONMENT=production.
+ *
+ *   pnpm --filter @hrms/api seed -- --demo  # the customer demo account on a live site
+ *
+ * --demo is safe on production: logins use the reserved demo.saralix.com domain (never emailed),
+ * SEED_PASSWORD is required, no platform staff or support tickets are created, and the tenant
+ * is marked as a demo so it's never invoiced.
  */
 import { readFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import {
   attendanceCorrections,
   branches,
@@ -29,7 +35,7 @@ import {
   tenants,
   attendanceRecords,
 } from "@hrms/db";
-import { countLeaveDays, dateRange, encryptField, evaluateAttendance, sha256Hex, todayIST, weekday, DEFAULT_SHIFT } from "@hrms/shared";
+import { DEMO_EMAIL_DOMAIN, randomToken, countLeaveDays, dateRange, encryptField, evaluateAttendance, sha256Hex, todayIST, weekday, DEFAULT_SHIFT } from "@hrms/shared";
 import { upsertLogin } from "../src/services/users";
 import { provisionTenant } from "../src/services/provisioning";
 import { applyUsage, ensureBalances } from "../src/services/leave";
@@ -57,14 +63,18 @@ if (existsSync(devVars)) {
   }
 }
 const env = (k: string) => process.env[k] ?? vars[k];
-if (env("ENVIRONMENT") === "production" && !process.argv.includes("--force")) {
+const DEMO = process.argv.includes("--demo");
+if (env("ENVIRONMENT") === "production" && !DEMO && !process.argv.includes("--force")) {
   console.error("Refusing to seed demo data into production. Pass --force if you really mean it.");
   process.exit(1);
 }
 const DATABASE_URL = env("DATABASE_URL");
 const ENCRYPTION_KEY = env("ENCRYPTION_KEY");
 if (!DATABASE_URL || !ENCRYPTION_KEY) throw new Error("DATABASE_URL and ENCRYPTION_KEY are required");
-const PASSWORD = env("SEED_PASSWORD") ?? "Demo@12345";
+const PASSWORD = env("SEED_PASSWORD") ?? (DEMO ? "" : "Demo@12345");
+if (DEMO && PASSWORD.length < 10) throw new Error("Set SEED_PASSWORD (at least 10 characters) for the demo logins");
+/** Demo logins never use a real company domain, so they can't clash with real people's accounts. */
+const DOMAIN = DEMO ? DEMO_EMAIL_DOMAIN : "strats360.com";
 
 const db = createDb(DATABASE_URL, { max: 1 });
 
@@ -80,23 +90,35 @@ const today = todayIST();
 const year = Number(today.slice(0, 4));
 
 async function main() {
+  if (DEMO && process.argv.includes("--reset")) {
+    // Only ever removes the company marked as the demo, and the reserved demo logins.
+    // Everything else the demo company owns is deleted with it (foreign keys cascade).
+    const gone = await db.delete(tenants).where(and(eq(tenants.code, "TN-0142"), sql`${tenants.settings}->>'demo' = 'true'`)).returning({ id: tenants.id });
+    await db.delete(user).where(sql`lower(${user.email}) like ${"%@" + DEMO_EMAIL_DOMAIN}`);
+    console.log(gone.length ? "Removed the old demo account." : "No demo account to remove.");
+  }
   const [existing] = await db.select().from(tenants).where(eq(tenants.code, "TN-0142"));
+  if (existing && DEMO && (existing.settings as { demo?: boolean })?.demo !== true) {
+    throw new Error("A real company already uses the code TN-0142. Not touching it.");
+  }
   if (existing) {
     await seedTax(existing.id);
     await seedReimbursements(existing.id);
     const added = await seedPayroll(existing.id);
     await seedChallans(existing.id);
     await seedPayments(existing.id);
-    await seedBilling(existing.id);
+    if (!DEMO) await seedBilling(existing.id);
     console.log(added ? `Added ${added} months of payroll history to the existing demo tenant.` : "Demo tenant already exists. To reseed, drop and recreate the database, then run migrations.");
     await db.$client.end();
     return;
   }
 
   // ---- logins ----
-  const platformUser = await upsertLogin(db, { email: "platform@saralix.com", name: "Meera Iyer", password: PASSWORD, verified: true });
-  await db.insert(platformStaff).values({ userId: platformUser, role: "super_admin" });
-  const kunal = await upsertLogin(db, { email: "kunal.shah@strats360.com", name: "Kunal Shah", password: PASSWORD, verified: true });
+  if (!DEMO) {
+    const platformUser = await upsertLogin(db, { email: "platform@saralix.com", name: "Meera Iyer", password: PASSWORD, verified: true });
+    await db.insert(platformStaff).values({ userId: platformUser, role: "super_admin" });
+  }
+  const kunal = await upsertLogin(db, { email: `kunal.shah@${DOMAIN}`, name: "Kunal Shah", password: PASSWORD, verified: true });
 
   // ---- tenant ----
   const { tenant, roles: roleRows } = await provisionTenant(db, { name: "Strats360 Technolabs LLP", legalName: "Strats360 Technolabs LLP", state: "Gujarat", ownerUserId: kunal, plan: "growth", status: "active", code: "TN-0142" });
@@ -112,7 +134,7 @@ async function main() {
       tan: "AHMS12345B",
       llpinCin: "AAB-1234",
       registeredAddress: "Plot 12, Waghawadi Road, Bhavnagar 364002, Gujarat",
-      contactEmail: "people@strats360.com",
+      contactEmail: `people@${DOMAIN}`,
       contactPhone: "+91 278 252 0000",
       setupStep: "6",
       setupCompletedAt: new Date(),
@@ -243,7 +265,7 @@ async function main() {
         firstName: e.first,
         lastName: e.last,
         fullName: `${e.first} ${e.last}`,
-        workEmail: `${e.first}.${e.last}${used.has(e.code) ? "" : e.code.slice(-3)}@strats360.com`.toLowerCase(),
+        workEmail: `${e.first}.${e.last}${used.has(e.code) ? "" : e.code.slice(-3)}@${DOMAIN}`.toLowerCase(),
         personalEmail: e.dob ? `${e.first.toLowerCase()}.${e.dob.slice(2, 4)}@gmail.com` : null,
         phone: `+91 98${String(Math.floor(rnd() * 1e8)).padStart(8, "0").replace(/(\d{3})(\d{5})/, "$1 $2")}`,
         dateOfBirth: e.dob || null,
@@ -295,12 +317,12 @@ async function main() {
     if (m) await db.update(memberships).set({ employeeId: empId, roleId: roleKey ? role(roleKey) : m.roleId, scope: scope ?? m.scope }).where(eq(memberships.id, m.id));
     else await db.insert(memberships).values({ tenantId: tid, userId: uid, employeeId: empId, roleId: roleKey ? role(roleKey) : null, scope: scope ?? null });
   };
-  await login("STL-0171", "kunal.shah@strats360.com", "Kunal Shah", "super_admin", "All branches");
-  await login("STL-0063", "nisha.trivedi@strats360.com", "Nisha Trivedi", "hr_admin", "All branches");
-  await login("STL-0091", "krupa.joshi@strats360.com", "Krupa Joshi", "payroll_admin", "All branches");
-  await login("STL-0001", "hardik.mehta@strats360.com", "Hardik Mehta", "manager", "Engineering, Design");
-  await login("STL-0152", "amit.dave@strats360.com", "Amit Dave", "manager", "Sales · Ahmedabad");
-  await login("STL-0042", "priya.vaghela@strats360.com", "Priya Vaghela", null);
+  await login("STL-0171", `kunal.shah@${DOMAIN}`, "Kunal Shah", "super_admin", "All branches");
+  await login("STL-0063", `nisha.trivedi@${DOMAIN}`, "Nisha Trivedi", "hr_admin", "All branches");
+  await login("STL-0091", `krupa.joshi@${DOMAIN}`, "Krupa Joshi", "payroll_admin", "All branches");
+  await login("STL-0001", `hardik.mehta@${DOMAIN}`, "Hardik Mehta", "manager", "Engineering, Design");
+  await login("STL-0152", `amit.dave@${DOMAIN}`, "Amit Dave", "manager", "Sales · Ahmedabad");
+  await login("STL-0042", `priya.vaghela@${DOMAIN}`, "Priya Vaghela", null);
 
   // ---- attendance: last month + this month up to today ----
   const [ty, tm] = today.split("-").map(Number) as [number, number];
@@ -376,12 +398,13 @@ async function main() {
   // ---- onboarding invites ----
   const links: string[] = [];
   for (const e of onboardingNamed) {
-    const token = `demo-invite-${e.code.toLowerCase()}-${"x".repeat(24)}`;
+    // fixed tokens are handy locally; a live demo gets random ones nobody can guess
+    const token = DEMO ? randomToken() : `demo-invite-${e.code.toLowerCase()}-${"x".repeat(24)}`;
     const empId = codeToId.get(e.code)!;
     await db.insert(onboardingInvites).values({
       tenantId: tid,
       employeeId: empId,
-      email: `${e.first}.${e.last}@strats360.com`.toLowerCase(),
+      email: `${e.first}.${e.last}@${DOMAIN}`.toLowerCase(),
       tokenHash: await sha256Hex(token),
       expiresAt: new Date(Date.now() + 7 * 86400_000),
       status: e.inv,
@@ -403,19 +426,20 @@ async function main() {
   const months = await seedPayroll(tid);
   await seedChallans(tid);
   await seedPayments(tid);
-  await seedBilling(tid);
+  if (DEMO) await db.update(tenants).set({ settings: sql`${tenants.settings} || '{"demo": true}'::jsonb` }).where(eq(tenants.id, tid));
+  else await seedBilling(tid);
   console.log(`Payroll history: ${months} locked months`);
 
-  console.log("\nDemo data ready. All demo logins use the password:", PASSWORD);
+  console.log(DEMO ? "\nDemo account ready. The logins use the SEED_PASSWORD you set." : `\nDemo data ready. All demo logins use the password: ${PASSWORD}`);
   console.table([
-    { login: "kunal.shah@strats360.com", role: "Tenant super admin" },
-    { login: "nisha.trivedi@strats360.com", role: "HR admin" },
-    { login: "krupa.joshi@strats360.com", role: "Payroll admin" },
-    { login: "hardik.mehta@strats360.com", role: "Manager (Engineering)" },
-    { login: "priya.vaghela@strats360.com", role: "Employee (self-service only)" },
-    { login: "platform@saralix.com", role: "Platform super admin" },
+    { login: `kunal.shah@${DOMAIN}`, role: "Tenant super admin" },
+    { login: `nisha.trivedi@${DOMAIN}`, role: "HR admin" },
+    { login: `krupa.joshi@${DOMAIN}`, role: "Payroll admin" },
+    { login: `hardik.mehta@${DOMAIN}`, role: "Manager (Engineering)" },
+    { login: `priya.vaghela@${DOMAIN}`, role: "Employee (self-service only)" },
+    ...(DEMO ? [] : [{ login: "platform@saralix.com", role: "Platform super admin" }]),
   ]);
-  console.log("Try employee self-onboarding with:", links[0]);
+  if (!DEMO) console.log("Try employee self-onboarding with:", links[0]);
   await db.$client.end();
 }
 
@@ -427,8 +451,8 @@ async function main() {
 async function seedPayroll(tid: string) {
   const [any] = await db.select({ id: payrollRuns.id }).from(payrollRuns).where(eq(payrollRuns.tenantId, tid)).limit(1);
   if (any) return 0;
-  const [krupa] = await db.select({ id: user.id }).from(user).where(eq(user.email, "krupa.joshi@strats360.com"));
-  const [kunal] = await db.select({ id: user.id }).from(user).where(eq(user.email, "kunal.shah@strats360.com"));
+  const [krupa] = await db.select({ id: user.id }).from(user).where(eq(user.email, `krupa.joshi@${DOMAIN}`));
+  const [kunal] = await db.select({ id: user.id }).from(user).where(eq(user.email, `kunal.shah@${DOMAIN}`));
   const [ty, tm] = today.split("-").map(Number) as [number, number];
   const fyStartYear = tm >= 4 ? ty : ty - 1;
   const months: string[] = [];
@@ -458,7 +482,7 @@ async function seedTax(tid: string) {
     return `${s}-${String((s + 1) % 100).padStart(2, "0")}`;
   })();
   const byCode = async (code: string) => (await db.select({ id: employees.id }).from(employees).where(and(eq(employees.tenantId, tid), eq(employees.employeeCode, code))))[0]?.id;
-  const [nisha] = await db.select({ id: user.id }).from(user).where(eq(user.email, "nisha.trivedi@strats360.com"));
+  const [nisha] = await db.select({ id: user.id }).from(user).where(eq(user.email, `nisha.trivedi@${DOMAIN}`));
   const decls: [string, string, "draft" | "submitted" | "verified", Record<string, unknown>][] = [
     ["STL-0042", "old", "verified", { rent: { monthlyRent: 15000, months: 12, metro: false, landlordName: "Rameshbhai Vaghela" }, sec80C: { ppf: 100000, elss: 30000 }, sec80D: { self: 18000 } }],
     ["STL-0152", "old", "submitted", { sec80C: { lic: 60000, ppf: 90000 }, sec80D: { self: 25000, parents: 50000, parentsSenior: true }, homeLoanInterest: 200000 }],
@@ -490,7 +514,7 @@ async function seedChallans(tid: string) {
   const [any] = await db.select({ id: statutoryChallans.id }).from(statutoryChallans).where(eq(statutoryChallans.tenantId, tid)).limit(1);
   if (any) return;
   const runs = await db.select().from(payrollRuns).where(and(eq(payrollRuns.tenantId, tid), inArray(payrollRuns.status, ["approved", "paid"]))).orderBy(payrollRuns.month);
-  const [kunal] = await db.select({ id: user.id }).from(user).where(eq(user.email, "kunal.shah@strats360.com"));
+  const [kunal] = await db.select({ id: user.id }).from(user).where(eq(user.email, `kunal.shah@${DOMAIN}`));
   for (const run of runs.slice(0, -1)) {
     const items = await db.select().from(payrollItems).where(eq(payrollItems.runId, run.id));
     for (const o of obligationsForRun(run, items)) {
@@ -527,7 +551,7 @@ async function seedReimbursements(tid: string) {
   const catByName = new Map(catRows.map((c) => [c.name, c]));
   const emps = await db.select({ id: employees.id, code: employees.employeeCode, managerId: employees.managerId }).from(employees).where(eq(employees.tenantId, tid));
   const empByCode = new Map(emps.map((e) => [e.code, e]));
-  const [kunal] = await db.select({ id: user.id }).from(user).where(eq(user.email, "kunal.shah@strats360.com"));
+  const [kunal] = await db.select({ id: user.id }).from(user).where(eq(user.email, `kunal.shah@${DOMAIN}`));
   const [ty, tm] = today.split("-").map(Number) as [number, number];
   const prevMonth = tm === 1 ? `${ty - 1}-12` : `${ty}-${String(tm - 1).padStart(2, "0")}`;
   const thisMonth = today.slice(0, 7);
@@ -591,8 +615,8 @@ async function seedPayments(tid: string) {
     .insert(companyBankAccounts)
     .values({ tenantId: tid, label: "Operations", bankName: "ICICI Bank", accountNumberEnc: await encryptField("034505009012", ENCRYPTION_KEY!), accountLast4: "9012", ifsc: "ICIC0000345", fileFormat: "icici_cib" })
     .returning();
-  const [krupa] = await db.select({ id: user.id }).from(user).where(eq(user.email, "krupa.joshi@strats360.com"));
-  const [kunal] = await db.select({ id: user.id }).from(user).where(eq(user.email, "kunal.shah@strats360.com"));
+  const [krupa] = await db.select({ id: user.id }).from(user).where(eq(user.email, `krupa.joshi@${DOMAIN}`));
+  const [kunal] = await db.select({ id: user.id }).from(user).where(eq(user.email, `kunal.shah@${DOMAIN}`));
   const runs = await db.select().from(payrollRuns).where(and(eq(payrollRuns.tenantId, tid), eq(payrollRuns.status, "paid"))).orderBy(payrollRuns.month);
   const codeOf = new Map((await db.select({ id: employees.id, code: employees.employeeCode }).from(employees).where(eq(employees.tenantId, tid))).map((e) => [e.id, e.code]));
   const FAILED: Record<string, { status: "failed" | "held"; reason: string }> = {
@@ -653,8 +677,8 @@ async function seedBilling(tid: string) {
   // two support tickets from the design: one open (with read-only access allowed), one resolved
   const [anyTicket] = await db.select({ id: supportTickets.id }).from(supportTickets).where(eq(supportTickets.tenantId, tid)).limit(1);
   if (!anyTicket) {
-    const [nishaU] = await db.select({ id: user.id }).from(user).where(eq(user.email, "nisha.trivedi@strats360.com"));
-    const [krupaU] = await db.select({ id: user.id }).from(user).where(eq(user.email, "krupa.joshi@strats360.com"));
+    const [nishaU] = await db.select({ id: user.id }).from(user).where(eq(user.email, `nisha.trivedi@${DOMAIN}`));
+    const [krupaU] = await db.select({ id: user.id }).from(user).where(eq(user.email, `krupa.joshi@${DOMAIN}`));
     const [meera] = await db.select({ id: user.id }).from(user).where(eq(user.email, "platform@saralix.com"));
     const ago = (h: number) => new Date(Date.now() - h * 3600_000);
     const [open] = await db
@@ -676,7 +700,7 @@ async function seedBilling(tid: string) {
   if (inv) return;
   const [t] = await db.select().from(tenants).where(eq(tenants.id, tid));
   // a customer since 2019, on Growth, paying by UPI autopay
-  await db.update(tenants).set({ plan: "growth", status: t?.status === "trial" ? "active" : t?.status, createdAt: new Date("2019-06-01T00:00:00+05:30"), billingEmail: "accounts@strats360.com", paymentMethod: null }).where(eq(tenants.id, tid));
+  await db.update(tenants).set({ plan: "growth", status: t?.status === "trial" ? "active" : t?.status, createdAt: new Date("2019-06-01T00:00:00+05:30"), billingEmail: `accounts@${DOMAIN}`, paymentMethod: null }).where(eq(tenants.id, tid));
   const [y, m] = today.split("-").map(Number) as [number, number];
   const fyStart = m >= 4 ? y : y - 1;
   for (let d = new Date(Date.UTC(fyStart, 3, 1)); d < new Date(Date.UTC(y, m - 1, 1)); d.setUTCMonth(d.getUTCMonth() + 1)) {

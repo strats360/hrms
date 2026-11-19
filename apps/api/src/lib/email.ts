@@ -1,3 +1,4 @@
+import { isDemoEmail } from "@hrms/shared";
 export interface EmailMessage {
   to: string;
   subject: string;
@@ -76,4 +77,13 @@ ${opts.footer ? `<p style="margin:18px 0 0;font-size:12.5px;color:#6b6d7a">${esc
 </div></div></body></html>`;
   const text = [opts.heading, "", ...opts.paragraphs, ...(opts.cta ? ["", `${opts.cta.label}: ${opts.cta.url}`] : []), ...(opts.footer ? ["", opts.footer] : [])].join("\n");
   return { html, text };
+}
+
+/** Drops mail to the reserved demo domain, so the customer demo account never emails anyone. */
+export class SkipDemoMailer implements Mailer {
+  constructor(private inner: Mailer) {}
+  async send(msg: EmailMessage) {
+    if (isDemoEmail(msg.to)) return;
+    return this.inner.send(msg);
+  }
 }

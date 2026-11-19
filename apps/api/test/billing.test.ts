@@ -43,6 +43,15 @@ describe("Billing run", () => {
     expect(oct.body.drafts.find((d: any) => d.tenantCode === "TN-0142").skip).toMatch(/Already invoiced/);
     expect((await platform.post("/platform/billing/run", { period: todayIST().slice(0, 7) })).status).toBe(400);
   });
+  it("never bills the customer demo account", async () => {
+    await sql`update tenants set settings = settings || '{"demo": true}'::jsonb where code = 'TN-0142'`;
+    try {
+      const r = await platform.post("/platform/billing/run/preview", { period: PERIOD });
+      expect(r.body.drafts.find((d: any) => d.tenantCode === "TN-0142").skip).toBe("Customer demo account");
+    } finally {
+      await sql`update tenants set settings = settings - 'demo' where code = 'TN-0142'`;
+    }
+  });
 
   it("issues invoices and emails the billing contact", async () => {
     const r = await platform.post("/platform/billing/run", { period: PERIOD });

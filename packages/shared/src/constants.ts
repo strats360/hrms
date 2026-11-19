@@ -108,3 +108,10 @@ export const ONBOARDING_STEP_LABELS: Record<OnboardingStep, string> = {
   documents: "Documents",
   review: "Review & submit",
 };
+
+/**
+ * Logins for the customer demo account use this domain. It's reserved: the app never sends
+ * email to it, so a demo never reaches a real inbox.
+ */
+export const DEMO_EMAIL_DOMAIN = "demo.saralix.com";
+export const isDemoEmail = (email: string) => email.toLowerCase().endsWith("@" + DEMO_EMAIL_DOMAIN);
