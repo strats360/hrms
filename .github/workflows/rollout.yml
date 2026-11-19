@@ -1,0 +1,120 @@
+name: Rollout
+
+# Deploys the same commit to every live site in deploy/instances.json, wave by wave:
+# wave 1 first (India), then wave 2, then the rest. A wave only starts when every site in the
+# wave before it deployed and passed its smoke test. Tests run once, up front.
+#
+# Each site uses its own GitHub environment, so it gets its own secrets, and production
+# environments with required reviewers ask for approval as usual. To give a wave time to
+# settle before the next one starts, set a wait timer on the next wave's environments
+# (Settings > Environments > <site> > Wait timer). See docs/MULTI_COUNTRY.md.
+on:
+  workflow_dispatch:
+    inputs:
+      hold:
+        description: Sites to leave out this time, comma separated keys from deploy/instances.json (for example gulf,uk)
+        type: string
+        required: false
+        default: ""
+
+concurrency:
+  group: rollout
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      wave1: ${{ steps.plan.outputs.wave1 }}
+      wave2: ${{ steps.plan.outputs.wave2 }}
+      wave3: ${{ steps.plan.outputs.wave3 }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: plan
+        name: Plan the waves
+        env:
+          HOLD: ${{ inputs.hold }}
+        run: |
+          node deploy/instances.mjs plan --hold "$HOLD"
+          {
+            echo "### Rollout plan for ${GITHUB_SHA::7}"
+            node -e '
+              const lines = require("fs").readFileSync(process.env.GITHUB_OUTPUT, "utf8").split("\n").filter((l) => l.startsWith("wave"));
+              for (const l of lines) {
+                const [k, v] = [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1)];
+                const sites = JSON.parse(v);
+                console.log(`- Wave ${k.slice(4)}: ${sites.length ? sites.map((x) => x.name).join(", ") : "nothing"}`);
+              }
+            '
+            if [ -n "$HOLD" ]; then echo "- Held this time: $HOLD"; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: hrms
+          POSTGRES_PASSWORD: hrms
+          POSTGRES_DB: hrms_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U hrms" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://hrms:hrms@localhost:5432/hrms_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: node deploy/instances.mjs check && node --test deploy/instances.test.mjs
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  wave1:
+    needs: [plan, test]
+    if: ${{ needs.plan.outputs.wave1 != '[]' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        site: ${{ fromJSON(needs.plan.outputs.wave1) }}
+    name: Wave 1 · ${{ matrix.site.name }}
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: ${{ matrix.site.environment }}
+      skip_tests: true
+    secrets: inherit
+
+  # a wave starts only when the tests passed and every site in the wave before succeeded
+  # (a skipped wave counts only when it had no sites)
+  wave2:
+    needs: [plan, test, wave1]
+    if: ${{ always() && needs.plan.result == 'success' && needs.test.result == 'success' && needs.plan.outputs.wave2 != '[]' && (needs.wave1.result == 'success' || (needs.wave1.result == 'skipped' && needs.plan.outputs.wave1 == '[]')) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        site: ${{ fromJSON(needs.plan.outputs.wave2) }}
+    name: Wave 2 · ${{ matrix.site.name }}
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: ${{ matrix.site.environment }}
+      skip_tests: true
+    secrets: inherit
+
+  wave3:
+    needs: [plan, test, wave1, wave2]
+    if: ${{ always() && needs.plan.result == 'success' && needs.test.result == 'success' && needs.plan.outputs.wave3 != '[]' && (needs.wave1.result == 'success' || (needs.wave1.result == 'skipped' && needs.plan.outputs.wave1 == '[]')) && (needs.wave2.result == 'success' || (needs.wave2.result == 'skipped' && needs.plan.outputs.wave2 == '[]')) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        site: ${{ fromJSON(needs.plan.outputs.wave3) }}
+    name: Wave 3 · ${{ matrix.site.name }}
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: ${{ matrix.site.environment }}
+      skip_tests: true
+    secrets: inherit

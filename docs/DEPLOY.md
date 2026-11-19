@@ -107,6 +107,19 @@ From the platform console, create your first company under Tenants, or let compa
   - SSL/TLS › Edge Certificates: turn on Always Use HTTPS and set Minimum TLS to 1.2.
 - **Logs:** Workers & Pages › your Worker › Logs. Errors and slow requests show there (observability is on).
 
+## Several sites (India, Gulf, UK and more)
+
+Every site is listed in `deploy/instances.json`: its name, where its data lives, its domain, its GitHub environment, which countries it allows, and its rollout wave. Each site has its own GitHub environment with its own secrets and its own database, file storage and Worker. See `docs/MULTI_COUNTRY.md` for why.
+
+**Add a site**
+1. In `deploy/instances.json`, set the site's `status` to `live` (or add a new entry).
+2. In GitHub, create the environment named in `environment` (for example `gulf`) and add the same secrets as production: its own Neon project's connection string, a new `BETTER_AUTH_SECRET` and `ENCRYPTION_KEY`, and the Cloudflare token.
+3. Run **Deploy** for that environment once, with your email as the platform admin.
+
+**Update every site:** Actions › **Rollout** › Run workflow. It runs the tests once, then deploys wave 1 (India), and only when every site there passed its smoke test moves on to wave 2, then the rest. To skip a site this time, put its key in **hold** (for example `gulf`). To give each wave time to settle, add a wait timer to the next wave's environments (Settings › Environments › Wait timer).
+
+**Undo on one site:** **Rollback** with that site's environment.
+
 ## Customer demo account
 
 Use this to show Saralix to prospects on the live site. It loads the sample company, Strats360 Technolabs LLP, with 250 employees, payroll history, attendance, leave, claims and payments.
@@ -183,7 +196,7 @@ The API version defaults to `2023-08-01`. If Cashfree asks you to move to a newe
 
 | Task | How |
 | --- | --- |
-| Deploy a change | Merge to the branch, then run **Deploy** for staging, then production |
+| Deploy a change | Merge to the branch, then run **Deploy** for staging, then **Rollout** for every live site |
 | Undo a bad deploy | Actions › **Rollback** (code only; database migrations aren't undone) |
 | Restore data | Neon › Branches › Restore, to a point in time. Restore into a new branch first and check it |
 | Rotate the Cashfree keys | Generate new keys in Cashfree, replace the two secrets and deploy |

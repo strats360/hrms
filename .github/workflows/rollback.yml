@@ -5,8 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       environment:
+        description: Which site (its GitHub environment, see deploy/instances.json)
         type: choice
-        options: [staging, production]
+        options: [staging, production, gulf, saudi, uk, us]
         default: production
       version_id:
         description: Version to roll back to (blank = the previous one). See `wrangler deployments list`.
@@ -30,5 +31,11 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          NAME: ${{ vars.WORKER_NAME || (inputs.environment == 'staging' && 'saralix-staging' || 'saralix') }}
-        run: npx wrangler rollback ${{ inputs.version_id }} --name "$NAME" --message "Rollback from GitHub Actions by ${{ github.actor }}" -y
+          WORKER_NAME: ${{ vars.WORKER_NAME }}
+          TARGET: ${{ inputs.environment }}
+          VERSION_ID: ${{ inputs.version_id }}
+        run: |
+          # the site's Worker comes from deploy/instances.json unless the environment overrides it
+          NAME="${WORKER_NAME:-$(node ../../deploy/instances.mjs get "$TARGET" | node -pe 'JSON.parse(require("fs").readFileSync(0)).worker')}"
+          echo "Rolling back $NAME"
+          npx wrangler rollback $VERSION_ID --name "$NAME" --message "Rollback from GitHub Actions by ${{ github.actor }}" -y

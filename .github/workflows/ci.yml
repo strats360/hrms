@@ -29,7 +29,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Check the list of sites
-        run: node deploy/instances.mjs check
+        run: node deploy/instances.mjs check && node --test deploy/instances.test.mjs
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build

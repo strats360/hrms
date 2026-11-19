@@ -140,8 +140,8 @@ Cloudflare is one account for all instances. Neon is roughly $19 a month per pro
 10. Statutory rule table per country ✅ Rules carry a `country` (default IN), and payroll reads the rules for the country of the employees being paid.
 
 **Phase 2. Running several instances**
-1. Instance settings: name, region, domain, allowed packs
-2. Wave rollouts across instances from one click
+1. Instance settings: name, region, domain, allowed packs ✅ `deploy/instances.json`, checked in CI. Deploy reads the site for its GitHub environment.
+2. Wave rollouts across instances from one click ✅ The **Rollout** workflow: tests once, then each wave only after the one before passed, with sites that can be held.
 3. Monitoring and alerts per instance
 4. Backups and restore drills per instance
 5. Golden payroll tests for every pack in CI

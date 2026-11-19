@@ -16,14 +16,29 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: Where to deploy
+        description: Which site (its GitHub environment, see deploy/instances.json)
         type: choice
-        options: [staging, production]
+        options: [staging, production, gulf, saudi, uk, us]
         default: staging
       platform_admin_email:
         description: Create or promote this platform super admin (needs the PLATFORM_ADMIN_PASSWORD secret). Leave blank to skip.
         type: string
         required: false
+  # the Rollout workflow calls this once per site, wave by wave
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+      platform_admin_email:
+        type: string
+        required: false
+        default: ""
+      skip_tests:
+        description: The caller already ran the tests on this commit
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
   group: deploy-${{ inputs.environment }}
@@ -31,6 +46,7 @@ concurrency:
 
 jobs:
   test:
+    if: ${{ !inputs.skip_tests }}
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -57,6 +73,8 @@ jobs:
 
   deploy:
     needs: test
+    # runs after the tests, or straight away when the Rollout workflow already ran them
+    if: ${{ always() && (needs.test.result == 'success' || (needs.test.result == 'skipped' && inputs.skip_tests)) }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
@@ -147,7 +165,7 @@ jobs:
           node -e 'const h=require("./health.json"); if(!h.ok||!h.checks.database) process.exit(1); if(!h.checks.email) console.log("::warning::Email isn'"'"'t configured (RESEND_API_KEY / EMAIL_FROM). Invites and password resets won'"'"'t be sent."); if(!h.checks.payments) console.log("::warning::Cashfree isn'"'"'t configured (CASHFREE_APP_ID / CASHFREE_SECRET_KEY). Tenants pay invoices by bank transfer only.")'
           curl -fsS "$APP_URL/login" | grep -q 'id="root"'
           {
-            echo "### Deployed ${DEPLOY_ENV}"
+            echo "### Deployed ${{ steps.provision.outputs.site_name }} (${DEPLOY_ENV})"
             echo "- URL: $APP_URL"
             echo "- Worker: ${{ steps.provision.outputs.worker_name }}"
             echo "- Version: $(node -p 'require("./health.json").version') · migrations: $(node -p 'require("./health.json").migrations')"
