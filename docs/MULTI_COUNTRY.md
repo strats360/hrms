@@ -128,7 +128,7 @@ Cloudflare is one account for all instances. Neon is roughly $19 a month per pro
 5. The order to launch countries in
 
 **Phase 1. Make the core country neutral.** India keeps working throughout.
-1. Legal entities, with employees linked to an entity
+1. Legal entities, with employees linked to an entity ✅ Settings › Legal entities. Each instance limits entity countries with the `ALLOWED_COUNTRIES` Worker variable (default `IN`), and only countries with a finished pack can be picked.
 2. Money with currency everywhere, and rounding per currency (3 decimals for KWD and OMR)
 3. Company time zone in place of the hardcoded Indian time
 4. Country driven ID and document types, with visa and permit expiry reminders

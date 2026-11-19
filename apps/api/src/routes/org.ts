@@ -2,12 +2,15 @@ import { approvalPolicy } from "../services/approvals";
 import { Hono } from "hono";
 import { and, asc, eq, sql } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
-import { branches, departments, designations, employees, shifts, tenants } from "@hrms/db";
+import { branches, departments, designations, employees, legalEntities, shifts, tenants } from "@hrms/db";
 import {
   APPROVAL_STEP_LABELS,
   approvalPolicySchema,
+  allowedCountries,
   branchSchema,
   companySetupSchema,
+  COUNTRIES,
+  legalEntitySchema,
   departmentSchema,
   designationSchema,
   shiftSchema,
@@ -18,7 +21,8 @@ import type { z } from "zod";
 import type { AppEnv } from "../env";
 import { requirePerm } from "../lib/context";
 import { v, vPatch } from "../lib/validate";
-import { notFound, conflict } from "../lib/errors";
+import { badRequest, notFound, conflict } from "../lib/errors";
+import { listEntities, nextEntityCode, syncDefaultEntity, tenantPatchFor } from "../services/entities";
 import { audit } from "../lib/audit";
 
 export const orgRoutes = new Hono<AppEnv>();
@@ -33,6 +37,7 @@ orgRoutes.get("/tenant", async (c) => {
 orgRoutes.patch("/tenant", requirePerm("settings", "edit"), vPatch(tenantProfileSchema.partial()), async (c) => {
   const body = c.req.valid("json");
   const [t] = await c.get("db").update(tenants).set(body).where(eq(tenants.id, c.get("tenant").tenantId)).returning();
+  await syncDefaultEntity(c.get("db"), t!.id);
   await audit(c, { action: "tenant.update", entity: "tenant", entityId: t!.id, summary: "Updated company profile", data: body });
   return c.json(t);
 });
@@ -66,6 +71,7 @@ orgRoutes.post("/setup", requirePerm("settings", "configure"), v("json", company
   if (body.setupStep !== undefined) patch.setupStep = String(body.setupStep);
   if (body.completed) patch.setupCompletedAt = new Date();
   const [t] = await db.update(tenants).set(patch).where(eq(tenants.id, id)).returning();
+  if (body.profile || body.statutory) await syncDefaultEntity(db, id);
   if (body.completed) await audit(c, { action: "tenant.setup_complete", entity: "tenant", entityId: id, summary: "Completed company setup" });
   return c.json(t);
 });
@@ -74,7 +80,7 @@ orgRoutes.post("/setup", requirePerm("settings", "configure"), v("json", company
 orgRoutes.get("/lookups", async (c) => {
   const db = c.get("db");
   const tid = c.get("tenant").tenantId;
-  const [b, d, g, s, m] = await Promise.all([
+  const [b, d, g, s, m, ents] = await Promise.all([
     db.select().from(branches).where(eq(branches.tenantId, tid)).orderBy(asc(branches.name)),
     db.select().from(departments).where(eq(departments.tenantId, tid)).orderBy(asc(departments.name)),
     db.select().from(designations).where(eq(designations.tenantId, tid)).orderBy(asc(designations.name)),
@@ -84,8 +90,88 @@ orgRoutes.get("/lookups", async (c) => {
       .from(employees)
       .where(and(eq(employees.tenantId, tid), sql`${employees.status} not in ('exited','inactive')`))
       .orderBy(asc(employees.fullName)),
+    listEntities(db, tid),
   ]);
-  return c.json({ branches: b, departments: d, designations: g, shifts: s, employees: m });
+  const entities = ents.map((e) => ({ id: e.id, code: e.code, name: e.name, country: e.country, isDefault: e.isDefault }));
+  return c.json({ branches: b, departments: d, designations: g, shifts: s, employees: m, entities });
+});
+
+// ---------- legal entities ----------
+// Each company inside a tenant, with its own country, currency and time zone. See docs/MULTI_COUNTRY.md.
+
+/** Check the country is allowed on this instance and fill in currency and time zone defaults. */
+function entityValues(c: { env: AppEnv["Bindings"] }, body: z.infer<typeof legalEntitySchema>) {
+  const allowed = allowedCountries(c.env.ALLOWED_COUNTRIES);
+  if (!allowed.includes(body.country)) {
+    const info = COUNTRIES[body.country];
+    throw badRequest(info.hasPack ? `${info.name} isn't available on this site.` : `${info.name} isn't supported yet. Its payroll and compliance rules are still being built.`);
+  }
+  const info = COUNTRIES[body.country];
+  const timeZone = body.timeZone ?? info.timeZone;
+  if (!info.timeZones.includes(timeZone)) throw badRequest(`Pick a time zone used in ${info.name}`);
+  const { isDefault: _d, ...rest } = body;
+  return { ...rest, currency: body.currency ?? info.currency, timeZone };
+}
+
+orgRoutes.get("/entities", async (c) => {
+  const db = c.get("db");
+  const tid = c.get("tenant").tenantId;
+  const rows = await listEntities(db, tid);
+  const counts = await db.select({ e: employees.entityId, n: sql<number>`count(*)::int` }).from(employees).where(and(eq(employees.tenantId, tid), sql`${employees.status} not in ('exited','inactive')`)).groupBy(employees.entityId);
+  const n = new Map(counts.map((r) => [r.e, r.n]));
+  const defaultId = rows.find((r) => r.isDefault)?.id;
+  return c.json({
+    entities: rows.map((e) => ({ ...e, countryName: COUNTRIES[e.country as keyof typeof COUNTRIES]?.name ?? e.country, employees: (n.get(e.id) ?? 0) + (e.id === defaultId ? (n.get(null) ?? 0) : 0) })),
+    countries: allowedCountries(c.env.ALLOWED_COUNTRIES).map((k) => COUNTRIES[k]),
+  });
+});
+
+orgRoutes.post("/entities", requirePerm("settings", "configure"), v("json", legalEntitySchema), async (c) => {
+  const db = c.get("db");
+  const tid = c.get("tenant").tenantId;
+  const body = c.req.valid("json");
+  await listEntities(db, tid); // make sure the default exists first
+  const [row] = await db.insert(legalEntities).values({ ...entityValues(c, body), tenantId: tid, code: await nextEntityCode(db, tid), isDefault: false }).returning();
+  await audit(c, { action: "entity.create", entity: "legal_entity", entityId: row!.id, summary: `Added legal entity ${row!.name} (${row!.country})` });
+  return c.json(row, 201);
+});
+
+orgRoutes.patch("/entities/:id", requirePerm("settings", "configure"), v("json", legalEntitySchema), async (c) => {
+  const db = c.get("db");
+  const tid = c.get("tenant").tenantId;
+  const [cur] = await db.select().from(legalEntities).where(and(eq(legalEntities.id, c.req.param("id")), eq(legalEntities.tenantId, tid)));
+  if (!cur) throw notFound("Legal entity");
+  const body = c.req.valid("json");
+  const values = entityValues(c, body);
+  if (cur.country !== values.country) {
+    const [used] = await db.select({ id: employees.id }).from(employees).where(and(eq(employees.tenantId, tid), cur.isDefault ? sql`(${employees.entityId} = ${cur.id} or ${employees.entityId} is null)` : eq(employees.entityId, cur.id))).limit(1);
+    if (used) throw conflict("This entity has employees, so its country can't change. Add a new entity for the other country instead.");
+  }
+  const [row] = await db.update(legalEntities).set({ ...values, updatedAt: new Date() }).where(eq(legalEntities.id, cur.id)).returning();
+  // the default entity mirrors the tenant's company profile (Phase 1)
+  if (row!.isDefault) await db.update(tenants).set(tenantPatchFor(row!)).where(eq(tenants.id, tid));
+  if (body.isDefault && !cur.isDefault) {
+    await db.transaction(async (tx) => {
+      await tx.update(legalEntities).set({ isDefault: false }).where(and(eq(legalEntities.tenantId, tid), eq(legalEntities.isDefault, true)));
+      await tx.update(legalEntities).set({ isDefault: true }).where(eq(legalEntities.id, cur.id));
+      await tx.update(tenants).set(tenantPatchFor(row!)).where(eq(tenants.id, tid));
+    });
+  }
+  await audit(c, { action: "entity.update", entity: "legal_entity", entityId: cur.id, summary: `Updated legal entity ${row!.name}` });
+  return c.json({ ...row, isDefault: body.isDefault || cur.isDefault });
+});
+
+orgRoutes.delete("/entities/:id", requirePerm("settings", "configure"), async (c) => {
+  const db = c.get("db");
+  const tid = c.get("tenant").tenantId;
+  const [cur] = await db.select().from(legalEntities).where(and(eq(legalEntities.id, c.req.param("id")), eq(legalEntities.tenantId, tid)));
+  if (!cur) throw notFound("Legal entity");
+  if (cur.isDefault) throw conflict("This is the default entity. Make another one the default first.");
+  const [used] = await db.select({ id: employees.id }).from(employees).where(and(eq(employees.tenantId, tid), eq(employees.entityId, cur.id))).limit(1);
+  if (used) throw conflict("Move this entity's employees to another entity first, including people who have left.");
+  await db.delete(legalEntities).where(eq(legalEntities.id, cur.id));
+  await audit(c, { action: "entity.delete", entity: "legal_entity", entityId: cur.id, summary: `Removed legal entity ${cur.name}` });
+  return c.json({ ok: true });
 });
 
 // ---------- simple master-data CRUD ----------

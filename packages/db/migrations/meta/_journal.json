@@ -246,6 +246,13 @@
       "when": 1794412105740,
       "tag": "0034_wild_crystal",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1795106808521,
+      "tag": "0035_legal_entities",
+      "breakpoints": true
     }
   ]
 }

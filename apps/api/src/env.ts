@@ -19,6 +19,8 @@ export interface Env {
   EMAIL_FROM?: string;
   RESEND_API_KEY?: string;
   ENVIRONMENT?: string;
+  /** Countries entities may use on this instance, comma separated ISO codes (default IN). See docs/MULTI_COUNTRY.md. */
+  ALLOWED_COUNTRIES?: string;
   /** Cashfree Payment Gateway (subscription invoices). App ID and secret are Worker secrets. */
   CASHFREE_APP_ID?: string;
   CASHFREE_SECRET_KEY?: string;

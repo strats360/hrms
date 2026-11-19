@@ -6,6 +6,7 @@ import {
   departments,
   designations,
   employeeDocuments,
+  legalEntities,
   employees,
   memberships,
   onboardingInvites,
@@ -31,6 +32,7 @@ import { badRequest, notFound } from "../lib/errors";
 import { audit } from "../lib/audit";
 import { ALLOWED_TYPES, deleteFile, MAX_UPLOAD_BYTES, putFile, safeName } from "../lib/storage";
 import { canSeePrivate } from "../services/scope";
+import { entityOf } from "../services/entities";
 import { bankFields, linkExistingLogin, nextEmployeeCode, sendOnboardingInvite } from "../services/employees";
 import { toCsv, parseCsv } from "../lib/csv";
 
@@ -163,6 +165,7 @@ employeeRoutes.get("/:id", requirePerm("employees", "view"), async (c) => {
     .where(and(eq(employees.id, c.req.param("id")), eq(employees.tenantId, t.tenantId)));
   if (!row) throw notFound("Employee");
   const full = await canSeePrivate(c, row.e.id);
+  const ent = await entityOf(db, t.tenantId, row.e.entityId);
   const docs = !full ? [] : await db.select().from(employeeDocuments).where(and(eq(employeeDocuments.tenantId, t.tenantId), eq(employeeDocuments.employeeId, row.e.id))).orderBy(asc(employeeDocuments.createdAt));
   const [invite] = await db.select().from(onboardingInvites).where(and(eq(onboardingInvites.tenantId, t.tenantId), eq(onboardingInvites.employeeId, row.e.id)));
   const [membership] = await db
@@ -188,6 +191,7 @@ employeeRoutes.get("/:id", requirePerm("employees", "view"), async (c) => {
     department: row.department,
     designation: row.designation,
     branch: row.branch,
+    entity: { id: ent.id, code: ent.code, name: ent.name, country: ent.country },
     branchState: row.branchState,
     manager: row.manager,
     shift: row.shift ? `${row.shift} · ${row.shiftStart}–${row.shiftEnd}` : null,
@@ -209,6 +213,7 @@ async function assertRefs(c: Context<AppEnv>, tid: string, body: Record<string, 
   await check(designations, body.designationId, "Designation");
   await check(branches, body.branchId, "Branch");
   await check(shifts, body.shiftId, "Shift");
+  await check(legalEntities, body.entityId, "Legal entity");
   await check(employees, body.managerId, "Reporting manager");
   if (selfId && body.managerId === selfId) throw badRequest("An employee can't report to themselves");
 }

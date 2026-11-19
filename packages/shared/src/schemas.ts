@@ -14,6 +14,7 @@ import { EXIT_TYPES } from "./fnf";
 import { validIpRule } from "./punch-rules";
 import { APPROVAL_STEPS } from "./approvals";
 import { WAGE_CATEGORIES } from "./statutory";
+import { COUNTRY_CODES } from "./countries";
 
 // ---------- primitives ----------
 export const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
@@ -70,6 +71,8 @@ export const employeePersonalSchema = z.object({
 export const employeeEmploymentSchema = z.object({
   employeeCode: nullable(trimmed(30)),
   dateOfJoining: isoDate,
+  /** Legal entity; empty means the company's default entity. */
+  entityId: nullable(z.string()),
   departmentId: nullable(z.string()),
   designationId: nullable(z.string()),
   managerId: nullable(z.string()),
@@ -667,4 +670,19 @@ export const probationExtendSchema = z.object({
 export const probationSettingsSchema = z.object({
   reminderDays: z.number().int().min(1).max(60),
   defaultMonths: z.number().int().min(1).max(24),
+});
+
+/** A legal entity (company) inside a tenant. The country must be one the instance allows. */
+export const legalEntitySchema = z.object({
+  name: trimmed(120).pipe(z.string().min(1, "Enter a name")),
+  legalName: nullable(trimmed(160)),
+  country: z.enum(COUNTRY_CODES),
+  /** Defaults to the country's currency. */
+  currency: z.string().regex(/^[A-Z]{3}$/, "Use a 3 letter currency code").optional(),
+  /** Defaults to the country's main time zone. */
+  timeZone: z.string().min(3).max(64).optional(),
+  state: nullable(trimmed(80)),
+  address: nullable(trimmed(400)),
+  registrations: z.record(z.string().max(40), z.string().trim().max(60).nullable()).default({}),
+  isDefault: z.boolean().optional(),
 });

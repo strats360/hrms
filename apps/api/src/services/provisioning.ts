@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { holidays, leaveTypes, memberships, roles, shifts, tenants, type Database } from "@hrms/db";
+import { holidays, leaveTypes, legalEntities, memberships, roles, shifts, tenants, type Database } from "@hrms/db";
 import { DEFAULT_ROLES } from "@hrms/shared";
 
 export const DEFAULT_LEAVE_TYPES = [
@@ -60,6 +60,8 @@ export async function provisionTenant(
       )
       .returning();
     const superAdmin = roleRows.find((r) => r.key === "super_admin")!;
+    // every tenant starts with one legal entity in India (see docs/MULTI_COUNTRY.md)
+    await tx.insert(legalEntities).values({ tenantId: t.id, code: "E01", name: t.name, legalName: t.legalName, state: t.state, country: "IN", currency: "INR", timeZone: "Asia/Kolkata", isDefault: true });
 
     await tx.insert(shifts).values({
       tenantId: t.id,

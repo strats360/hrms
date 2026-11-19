@@ -38,6 +38,7 @@ import {
 import { DEMO_EMAIL_DOMAIN, randomToken, countLeaveDays, dateRange, encryptField, evaluateAttendance, sha256Hex, todayIST, weekday, DEFAULT_SHIFT } from "@hrms/shared";
 import { upsertLogin } from "../src/services/users";
 import { provisionTenant } from "../src/services/provisioning";
+import { syncDefaultEntity } from "../src/services/entities";
 import { applyUsage, ensureBalances } from "../src/services/leave";
 import { calculateRun, defaultPayDate, monthBounds } from "../src/services/payroll";
 import { payrollItems, payrollRuns, statutoryChallans, taxDeclarations, tdsReturns, user } from "@hrms/db";
@@ -149,6 +150,7 @@ async function main() {
       },
     })
     .where(eq(tenants.id, tid));
+  await syncDefaultEntity(db, tid);
 
   const [hq, ahd] = await db
     .insert(branches)

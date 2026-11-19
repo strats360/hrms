@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/ui/page";
 
 const ITEMS = [
   { to: "/settings", label: "Organization", end: true },
+  { to: "/settings/entities", label: "Legal entities" },
   { to: "/settings/structure", label: "Branches & departments" },
   { to: "/attendance/policies", label: "Shifts & attendance policies" },
   { to: "/leave/policies", label: "Leave policies" },

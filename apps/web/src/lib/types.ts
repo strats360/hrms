@@ -5,6 +5,8 @@ export interface Lookups {
   designations: { id: string; name: string }[];
   shifts: { id: string; name: string; startTime: string; endTime: string; isDefault: boolean }[];
   employees: { id: string; name: string; code: string }[];
+  /** Legal entities; most companies have one. */
+  entities?: { id: string; code: string; name: string; country: string; isDefault: boolean }[];
 }
 
 export interface EmployeeRow {
@@ -37,6 +39,8 @@ export interface EmployeeDetail {
   id: string;
   /** True when you only get the directory card: private details and documents are left out. */
   limited?: boolean;
+  entityId?: string | null;
+  entity?: { id: string; code: string; name: string; country: string };
   login?: { membershipId: string; twoFactorEnabled: boolean } | null;
   employeeCode: string;
   firstName: string;

@@ -40,6 +40,8 @@ export const employees = pgTable(
     photoKey: text("photo_key"),
     // employment
     dateOfJoining: date("date_of_joining", { mode: "string" }).notNull(),
+    /** Legal entity the person is employed by. Null means the tenant's default entity. */
+    entityId: text("entity_id"),
     departmentId: text("department_id"),
     designationId: text("designation_id"),
     managerId: text("manager_id"),
@@ -87,6 +89,7 @@ export const employees = pgTable(
     uniqueIndex("employees_tenant_email_uq").on(t.tenantId, t.workEmail),
     index("employees_tenant_status_idx").on(t.tenantId, t.status),
     index("employees_tenant_manager_idx").on(t.tenantId, t.managerId),
+    index("employees_tenant_entity_idx").on(t.tenantId, t.entityId),
     uniqueIndex("employees_tenant_biometric_uq").on(t.tenantId, t.biometricId),
   ],
 );

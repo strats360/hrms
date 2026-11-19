@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { numeric, boolean, index, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import type { NotificationPrefs, PermissionMatrix, TenantSettings } from "@hrms/shared";
 import { user } from "./auth";
@@ -39,6 +40,41 @@ export const tenants = pgTable(
     ...timestamps,
   },
   (t) => [uniqueIndex("tenants_code_uq").on(t.code)],
+);
+
+/**
+ * A legal entity (company) inside a tenant. Each entity has its own country, currency, time zone
+ * and registration numbers, and its country pack decides payroll and statutory rules.
+ * Every tenant has one default entity. In Phase 1 the default entity mirrors the tenant's company
+ * profile and statutory settings (see services/entities.ts). See docs/MULTI_COUNTRY.md.
+ */
+export const legalEntities = pgTable(
+  "legal_entities",
+  {
+    id: id(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    code: text("code").notNull(), // short, unique in the tenant, e.g. IN01
+    name: text("name").notNull(),
+    legalName: text("legal_name"),
+    country: text("country").notNull().default("IN"), // ISO 3166 alpha 2
+    currency: text("currency").notNull().default("INR"), // ISO 4217
+    timeZone: text("time_zone").notNull().default("Asia/Kolkata"), // IANA
+    state: text("state"),
+    address: text("address"),
+    /** Country specific registration numbers, e.g. { gstin, pan, tan, cin } in India. */
+    registrations: jsonb("registrations").$type<Record<string, string | null>>().notNull().default({}),
+    /** Country specific schemes and their registrations, e.g. { epf: { enabled, registration } }. */
+    statutory: jsonb("statutory").$type<Record<string, StatutoryRegistration>>().notNull().default({}),
+    isDefault: boolean("is_default").notNull().default(false),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("legal_entities_tenant_code_uq").on(t.tenantId, t.code),
+    uniqueIndex("legal_entities_one_default_uq").on(t.tenantId).where(sql`${t.isDefault}`),
+    index("legal_entities_tenant_idx").on(t.tenantId),
+  ],
 );
 
 /** Tenant roles with a module x action permission matrix. */

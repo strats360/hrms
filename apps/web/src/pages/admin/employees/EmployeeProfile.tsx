@@ -255,6 +255,7 @@ export default function EmployeeProfile() {
               <KV label="Designation">{e.designation}</KV>
               <KV label="Reporting manager">{e.manager}</KV>
               <KV label="Employment type">{EMPLOYMENT_TYPE_LABELS[e.employmentType as keyof typeof EMPLOYMENT_TYPE_LABELS] ?? e.employmentType}</KV>
+              {e.entity ? <KV label="Legal entity">{e.entity.name}</KV> : null}
               <KV label="Branch">{e.branch ? `${e.branch}${e.branchState ? `, ${e.branchState}` : ""}` : null}</KV>
               <KV label="Work location">{e.workLocation}</KV>
               <KV label="Employee status"><StatusTag status={e.status} label={EMPLOYEE_STATUS_LABELS[e.status as EmployeeStatus]} /></KV>
