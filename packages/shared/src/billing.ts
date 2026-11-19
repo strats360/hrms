@@ -71,10 +71,12 @@ export const SALES_TAX: Record<string, { label: string; rate: number; taxIdLabel
   AE: { label: "VAT", rate: 0.05, taxIdLabel: "TRN" },
   SA: { label: "VAT", rate: 0.15, taxIdLabel: "VAT number" },
   OM: { label: "VAT", rate: 0.05, taxIdLabel: "VAT number" },
+  BH: { label: "VAT", rate: 0.1, taxIdLabel: "VAT number" },
   GB: { label: "VAT", rate: 0.2, taxIdLabel: "VAT number" },
   QA: null, // no VAT
   KW: null, // no VAT
   US: null, // sales tax on SaaS depends on the state; not charged yet
+  CA: null, // GST, HST or PST depend on the customer's province; not charged yet
 };
 
 export const taxIdLabel = (country: string) => SALES_TAX[country]?.taxIdLabel ?? "Tax number";

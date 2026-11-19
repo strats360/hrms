@@ -2,7 +2,7 @@
  * Countries Saralix plans to support. A country is only usable for a legal entity when it
  * has a country pack (`hasPack`) and the instance allows it (ALLOWED_COUNTRIES). See docs/MULTI_COUNTRY.md.
  */
-export const COUNTRY_CODES = ["IN", "AE", "SA", "QA", "KW", "OM", "GB", "US"] as const;
+export const COUNTRY_CODES = ["IN", "AE", "SA", "QA", "KW", "OM", "BH", "GB", "US", "CA"] as const;
 export type CountryCode = (typeof COUNTRY_CODES)[number];
 
 export interface CountryInfo {
@@ -28,6 +28,7 @@ export const COUNTRIES: Record<CountryCode, CountryInfo> = {
   QA: { code: "QA", name: "Qatar", currency: "QAR", decimals: 2, timeZone: "Asia/Qatar", timeZones: ["Asia/Qatar"], weekend: [5, 6], hasPack: false },
   KW: { code: "KW", name: "Kuwait", currency: "KWD", decimals: 3, timeZone: "Asia/Kuwait", timeZones: ["Asia/Kuwait"], weekend: [5, 6], hasPack: false },
   OM: { code: "OM", name: "Oman", currency: "OMR", decimals: 3, timeZone: "Asia/Muscat", timeZones: ["Asia/Muscat"], weekend: [5, 6], hasPack: false },
+  BH: { code: "BH", name: "Bahrain", currency: "BHD", decimals: 3, timeZone: "Asia/Bahrain", timeZones: ["Asia/Bahrain"], weekend: [5, 6], hasPack: false },
   GB: { code: "GB", name: "United Kingdom", currency: "GBP", decimals: 2, timeZone: "Europe/London", timeZones: ["Europe/London"], weekend: [0, 6], hasPack: false },
   US: {
     code: "US",
@@ -36,6 +37,16 @@ export const COUNTRIES: Record<CountryCode, CountryInfo> = {
     decimals: 2,
     timeZone: "America/New_York",
     timeZones: ["America/New_York", "America/Chicago", "America/Denver", "America/Phoenix", "America/Los_Angeles", "America/Anchorage", "Pacific/Honolulu"],
+    weekend: [0, 6],
+    hasPack: false,
+  },
+  CA: {
+    code: "CA",
+    name: "Canada",
+    currency: "CAD",
+    decimals: 2,
+    timeZone: "America/Toronto",
+    timeZones: ["America/Toronto", "America/Vancouver", "America/Edmonton", "America/Winnipeg", "America/Halifax", "America/St_Johns", "America/Regina"],
     weekend: [0, 6],
     hasPack: false,
   },

@@ -3,7 +3,7 @@ import { useSession } from "@/lib/session";
 import { getLocale, LOCALES, setLocale, t, useLocale } from "@/lib/i18n";
 
 /** Countries whose people usually want Arabic. */
-const ARABIC = new Set(["AE", "SA", "QA", "KW", "OM"]);
+const ARABIC = new Set(["AE", "SA", "QA", "KW", "OM", "BH"]);
 
 /**
  * English or Arabic. Shown for companies in the Gulf, or once someone has picked Arabic,

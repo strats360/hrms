@@ -6,7 +6,7 @@ describe("country packs", () => {
     expect(packFor("IN").code).toBe("IN");
     expect(packFor().code).toBe("IN"); // default
     expect(hasPackFor("IN")).toBe(true);
-    for (const c of ["AE", "SA", "QA", "KW", "OM", "GB", "US"]) {
+    for (const c of ["AE", "SA", "QA", "KW", "OM", "BH", "GB", "US", "CA"]) {
       expect(hasPackFor(c)).toBe(false);
       expect(() => packFor(c)).toThrow(/isn't supported yet/);
     }
@@ -21,6 +21,8 @@ describe("country packs", () => {
   it("knows each country's currency, decimals and weekend", () => {
     expect(COUNTRIES.KW).toMatchObject({ currency: "KWD", decimals: 3 });
     expect(COUNTRIES.OM.decimals).toBe(3);
+    expect(COUNTRIES.BH).toMatchObject({ currency: "BHD", decimals: 3, weekend: [5, 6] });
+    expect(COUNTRIES.CA).toMatchObject({ currency: "CAD", timeZone: "America/Toronto" });
     expect(COUNTRIES.SA.weekend).toEqual([5, 6]);
     expect(COUNTRIES.AE.weekend).toEqual([0, 6]);
   });

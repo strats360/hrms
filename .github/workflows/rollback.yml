@@ -7,7 +7,7 @@ on:
       environment:
         description: Which site (its GitHub environment, see deploy/instances.json)
         type: choice
-        options: [staging, production, gulf, saudi, uk, us]
+        options: [staging, production, gulf, saudi, uk, us, canada]
         default: production
       version_id:
         description: Version to roll back to (blank = the previous one). See `wrangler deployments list`.

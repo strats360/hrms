@@ -132,7 +132,7 @@ export default function Entities() {
         )}
       </TableCard>
       <Notice tone="sel">
-        India is available now. The UAE, Saudi Arabia, Qatar, Kuwait, Oman, the UK and the USA will show up here as their payroll and compliance rules are ready.
+        India is available now. The UAE, Saudi Arabia, Qatar, Kuwait, Oman, Bahrain, the UK, the USA and Canada will show up here as their payroll and compliance rules are ready.
       </Notice>
 
       <Dialog

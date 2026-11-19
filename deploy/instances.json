@@ -10,7 +10,9 @@
       "domain": null,
       "region": "India (Mumbai)",
       "bucketLocation": "apac",
-      "countries": ["IN"],
+      "countries": [
+        "IN"
+      ],
       "timeZone": "Asia/Kolkata",
       "currency": "INR",
       "wave": 0,
@@ -25,7 +27,9 @@
       "domain": "app.saralix.com",
       "region": "India (Mumbai)",
       "bucketLocation": "apac",
-      "countries": ["IN"],
+      "countries": [
+        "IN"
+      ],
       "timeZone": "Asia/Kolkata",
       "currency": "INR",
       "wave": 1,
@@ -40,7 +44,13 @@
       "domain": "gulf.saralix.com",
       "region": "Gulf (hosting to be confirmed by legal advice)",
       "bucketLocation": "apac",
-      "countries": ["AE", "QA", "KW", "OM"],
+      "countries": [
+        "AE",
+        "QA",
+        "KW",
+        "OM",
+        "BH"
+      ],
       "timeZone": "Asia/Dubai",
       "currency": "AED",
       "wave": 2,
@@ -55,7 +65,9 @@
       "domain": "sa.saralix.com",
       "region": "Saudi Arabia (in Kingdom, provider to be chosen)",
       "bucketLocation": "apac",
-      "countries": ["SA"],
+      "countries": [
+        "SA"
+      ],
       "timeZone": "Asia/Riyadh",
       "currency": "SAR",
       "wave": 3,
@@ -70,7 +82,9 @@
       "domain": "uk.saralix.com",
       "region": "United Kingdom (London)",
       "bucketLocation": "weur",
-      "countries": ["GB"],
+      "countries": [
+        "GB"
+      ],
       "timeZone": "Europe/London",
       "currency": "GBP",
       "wave": 3,
@@ -85,9 +99,28 @@
       "domain": "us.saralix.com",
       "region": "United States",
       "bucketLocation": "enam",
-      "countries": ["US"],
+      "countries": [
+        "US"
+      ],
       "timeZone": "America/New_York",
       "currency": "USD",
+      "wave": 3,
+      "status": "planned"
+    },
+    {
+      "key": "canada",
+      "name": "Saralix Canada",
+      "environment": "canada",
+      "stage": "production",
+      "worker": "saralix-ca",
+      "domain": "ca.saralix.com",
+      "region": "Canada",
+      "bucketLocation": "enam",
+      "countries": [
+        "CA"
+      ],
+      "timeZone": "America/Toronto",
+      "currency": "CAD",
       "wave": 3,
       "status": "planned"
     }

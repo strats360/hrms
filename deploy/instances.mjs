@@ -14,7 +14,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const COUNTRIES = ["IN", "AE", "SA", "QA", "KW", "OM", "GB", "US"];
+const COUNTRIES = ["IN", "AE", "SA", "QA", "KW", "OM", "BH", "GB", "US", "CA"];
 const BUCKET_LOCATIONS = ["apac", "eeur", "enam", "weur", "wnam", "oc"];
 const KEYS = ["key", "name", "environment", "stage", "worker", "domain", "region", "bucketLocation", "countries", "timeZone", "currency", "wave", "status"];
 

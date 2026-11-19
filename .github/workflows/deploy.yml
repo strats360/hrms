@@ -18,7 +18,7 @@ on:
       environment:
         description: Which site (its GitHub environment, see deploy/instances.json)
         type: choice
-        options: [staging, production, gulf, saudi, uk, us]
+        options: [staging, production, gulf, saudi, uk, us, canada]
         default: staging
       platform_admin_email:
         description: Create or promote this platform super admin (needs the PLATFORM_ADMIN_PASSWORD secret). Leave blank to skip.

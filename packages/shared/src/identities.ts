@@ -27,8 +27,10 @@ export const ID_TYPES: IdTypeDef[] = [
   { key: "qid", label: "Qatar ID (QID)", countries: ["QA"], expires: true, remindDays: 30 },
   { key: "civil_id", label: "Civil ID", countries: ["KW"], expires: true, remindDays: 30 },
   { key: "resident_card", label: "Resident card", countries: ["OM"], expires: true, remindDays: 30 },
+  { key: "cpr", label: "CPR card", countries: ["BH"], expires: true, remindDays: 30 },
   { key: "ni_number", label: "National Insurance number", countries: ["GB"], expires: false, remindDays: 0 },
   { key: "ssn", label: "Social Security number", countries: ["US"], expires: false, remindDays: 0 },
+  { key: "sin", label: "Social Insurance Number (SIN)", countries: ["CA"], expires: false, remindDays: 0 },
   { key: "driving_licence", label: "Driving licence", countries: [], expires: true, remindDays: 30 },
   { key: "other", label: "Other", countries: [], expires: true, remindDays: 30 },
 ];

@@ -1,6 +1,6 @@
 # Multi country design
 
-Saralix runs in India today. This is how we take it to the UAE, Saudi Arabia, Qatar, Kuwait, Oman, the UK and the USA without breaking what already works, and without the cost growing with every new country.
+Saralix runs in India today. This is how we take it to the UAE, Saudi Arabia, Qatar, Kuwait, Oman, Bahrain, the UK, the USA and Canada without breaking what already works, and without the cost growing with every new country.
 
 ## The idea in three rules
 
@@ -27,10 +27,11 @@ in.saralix.com  gulf.saralix.com  sa.saralix.com  uk.saralix.com  us.saralix.com
 | Instance | Domain | Data lives in | Country packs allowed |
 | --- | --- | --- | --- |
 | India | `in.saralix.com` (today `app.saralix.com`) | Mumbai | IN |
-| Gulf | `gulf.saralix.com` | Closest allowed region, confirm with legal advice | AE, QA, KW, OM |
+| Gulf | `gulf.saralix.com` | Closest allowed region, confirm with legal advice | AE, QA, KW, OM, BH |
 | Saudi | `sa.saralix.com` | Inside Saudi Arabia | SA |
 | UK | `uk.saralix.com` | London | GB |
 | USA | `us.saralix.com` | US | US |
+| Canada | `ca.saralix.com` | Canada | CA |
 
 Rules for instances:
 - Each instance has its own GitHub environment, Neon (or other Postgres) project, R2 bucket, Hyperdrive, Worker and secrets. A problem in one can't reach another.
@@ -157,8 +158,9 @@ Cloudflare is one account for all instances. Neon is roughly $19 a month per pro
 **Phase 4 onward. Country packs**, each with a pilot customer
 1. UAE pack, then the Gulf instance
 2. Saudi pack and the Saudi instance
-3. Qatar, Kuwait and Oman packs
+3. Qatar, Kuwait, Oman and Bahrain packs
 4. UK pack, then HMRC recognition
 5. USA: HR core, with payroll tax through a partner
+6. Canada: federal and provincial income tax, CPP or QPP, EI, ROE and T4 (or a payroll partner, as for the USA)
 
 Compliance details for each country are a starting point only. Every pack needs sign off from a local expert before it pays anyone.
