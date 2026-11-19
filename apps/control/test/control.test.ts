@@ -107,7 +107,7 @@ describe("Cloudflare Access token", () => {
   };
   beforeAll(async () => {
     keys = (await crypto.subtle.generateKey({ name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" }, true, ["sign", "verify"])) as CryptoKeyPair;
-    jwk = { ...(await crypto.subtle.exportKey("jwk", keys.publicKey)), kid: "k1" };
+    jwk = { ...((await crypto.subtle.exportKey("jwk", keys.publicKey)) as JsonWebKey), kid: "k1" };
   });
   const certs = (async () => Response.json({ keys: [jwk] })) as unknown as typeof fetch;
   const cfg = { ACCESS_TEAM_DOMAIN: team, ACCESS_AUD: "aud123" };
