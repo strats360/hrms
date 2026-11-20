@@ -310,8 +310,9 @@ export interface PayslipView {
 export interface ExtraComponentDef {
   code: string;
   label: string;
-  mode: "fixed" | "pct_basic";
+  mode: "fixed" | "pct_basic" | "formula";
   value: number;
+  formula?: string;
   taxable: boolean;
   esiWage: boolean;
 }

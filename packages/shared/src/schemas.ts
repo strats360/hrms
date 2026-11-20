@@ -1,3 +1,4 @@
+import { formulaError } from "./formula";
 import { PAY_FREQUENCIES } from "./pay-periods";
 import { z } from "zod";
 import { NOTIFICATION_KEYS } from "./notifications";
@@ -178,10 +179,15 @@ const componentCode = z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9_]{1,2
 export const extraComponentDefSchema = z.object({
   code: componentCode,
   label: trimmed(60).min(1, "Name the allowance"),
-  mode: z.enum(["fixed", "pct_basic"]),
+  mode: z.enum(["fixed", "pct_basic", "formula"]),
   value: z.coerce.number().min(0).max(1e7),
+  formula: z.string().trim().max(200).optional(),
   taxable: z.boolean().default(true),
   esiWage: z.boolean().default(true),
+}).superRefine((x, ctx) => {
+  if (x.mode !== "formula") return;
+  const err = formulaError(x.formula ?? "");
+  if (err) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["formula"], message: `${x.label || "Allowance"}: ${err}` });
 });
 
 export const tenantPayrollSettingsSchema = z.object({

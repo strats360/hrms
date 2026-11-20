@@ -1,3 +1,4 @@
+import { evalFormula, type FormulaVars } from "./formula";
 import type { TaxDeclarationData, Verified } from "./tax";
 import type { CountryCode } from "./countries";
 import { packFor } from "./packs";
@@ -38,8 +39,10 @@ export interface SalaryTemplate {
 export interface ExtraComponentDef {
   code: string;
   label: string;
-  mode: "fixed" | "pct_basic";
+  /** fixed ₹ a month, % of basic, or a formula over gross, basic and HRA (see formula.ts). */
+  mode: "fixed" | "pct_basic" | "formula";
   value: number;
+  formula?: string;
   /** Counts as taxable salary (most allowances are; e.g. meal coupons within limits aren't). */
   taxable: boolean;
   /** Counts as ESI wages. */
@@ -237,6 +240,15 @@ function employerPf(wages: number, t: SalaryTemplate, pfApplicable: boolean, R: 
 }
 
 /** Split a gross into template components (allowances never push special below zero). */
+/** A template formula that can't be read pays nothing rather than stopping payroll; the template form checks formulas when they're saved. */
+function safeFormula(src: string, vars: FormulaVars) {
+  try {
+    return evalFormula(src, vars);
+  } catch {
+    return 0;
+  }
+}
+
 export function componentsFromGross(gross: number, t: SalaryTemplate): MonthlyComponents {
   const basic = r((gross * t.basicPctOfGross) / 100);
   let left = gross - basic;
@@ -248,7 +260,8 @@ export function componentsFromGross(gross: number, t: SalaryTemplate): MonthlyCo
   left -= medical;
   const extras: ExtraComponent[] = [];
   for (const x of t.extras ?? []) {
-    const amount = Math.min(left, Math.max(0, r(x.mode === "pct_basic" ? (basic * x.value) / 100 : x.value)));
+    const raw = x.mode === "pct_basic" ? (basic * x.value) / 100 : x.mode === "formula" ? safeFormula(x.formula ?? "0", { gross, basic, hra }) : x.value;
+    const amount = Math.min(left, Math.max(0, r(raw)));
     left -= amount;
     extras.push({ code: x.code, label: x.label, amount, taxable: x.taxable, esiWage: x.esiWage, ...(x.wages ? { wages: true } : {}) });
   }

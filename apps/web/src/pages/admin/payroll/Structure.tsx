@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { fmtDate, fmtMoney } from "@hrms/shared";
+import { formulaError, fmtDate, fmtMoney } from "@hrms/shared";
 import { api, errorMessage, qs } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { ExtraComponentDef, SalaryTemplate, Structure, TemplateRow } from "@/lib/types";
@@ -148,7 +148,7 @@ export default function StructurePage() {
         ["Medical allowance", "Fixed", s.components.medical, "Taxable"],
         ...(s.components.extras ?? []).map((x): [string, string, number, string] => {
           const def = draft.extras?.find((d) => d.code === x.code);
-          return [x.label, def?.mode === "pct_basic" ? `${def.value}% of basic` : "Fixed", x.amount, `${x.taxable === false ? "Not taxable" : "Taxable"}${x.esiWage === false ? " · not ESI wages" : ""}`];
+          return [x.label, def?.mode === "pct_basic" ? `${def.value}% of basic` : def?.mode === "formula" ? `= ${def.formula}` : "Fixed", x.amount, `${x.taxable === false ? "Not taxable" : "Taxable"}${x.esiWage === false ? " · not ESI wages" : ""}`];
         }),
         ["Special allowance", "Balancing figure", s.components.special, "Fully taxable"],
       ]
@@ -220,8 +220,13 @@ export default function StructurePage() {
                   <Select value={x.mode} onChange={(e) => setExtra(i, { mode: e.target.value as ExtraComponentDef["mode"] })} disabled={!configurable} aria-label="Worked out as">
                     <option value="fixed">Fixed ₹ a month</option>
                     <option value="pct_basic">% of basic</option>
+                    <option value="formula">Formula</option>
                   </Select>
-                  <Input inputMode="decimal" value={x.value} onChange={(e) => setExtra(i, { value: num(e.target.value) })} disabled={!configurable} aria-label="Amount" />
+                  {x.mode === "formula" ? (
+                    <Input value={x.formula ?? ""} onChange={(e) => setExtra(i, { formula: e.target.value })} disabled={!configurable} aria-label="Formula" placeholder="min(basic * 0.1, 1600)" title={formulaError(x.formula ?? "") ?? "Use gross, basic, hra, + - * /, brackets, min, max, round, floor, ceil"} invalid={!!x.formula && !!formulaError(x.formula)} />
+                  ) : (
+                    <Input inputMode="decimal" value={x.value} onChange={(e) => setExtra(i, { value: num(e.target.value) })} disabled={!configurable} aria-label="Amount" />
+                  )}
                   <Checkbox label="Taxable" checked={x.taxable} onChange={(v) => setExtra(i, { taxable: v })} disabled={!configurable} />
                   <Checkbox label="ESI" checked={x.esiWage} onChange={(v) => setExtra(i, { esiWage: v })} disabled={!configurable} />
                   {configurable ? (

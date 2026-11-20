@@ -31,6 +31,7 @@ export * from "./timesheets";
 export * from "./announcements";
 export * from "./helpdesk";
 export * from "./countries";
+export * from "./formula";
 export * from "./contractor-tds";
 export * from "./pay-periods";
 export * from "./packs";
