@@ -4,6 +4,7 @@ import {
   branches,
   departments,
   designations,
+  employeeIdentities,
   employees,
   leaveRequests,
   leaveTypes,
@@ -119,6 +120,16 @@ export async function payableEmployees(db: Database, tenantId: string, start: st
     );
 }
 
+/** When each employee was first insured with GOSI (the issue date on their GOSI number), for Saudi payroll. */
+export async function insuredSince(db: Database, tenantId: string, ids: string[]) {
+  if (!ids.length) return new Map<string, string>();
+  const rows = await db
+    .select({ e: employeeIdentities.employeeId, on: employeeIdentities.issuedOn })
+    .from(employeeIdentities)
+    .where(and(eq(employeeIdentities.tenantId, tenantId), eq(employeeIdentities.type, "gosi"), inArray(employeeIdentities.employeeId, ids)));
+  return new Map(rows.filter((r) => r.on).map((r) => [r.e, r.on!]));
+}
+
 /** Year-to-date figures (approved/paid runs earlier in the same FY). */
 export async function yearToDate(db: Database, tenantId: string, month: string) {
   const fy = fyOfMonth(month);
@@ -219,6 +230,7 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
   const prev = new Map(existing.map((i) => [i.employeeId, i]));
   const cal = opts.assumePresent ? null : await buildCalendar(db, tenantId, emps.map((x) => ({ id: x.e.id, shiftId: x.e.shiftId, branchId: x.e.branchId, dateOfJoining: x.e.dateOfJoining, lastWorkingDay: x.e.lastWorkingDay })), start, end);
   const rules = await rulesFor(db, run.month, ent.country);
+  const insured = ent.country === "SA" ? await insuredSince(db, tenantId, ids) : new Map<string, string>();
   const india = ent.country === "IN";
   const statOn = (entity: { statutory: Record<string, { enabled?: boolean }> }, k: string) => entity.statutory?.[k]?.enabled ?? statutory[k as keyof typeof statutory]?.enabled ?? true;
 
@@ -257,7 +269,7 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
       ptApplicable: e.ptApplicable && statOn(ent, "pt"),
       state: branchState ?? ent.state ?? tenant?.state ?? null,
       gender: e.gender,
-      profile: { nationality: e.nationality, region: ent.state },
+      profile: { nationality: e.nationality, region: ent.state, insuredSince: insured.get(e.id) ?? null },
       regime: ((decls.get(e.id)?.regime ?? e.taxRegime) as Regime) ?? "new",
       reimbursement: claims.get(e.id) ?? 0,
       taxProfile: decls.get(e.id) ? { declaration: decls.get(e.id)!.data, verified: decls.get(e.id)!.verified } : undefined,

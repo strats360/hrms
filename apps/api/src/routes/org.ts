@@ -8,6 +8,7 @@ import {
   approvalPolicySchema,
   allowedCountries,
   emiratisationStatus,
+  saudizationStatus,
   branchSchema,
   companySetupSchema,
   COUNTRIES,
@@ -128,9 +129,15 @@ orgRoutes.get("/entities", async (c) => {
   const uae = rows.some((e) => e.country === "AE")
     ? new Map((await db.select({ e: employees.entityId, n: sql<number>`count(*)::int` }).from(employees).where(and(eq(employees.tenantId, tid), eq(employees.nationality, "AE"), sql`${employees.status} not in ('exited','inactive')`)).groupBy(employees.entityId)).map((r) => [r.e, r.n]))
     : null;
+  // Saudi entities: Saudization for Nitaqat, which weighs Saudis by their wage
+  const saudis = rows.some((e) => e.country === "SA")
+    ? await db.select({ e: employees.entityId, ctc: employees.annualCtc }).from(employees).where(and(eq(employees.tenantId, tid), eq(employees.nationality, "SA"), sql`${employees.status} not in ('exited','inactive')`))
+    : [];
+  const saudiWages = (id: string) => saudis.filter((r) => r.e === id || (id === defaultId && !r.e)).map((r) => Number(r.ctc) / 12);
   return c.json({
     entities: rows.map((e) => ({
       ...e,
+      saudization: e.country === "SA" ? saudizationStatus({ employees: count(n, e.id), saudiWages: saudiWages(e.id) }) : null,
       countryName: COUNTRIES[e.country as keyof typeof COUNTRIES]?.name ?? e.country,
       employees: count(n, e.id),
       emiratisation: uae && e.country === "AE" ? { nationals: count(uae, e.id), ...emiratisationStatus({ employees: count(n, e.id), nationals: count(uae, e.id), on: todayLocal() }) } : null,

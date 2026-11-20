@@ -577,6 +577,17 @@ export function StepPayout({ run }: { run: PayrollRun }) {
       setExporting(false);
     }
   };
+  const exportMudad = async () => {
+    setExporting(true);
+    try {
+      await download(`/admin/payroll/runs/${run.id}/mudad.csv`, `mudad-${run.month}.csv`);
+      toast.success("Mudad salary sheet downloaded");
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setExporting(false);
+    }
+  };
   const t = run.totals;
   const when = (d: string | null) => (d ? new Date(d).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }) : "");
   return (
@@ -615,6 +626,11 @@ export function StepPayout({ run }: { run: PayrollRun }) {
                 {run.country === "AE" ? (
                   <Button disabled={!locked || !can("payroll", "export")} loading={exporting} onClick={exportWps} title="Salary information file for the UAE Wage Protection System">
                     <Download size={15} /> WPS file
+                  </Button>
+                ) : null}
+                {run.country === "SA" ? (
+                  <Button disabled={!locked || !can("payroll", "export")} loading={exporting} onClick={exportMudad} title="Salary sheet for Mudad wage protection and your bank">
+                    <Download size={15} /> Mudad sheet
                   </Button>
                 ) : null}
               </div>

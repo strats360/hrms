@@ -1,0 +1,278 @@
+{
+  "country": "SA",
+  "signedOff": {
+    "by": null,
+    "on": null,
+    "note": "Built from the Social Insurance Law and its 2024 replacement (GOSI) and the Saudi Labor Law (end of service, Articles 84 and 85). A Saudi payroll expert must check every case by hand, especially the annuity steps for new participants, SANED, and which allowances count in the GOSI wage, before Saudi payroll is used for real pay."
+  },
+  "cases": [
+    {
+      "name": "Expat in Riyadh",
+      "why": "No income tax; expats pay nothing to GOSI, the employer pays 2% hazards on basic plus housing.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 240000,
+        "month": "2026-11",
+        "profile": {
+          "nationality": "IN",
+          "region": "Riyadh"
+        }
+      },
+      "expect": {
+        "gross": 20000,
+        "totalDeductions": 0,
+        "net": 20000,
+        "tds": 0,
+        "employerCost": 280,
+        "lines": {
+          "earn.basic": 10000,
+          "earn.hra": 4000,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 3150,
+          "emp.hazards_er": 280
+        }
+      }
+    },
+    {
+      "name": "Saudi insured before July 2024",
+      "why": "Annuities 9% and SANED 0.75% each side, plus 2% hazards from the employer.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 240000,
+        "month": "2026-11",
+        "profile": {
+          "nationality": "SA",
+          "region": "Riyadh",
+          "insuredSince": "2016-05-01"
+        }
+      },
+      "expect": {
+        "gross": 20000,
+        "totalDeductions": 1365,
+        "net": 18635,
+        "tds": 0,
+        "employerCost": 1645,
+        "lines": {
+          "earn.basic": 10000,
+          "earn.hra": 4000,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 3150,
+          "ded.gosi": 1260,
+          "ded.saned": 105,
+          "emp.gosi_er": 1260,
+          "emp.saned_er": 105,
+          "emp.hazards_er": 280
+        }
+      }
+    },
+    {
+      "name": "Saudi first insured in 2025",
+      "why": "New law: the annuity rate is 10% each side from July 2026.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 240000,
+        "month": "2026-11",
+        "profile": {
+          "nationality": "SA",
+          "region": "Eastern Province",
+          "insuredSince": "2025-02-01"
+        }
+      },
+      "expect": {
+        "gross": 20000,
+        "totalDeductions": 1505,
+        "net": 18495,
+        "tds": 0,
+        "employerCost": 1785,
+        "lines": {
+          "earn.basic": 10000,
+          "earn.hra": 4000,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 3150,
+          "ded.gosi": 1400,
+          "ded.saned": 105,
+          "emp.gosi_er": 1400,
+          "emp.saned_er": 105,
+          "emp.hazards_er": 280
+        }
+      }
+    },
+    {
+      "name": "Saudi on a high salary",
+      "why": "The GOSI wage is capped at SAR 45,000.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 1200000,
+        "month": "2026-11",
+        "profile": {
+          "nationality": "SA",
+          "region": "Makkah",
+          "insuredSince": "2012-01-01"
+        }
+      },
+      "expect": {
+        "gross": 100000,
+        "totalDeductions": 4387.5,
+        "net": 95612.5,
+        "tds": 0,
+        "employerCost": 5287.5,
+        "lines": {
+          "earn.basic": 50000,
+          "earn.hra": 20000,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 27150,
+          "ded.gosi": 4050,
+          "ded.saned": 337.5,
+          "emp.gosi_er": 4050,
+          "emp.saned_er": 337.5,
+          "emp.hazards_er": 900
+        }
+      }
+    },
+    {
+      "name": "Saudi on a low salary",
+      "why": "The GOSI wage can't go under SAR 1,500.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 24000,
+        "month": "2026-11",
+        "profile": {
+          "nationality": "SA",
+          "region": "Qassim",
+          "insuredSince": "2020-01-01"
+        }
+      },
+      "expect": {
+        "gross": 2000,
+        "totalDeductions": 146.25,
+        "net": 1853.75,
+        "tds": 0,
+        "employerCost": 176.25,
+        "lines": {
+          "earn.basic": 1000,
+          "earn.hra": 400,
+          "earn.conveyance": 600,
+          "ded.gosi": 135,
+          "ded.saned": 11.25,
+          "emp.gosi_er": 135,
+          "emp.saned_er": 11.25,
+          "emp.hazards_er": 30
+        }
+      }
+    },
+    {
+      "name": "Saudi with unpaid days",
+      "why": "15 unpaid days halve both pay and contributions.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 15,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 240000,
+        "month": "2026-11",
+        "profile": {
+          "nationality": "SA",
+          "region": "Riyadh",
+          "insuredSince": "2016-05-01"
+        }
+      },
+      "expect": {
+        "gross": 10000,
+        "totalDeductions": 682.5,
+        "net": 9317.5,
+        "tds": 0,
+        "employerCost": 822.5,
+        "lines": {
+          "earn.basic": 5000,
+          "earn.hra": 2000,
+          "earn.conveyance": 800,
+          "earn.medical": 625,
+          "earn.special": 1575,
+          "ded.gosi": 630,
+          "ded.saned": 52.5,
+          "emp.gosi_er": 630,
+          "emp.saned_er": 52.5,
+          "emp.hazards_er": 140
+        }
+      }
+    },
+    {
+      "name": "Kuwaiti national",
+      "why": "GCC nationals follow their home scheme: only hazards here, with a warning.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 240000,
+        "month": "2026-11",
+        "profile": {
+          "nationality": "KW",
+          "region": "Riyadh"
+        }
+      },
+      "expect": {
+        "gross": 20000,
+        "totalDeductions": 0,
+        "net": 20000,
+        "tds": 0,
+        "employerCost": 280,
+        "lines": {
+          "earn.basic": 10000,
+          "earn.hra": 4000,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 3150,
+          "emp.hazards_er": 280
+        }
+      }
+    }
+  ]
+}

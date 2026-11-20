@@ -24,7 +24,7 @@ export interface CountryInfo {
 export const COUNTRIES: Record<CountryCode, CountryInfo> = {
   IN: { code: "IN", name: "India", currency: "INR", decimals: 2, timeZone: "Asia/Kolkata", timeZones: ["Asia/Kolkata"], weekend: [0, 6], hasPack: true },
   AE: { code: "AE", name: "United Arab Emirates", currency: "AED", decimals: 2, timeZone: "Asia/Dubai", timeZones: ["Asia/Dubai"], weekend: [0, 6], hasPack: true },
-  SA: { code: "SA", name: "Saudi Arabia", currency: "SAR", decimals: 2, timeZone: "Asia/Riyadh", timeZones: ["Asia/Riyadh"], weekend: [5, 6], hasPack: false },
+  SA: { code: "SA", name: "Saudi Arabia", currency: "SAR", decimals: 2, timeZone: "Asia/Riyadh", timeZones: ["Asia/Riyadh"], weekend: [5, 6], hasPack: true },
   QA: { code: "QA", name: "Qatar", currency: "QAR", decimals: 2, timeZone: "Asia/Qatar", timeZones: ["Asia/Qatar"], weekend: [5, 6], hasPack: false },
   KW: { code: "KW", name: "Kuwait", currency: "KWD", decimals: 3, timeZone: "Asia/Kuwait", timeZones: ["Asia/Kuwait"], weekend: [5, 6], hasPack: false },
   OM: { code: "OM", name: "Oman", currency: "OMR", decimals: 3, timeZone: "Asia/Muscat", timeZones: ["Asia/Muscat"], weekend: [5, 6], hasPack: false },

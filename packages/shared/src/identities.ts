@@ -27,6 +27,8 @@ export const ID_TYPES: IdTypeDef[] = [
   { key: "health_insurance", label: "Health insurance card", countries: ["AE"], expires: true, remindDays: 30 },
   { key: "iloe", label: "ILOE unemployment insurance", countries: ["AE"], expires: true, remindDays: 30 },
   { key: "iqama", label: "Iqama (residence permit)", countries: ["SA"], expires: true, remindDays: 30 },
+  { key: "saudi_id", label: "Saudi national ID", countries: ["SA"], expires: true, remindDays: 30 },
+  { key: "gosi", label: "GOSI number (issue date = first insured)", countries: ["SA"], expires: false, remindDays: 0 },
   { key: "qid", label: "Qatar ID (QID)", countries: ["QA"], expires: true, remindDays: 30 },
   { key: "civil_id", label: "Civil ID", countries: ["KW"], expires: true, remindDays: 30 },
   { key: "resident_card", label: "Resident card", countries: ["OM"], expires: true, remindDays: 30 },

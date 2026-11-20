@@ -2,7 +2,7 @@ import { and, asc, eq, lte } from "drizzle-orm";
 import { branches, employees, salaryStructures, tenants, type Database } from "@hrms/db";
 import { computePayslip, fyOfMonth, templateFor, todayLocal, type CountryCode, type Regime } from "@hrms/shared";
 import { entityOf } from "./entities";
-import { getTemplate, resolveStructure, yearToDate } from "./payroll";
+import { getTemplate, insuredSince, resolveStructure, yearToDate } from "./payroll";
 import { declarationsFor } from "./tax";
 import { rulesFor } from "./statutory";
 
@@ -55,7 +55,7 @@ export async function mySalary(db: Database, tenantId: string, employeeId: strin
     ptApplicable: e.ptApplicable && statOn("pt"),
     state: row.state ?? ent.state ?? tenant?.state ?? null,
     gender: e.gender,
-    profile: { nationality: e.nationality, region: ent.state },
+    profile: { nationality: e.nationality, region: ent.state, insuredSince: ent.country === "SA" ? ((await insuredSince(db, tenantId, [employeeId])).get(employeeId) ?? null) : null },
     regime,
     taxProfile: decl ? { declaration: decl.data, verified: decl.verified } : undefined,
     ytd: y ? { taxableGross: y.taxableGross, tds: y.tds, employeePf: y.employeePf, professionalTax: y.professionalTax } : ytd.hasHistory ? { taxableGross: 0, tds: 0, employeePf: 0, professionalTax: 0 } : undefined,

@@ -445,7 +445,8 @@ export interface PayslipInput {
    * Facts some country packs need: nationality (ISO 3166 alpha 2) decides who pays into a
    * national pension scheme in the Gulf; region is the entity's state or emirate.
    */
-  profile?: { nationality?: string | null; region?: string | null };
+  /** Nationality, state or emirate, and (Saudi Arabia) when they were first insured with GOSI. */
+  profile?: { nationality?: string | null; region?: string | null; insuredSince?: string | null };
   structure: Structure;
   template?: SalaryTemplate;
   daysInMonth: number;

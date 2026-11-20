@@ -165,7 +165,14 @@ Cloudflare is one account for all instances. Neon is roughly $19 a month per pro
    - **Emiratisation.** The Legal entities page shows each UAE entity's share of nationals against the current and next target.
    - **IDs.** Emirates ID, MOHRE person code, health insurance and ILOE, with expiry reminders.
    - Still to do: golden cases signed off by a UAE payroll expert (`packages/shared/golden/AE.json`), the rates in the statutory master UI (they live in code with notes to confirm), and the Gulf site itself (see `deploy/instances.json`).
-2. Saudi pack and the Saudi instance
+2. Saudi pack and the Saudi instance ✅ for the pack, waiting on expert sign off. What's in it:
+   - **GOSI.** Saudis pay 9% annuities and 0.75% SANED, and the employer matches both. The employer pays 2% occupational hazards for everyone. All of it is on basic plus housing, between SAR 1,500 and 45,000. Saudis first insured on or after 3 July 2024 follow the new law's steps (9.5% from July 2025, up to 11% from July 2028). Add a GOSI number under IDs & visas with its issue date as the first insured date. Other GCC nationals get a warning.
+   - **No Indian rules** and no income tax, as for the UAE.
+   - **End of service award** (Labor Law, Articles 84 and 85): half a month's wage a year for the first five years, a month after that, on the full wage. Resignation pays nothing under 2 years, a third from 2 to 5, two thirds from 5 to 10, and all of it from 10. Article 87 cases go in as a manual line.
+   - **Mudad salary sheet.** A locked Saudi payroll downloads a CSV with each person's national ID or iqama, IBAN, basic, housing, other pay, deductions and net. It needs the MHRSD establishment number on the entity. Check the columns against your Mudad template and bank before the first live upload.
+   - **Saudization.** The Legal entities page shows how many Saudis count for Nitaqat (full from SAR 4,000, half from 3,000). The band depends on activity and size, so check it in Qiwa.
+   - **IDs.** Saudi national ID, iqama and GOSI number.
+   - Still to do: golden cases signed off by a Saudi payroll expert (`packages/shared/golden/SA.json`), the rates in the statutory master UI, Mudad's exact template, and the in Kingdom hosting for the Saudi site.
 3. Qatar, Kuwait, Oman and Bahrain packs
 4. UK pack, then HMRC recognition
 5. USA: HR core, with payroll tax through a partner

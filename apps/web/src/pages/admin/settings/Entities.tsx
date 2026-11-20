@@ -34,6 +34,7 @@ interface Entity {
     current: { by: string; share: number; shortfall: number } | null;
     next: { by: string; share: number; shortfall: number };
   } | null;
+  saudization: { nationals: number; counted: number; share: number; belowFullWage: number } | null;
 }
 type Draft = Partial<Entity> & { country: CountryCode };
 
@@ -156,8 +157,18 @@ export default function Entities() {
           </Notice>
         );
       })}
+      {(q.data?.entities ?? []).filter((e) => e.saudization).map((e) => {
+        const m = e.saudization!;
+        return (
+          <Notice key={e.id} tone="sel">
+            <strong>Saudization at {e.name}:</strong> {m.nationals} Saudi{m.nationals === 1 ? "" : "s"} out of {e.employees}, counting as {m.counted} for Nitaqat ({pct(m.share)}).{" "}
+            {m.belowFullWage ? `${m.belowFullWage} ${m.belowFullWage === 1 ? "is" : "are"} paid under SAR 4,000, so count${m.belowFullWage === 1 ? "s" : ""} as half or not at all. ` : ""}
+            Your band depends on your activity and size, so check it in Qiwa.
+          </Notice>
+        );
+      })}
       <Notice tone="sel">
-        {countries.length > 1 ? `This site supports ${countries.map((c) => c.name).join(", ")}.` : `This site supports ${countries[0]?.name ?? "India"}.`} Saudi Arabia, Qatar, Kuwait, Oman, Bahrain, the UK, the USA and Canada will show up as their payroll and compliance rules are ready.
+        {countries.length > 1 ? `This site supports ${countries.map((c) => c.name).join(", ")}.` : `This site supports ${countries[0]?.name ?? "India"}.`} Qatar, Kuwait, Oman, Bahrain, the UK, the USA and Canada will show up as their payroll and compliance rules are ready.
       </Notice>
 
       <Dialog

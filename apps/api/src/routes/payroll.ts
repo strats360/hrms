@@ -15,7 +15,7 @@ import {
   employeeIdentities,
   user,
 } from "@hrms/db";
-import { buildWpsSif, checkWps, can, decryptField, markPaidSchema, payrollAdjustmentSchema, payrollItemPatchSchema, payrollRunCreateSchema, reopenSchema, structureFromComponents, templateFor, minimumWageShortfall, structureFromCtc, structureRevisionSchema, tenantPayrollSettingsSchema, todayLocal, fmtDate, fmtMoney, zonedDateTime } from "@hrms/shared";
+import { buildMudadSheet, buildWpsSif, checkMudad, checkWps, can, decryptField, markPaidSchema, payrollAdjustmentSchema, payrollItemPatchSchema, payrollRunCreateSchema, reopenSchema, structureFromComponents, templateFor, minimumWageShortfall, structureFromCtc, structureRevisionSchema, tenantPayrollSettingsSchema, todayLocal, fmtDate, fmtMoney, zonedDateTime } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
 import { requirePerm } from "../lib/context";
@@ -562,6 +562,56 @@ payrollRoutes.get("/runs/:id/wps.sif", requirePerm("payroll", "export"), async (
   const sif = buildWpsSif(file);
   await audit(c, { action: "payroll.wps_file", entity: "payroll_run", entityId: run.id, summary: `Exported the WPS file for ${run.month}: ${people.length} payments` });
   return c.body(sif.content, 200, { "Content-Type": "text/plain; charset=utf-8", "Content-Disposition": `attachment; filename="${sif.fileName}"` });
+});
+
+/**
+ * Saudi wage protection: the salary sheet for Mudad and the bank, for a run of a Saudi entity.
+ * Same people as the bank file: held salaries and zero net pay are left out.
+ */
+payrollRoutes.get("/runs/:id/mudad.csv", requirePerm("payroll", "export"), async (c) => {
+  const run = await loadRun(c, c.req.param("id"));
+  if (run.status !== "approved" && run.status !== "paid") throw badRequest("Approve and lock the payroll first");
+  const db = c.get("db");
+  const ent = await entityOf(db, tid(c), run.entityId);
+  if (ent.country !== "SA") throw badRequest("The Mudad sheet is for Saudi entities only");
+  const rows = await db
+    .select({ item: payrollItems, enc: employees.accountNumberEnc })
+    .from(payrollItems)
+    .innerJoin(employees, eq(employees.id, payrollItems.employeeId))
+    .where(eq(payrollItems.runId, run.id))
+    .orderBy(asc(sql`${payrollItems.snapshot}->>'code'`));
+  const ids = rows.map((r) => r.item.employeeId);
+  // Saudis are paid against their national ID, everyone else against their iqama
+  const idRows = ids.length
+    ? await db.select({ e: employeeIdentities.employeeId, type: employeeIdentities.type, n: employeeIdentities.number }).from(employeeIdentities).where(and(eq(employeeIdentities.tenantId, tid(c)), inArray(employeeIdentities.type, ["saudi_id", "iqama"]), inArray(employeeIdentities.employeeId, ids)))
+    : [];
+  const idOf = new Map<string, string>();
+  for (const r of idRows) if (!idOf.has(r.e) || r.type === "saudi_id") idOf.set(r.e, r.n.replace(/\s/g, ""));
+  const people = [];
+  for (const r of rows) {
+    const net = Number(r.item.net);
+    if (r.item.onHold || net <= 0) continue;
+    const line = (code: string) => r.item.earnings.find((l) => l.code === code)?.amount ?? 0;
+    const basic = line("basic");
+    const housing = line("hra");
+    people.push({
+      name: r.item.snapshot.name,
+      idNumber: idOf.get(r.item.employeeId) ?? "",
+      iban: (await decryptField(r.enc, c.env.ENCRYPTION_KEY)) ?? "",
+      basic,
+      housing,
+      otherEarnings: Math.round((Number(r.item.gross) - basic - housing + Number(r.item.reimbursement ?? 0)) * 100) / 100,
+      deductions: Number(r.item.totalDeductions),
+      net,
+    });
+  }
+  const reg = (ent.registrations ?? {}) as Record<string, string | null>;
+  const sheet = { establishmentId: reg.mhrsdId ?? "", month: run.month, employees: people };
+  const errors = checkMudad(sheet);
+  if (errors.length) throw badRequest(errors.length === 1 ? errors[0]! : `${errors.length} things need fixing before the Mudad sheet can go: ${errors.slice(0, 5).join(" ")}${errors.length > 5 ? " ..." : ""}`);
+  const file = buildMudadSheet(sheet);
+  await audit(c, { action: "payroll.mudad_file", entity: "payroll_run", entityId: run.id, summary: `Exported the Mudad salary sheet for ${run.month}: ${people.length} payments` });
+  return c.body(file.content, 200, { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="${file.fileName}"` });
 });
 
 payrollRoutes.get("/runs/:id/register.csv", requirePerm("payroll", "export"), async (c) => {
