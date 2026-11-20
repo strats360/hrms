@@ -35,6 +35,7 @@ export const ID_TYPES: IdTypeDef[] = [
   { key: "cpr", label: "CPR card", countries: ["BH"], expires: true, remindDays: 30 },
   { key: "ni_number", label: "National Insurance number", countries: ["GB"], expires: false, remindDays: 0 },
   { key: "ssn", label: "Social Security number", countries: ["US"], expires: false, remindDays: 0 },
+  { key: "i9", label: "I-9 work authorization", countries: ["US"], expires: true, remindDays: 90 },
   { key: "sin", label: "Social Insurance Number (SIN)", countries: ["CA"], expires: false, remindDays: 0 },
   { key: "driving_licence", label: "Driving licence", countries: [], expires: true, remindDays: 30 },
   { key: "other", label: "Other", countries: [], expires: true, remindDays: 30 },

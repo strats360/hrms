@@ -38,7 +38,7 @@ export const COUNTRIES: Record<CountryCode, CountryInfo> = {
     timeZone: "America/New_York",
     timeZones: ["America/New_York", "America/Chicago", "America/Denver", "America/Phoenix", "America/Los_Angeles", "America/Anchorage", "Pacific/Honolulu"],
     weekend: [0, 6],
-    hasPack: false,
+    hasPack: true,
   },
   CA: {
     code: "CA",

@@ -47,7 +47,7 @@ export const payAccountSchema = z
   .trim()
   .toUpperCase()
   .transform((v) => (/^[A-Z]{2}/.test(v) ? v.replace(/\s/g, "") : v))
-  .refine((v) => /^\d{8,18}$/.test(v) || /^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(v), "Enter an 8 to 18 digit account number or an IBAN");
+  .refine((v) => /^\d{6,18}$/.test(v) || /^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(v), "Enter a 6 to 18 digit account number or an IBAN");
 /** The bank's code for salary transfers: an IFSC in India, a 9 digit routing code for UAE WPS, a sort code in the UK. */
 export const bankCodeSchema = z
   .string()

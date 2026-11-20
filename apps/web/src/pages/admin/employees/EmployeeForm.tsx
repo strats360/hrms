@@ -1,5 +1,6 @@
-import { countryName, ISO_COUNTRIES, ukPayrollProfileSchema, WAGE_CATEGORIES, WAGE_CATEGORY_LABELS } from "@hrms/shared";
+import { countryName, ISO_COUNTRIES, ukPayrollProfileSchema, usPayrollProfileSchema, WAGE_CATEGORIES, WAGE_CATEGORY_LABELS } from "@hrms/shared";
 import { EMPTY_UK, UkPayrollFields, ukFromProfile, ukToProfile, type UkForm } from "@/components/employees/UkPayroll";
+import { EMPTY_US, UsPayrollFields, usFromProfile, usToProfile, type UsForm } from "@/components/employees/UsPayroll";
 
 const NATIONALITY_OPTIONS = ISO_COUNTRIES.map((code) => ({ code, name: countryName(code)! })).sort((a, b) => a.name.localeCompare(b.name));
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -142,6 +143,8 @@ export default function EmployeeForm() {
   const [initial, setInitial] = useState<Form>(EMPTY);
   const [uk, setUk] = useState<UkForm>(EMPTY_UK);
   const [ukInitial, setUkInitial] = useState<UkForm>(EMPTY_UK);
+  const [us, setUs] = useState<UsForm>(EMPTY_US);
+  const [usInitial, setUsInitial] = useState<UsForm>(EMPTY_US);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -153,6 +156,9 @@ export default function EmployeeForm() {
       const u = ukFromProfile(detail.data.countryProfile);
       setUk(u);
       setUkInitial(u);
+      const w = usFromProfile(detail.data.countryProfile);
+      setUs(w);
+      setUsInitial(w);
     }
   }, [detail.data]);
 
@@ -206,11 +212,12 @@ export default function EmployeeForm() {
   const submit = () => {
     setServerError(null);
     let payload: Record<string, unknown>;
-    const ukChanged = country === "GB" && (!isEdit || JSON.stringify(uk) !== JSON.stringify(ukInitial));
-    const ukProfile = ukChanged ? ukPayrollProfileSchema.safeParse(ukToProfile(uk)) : null;
+    // country payroll details: the UK's tax code and NI category, the US W-4
+    const ukChanged = (country === "GB" && (!isEdit || JSON.stringify(uk) !== JSON.stringify(ukInitial))) || (country === "US" && (!isEdit || JSON.stringify(us) !== JSON.stringify(usInitial)));
+    const ukProfile = !ukChanged ? null : country === "GB" ? ukPayrollProfileSchema.safeParse(ukToProfile(uk)) : usPayrollProfileSchema.safeParse(usToProfile(us));
     if (ukProfile && !ukProfile.success) {
-      setServerError(ukProfile.error.issues[0]?.message ?? "Check the UK payroll details");
-      document.getElementById("f-taxCode")?.focus();
+      setServerError(ukProfile.error.issues[0]?.message ?? "Check the payroll details");
+      document.getElementById(country === "GB" ? "f-taxCode" : "f-filingStatus")?.focus();
       return;
     }
     if (isEdit) {
@@ -393,7 +400,7 @@ export default function EmployeeForm() {
             <Field label="Account number" error={err("accountNumber")} htmlFor="f-accountNumber" hint={isEdit && detail.data?.accountLast4 ? "Leave blank to keep the current account" : undefined}>
               <Input inputMode="numeric" autoComplete="off" {...text("accountNumber")} placeholder={isEdit && detail.data?.accountLast4 ? `···· ${detail.data.accountLast4}` : "50100…"} />
             </Field>
-            <Field label={country === "IN" ? "IFSC" : country === "GB" ? "Sort code" : "Bank routing code"} error={err("ifsc")} htmlFor="f-ifsc"><Input {...text("ifsc")} placeholder={country === "IN" ? "HDFC0000412" : country === "GB" ? "12-34-56" : "9 digits"} className="uppercase" /></Field>
+            <Field label={country === "IN" ? "IFSC" : country === "GB" ? "Sort code" : country === "US" ? "ABA routing number" : "Bank routing code"} error={err("ifsc")} htmlFor="f-ifsc"><Input {...text("ifsc")} placeholder={country === "IN" ? "HDFC0000412" : country === "GB" ? "12-34-56" : "9 digits"} className="uppercase" /></Field>
             <Field label="Payment method" htmlFor="f-paymentMethod">
               <Select {...text("paymentMethod")}>
                 <option value="bank_transfer">Bank transfer (NEFT / IMPS)</option>
@@ -406,6 +413,12 @@ export default function EmployeeForm() {
           {country === "GB" ? (
             <Section title="UK payroll" sub="Tax code, National Insurance, student loans and pension. Add their NI number under IDs & visas.">
               <UkPayrollFields value={uk} onChange={setUk} />
+            </Section>
+          ) : null}
+
+          {country === "US" ? (
+            <Section title="US payroll (Form W-4)" sub="From their W-4. Add their Social Security number and I-9 under IDs & visas. Set the work state on the branch or entity.">
+              <UsPayrollFields value={us} onChange={setUs} />
             </Section>
           ) : null}
 

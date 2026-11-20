@@ -190,7 +190,16 @@ Cloudflare is one account for all instances. Neon is roughly $19 a month per pro
    - **RTI summary.** Each run downloads the figures an FPS needs, for the month and the tax year to date, to key into HMRC's Basic PAYE Tools or a filing service.
    - **Bank holidays.** England and Wales bank holidays, with Easter and substitute days worked out.
    - Still to do: golden cases signed off by a UK payroll professional (`packages/shared/golden/GB.json`); HMRC RTI filing (FPS and EPS through HMRC's API, which needs HMRC to recognise the software); Scottish bands for 2026/27 (the 2025/26 bands are used); SSP, SMP and other statutory pay (manual adjustments for now); a net pay arrangement option for pensions; P60s and P45s; the employment allowance on the EPS; and salaries to the penny (structures round to whole pounds today).
-5. USA: HR core, with payroll tax through a partner
+5. USA: HR core, with payroll tax through a partner ✅ for the HR core and federal payroll; the partner is still to pick. What's in it (2026):
+   - **Federal income tax withholding** by IRS Publication 15-T's percentage method for 2020 and later W-4s: filing status, Step 2 (multiple jobs), Step 3 credits, Step 4 other income, deductions and extra withholding, and exempt.
+   - **FICA:** Social Security at 6.2% up to the $184,500 wage base, Medicare at 1.45%, and Additional Medicare at 0.9% over $200,000. The employer matches Social Security and Medicare and pays 0.6% FUTA on the first $7,000.
+   - **Pre-tax deductions:** 401(k) as a % of pay (off income tax wages) and Section 125 health premiums (off FICA wages too).
+   - **Calendar tax year.** Packs now say when their tax year starts, so US year to date figures reset in January.
+   - **State income tax:** worked out for the states with none (Alaska, Florida, Nevada, New Hampshire, South Dakota, Tennessee, Texas, Washington, Wyoming). Every other state shows a warning to take it from the payroll partner. SUI is always flagged for the partner.
+   - **Employee form:** US entities get a W-4 section. SSN and I-9 work authorization live under IDs & visas, with I-9 expiry reminders. Bank details take an ABA routing number.
+   - **Final pay:** unused PTO at salary over 260 days; no statutory notice or severance (at will).
+   - **Federal holidays,** observed on the nearest weekday.
+   - Still to do: pick the payroll partner and connect it (state and local income tax, SUI, Forms 941 and 940, W-2s, state filings, and money movement); biweekly and semi-monthly pay (runs are monthly today); golden cases signed off by a US payroll professional (`packages/shared/golden/US.json`).
 6. Canada: federal and provincial income tax, CPP or QPP, EI, ROE and T4 (or a payroll partner, as for the USA)
 
 Compliance details for each country are a starting point only. Every pack needs sign off from a local expert before it pays anyone.

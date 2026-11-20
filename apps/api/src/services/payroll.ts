@@ -133,10 +133,10 @@ export async function insuredSince(db: Database, tenantId: string, ids: string[]
   return new Map(rows.filter((r) => r.on).map((r) => [r.e, r.on!]));
 }
 
-/** Year-to-date figures (approved/paid runs earlier in the same FY). */
-export async function yearToDate(db: Database, tenantId: string, month: string) {
-  const fy = fyOfMonth(month);
-  const fyStart = `${fy.slice(0, 4)}-04`;
+/** Year-to-date figures (approved/paid runs earlier in the same tax year, which starts in `startMonth`: April unless the country says otherwise). */
+export async function yearToDate(db: Database, tenantId: string, month: string, startMonth = 4) {
+  const y = Number(month.slice(0, 4));
+  const fyStart = `${Number(month.slice(5, 7)) >= startMonth ? y : y - 1}-${String(startMonth).padStart(2, "0")}`;
   const rows = await db
     .select({
       employeeId: payrollItems.employeeId,
@@ -223,7 +223,7 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
   await syncLoanRecoveries(db, { id: run.id, tenantId, month: run.month }, ids);
   const [structs, ytd, unpaid, adjustments, existing, decls] = await Promise.all([
     structuresAsOf(db, tenantId, ids, end),
-    yearToDate(db, tenantId, run.month),
+    yearToDate(db, tenantId, run.month, packFor(ent.country).payroll.taxYearStartMonth),
     unpaidLeaveDays(db, tenantId, start, end),
     db.select().from(payrollAdjustments).where(eq(payrollAdjustments.runId, runId)),
     db.select().from(payrollItems).where(eq(payrollItems.runId, runId)),

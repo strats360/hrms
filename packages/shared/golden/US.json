@@ -1,0 +1,301 @@
+{
+  "country": "US",
+  "signedOff": {
+    "by": null,
+    "on": null,
+    "note": "Built from IRS Publication 15-T (2026), the 2026 Social Security wage base and FUTA. A US payroll professional must check every case, especially the 2026 brackets and standard deductions. State income tax and unemployment are out of scope: they come from the payroll partner."
+  },
+  "cases": [
+    {
+      "name": "Single in Texas",
+      "why": "Federal withholding by Pub 15-T, 6.2% Social Security, 1.45% Medicare; no state income tax.",
+      "input": {
+        "daysInMonth": 31,
+        "paidDays": 31,
+        "gender": null,
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "month": "2026-01",
+        "annualCtc": 60000,
+        "state": "Texas",
+        "countryProfile": {
+          "filingStatus": "single"
+        }
+      },
+      "expect": {
+        "gross": 5000,
+        "totalDeductions": 800.83,
+        "net": 4199.17,
+        "tds": 418.33,
+        "employerCost": 412.5,
+        "lines": {
+          "earn.basic": 5000,
+          "ded.fit": 418.33,
+          "ded.ss": 310,
+          "ded.medicare": 72.5,
+          "emp.ss_er": 310,
+          "emp.medicare_er": 72.5,
+          "emp.futa_er": 30
+        }
+      }
+    },
+    {
+      "name": "Married filing jointly",
+      "why": "The married standard deduction and brackets.",
+      "input": {
+        "daysInMonth": 31,
+        "paidDays": 31,
+        "gender": null,
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "month": "2026-01",
+        "annualCtc": 120000,
+        "state": "Texas",
+        "countryProfile": {
+          "filingStatus": "married"
+        }
+      },
+      "expect": {
+        "gross": 10000,
+        "totalDeductions": 1601.67,
+        "net": 8398.33,
+        "tds": 836.67,
+        "employerCost": 807,
+        "lines": {
+          "earn.basic": 10000,
+          "ded.fit": 836.67,
+          "ded.ss": 620,
+          "ded.medicare": 145,
+          "emp.ss_er": 620,
+          "emp.medicare_er": 145,
+          "emp.futa_er": 42
+        }
+      }
+    },
+    {
+      "name": "Head of household with dependants",
+      "why": "Step 3 credits reduce the tax for the year.",
+      "input": {
+        "daysInMonth": 31,
+        "paidDays": 31,
+        "gender": null,
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "month": "2026-01",
+        "annualCtc": 75000,
+        "state": "Texas",
+        "countryProfile": {
+          "filingStatus": "head",
+          "dependents": 4000
+        }
+      },
+      "expect": {
+        "gross": 6250,
+        "totalDeductions": 623.8,
+        "net": 5626.2,
+        "tds": 145.67,
+        "employerCost": 515.63,
+        "lines": {
+          "earn.basic": 6250,
+          "ded.fit": 145.67,
+          "ded.ss": 387.5,
+          "ded.medicare": 90.63,
+          "emp.ss_er": 387.5,
+          "emp.medicare_er": 90.63,
+          "emp.futa_er": 37.5
+        }
+      }
+    },
+    {
+      "name": "Two jobs (Step 2 checked)",
+      "why": "Half the standard deduction and half the brackets.",
+      "input": {
+        "daysInMonth": 31,
+        "paidDays": 31,
+        "gender": null,
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "month": "2026-01",
+        "annualCtc": 60000,
+        "state": "Texas",
+        "countryProfile": {
+          "filingStatus": "single",
+          "multipleJobs": true
+        }
+      },
+      "expect": {
+        "gross": 5000,
+        "totalDeductions": 1114.58,
+        "net": 3885.42,
+        "tds": 732.08,
+        "employerCost": 412.5,
+        "lines": {
+          "earn.basic": 5000,
+          "ded.fit": 732.08,
+          "ded.ss": 310,
+          "ded.medicare": 72.5,
+          "emp.ss_er": 310,
+          "emp.medicare_er": 72.5,
+          "emp.futa_er": 30
+        }
+      }
+    },
+    {
+      "name": "401(k) and pre-tax health",
+      "why": "401(k) reduces income tax wages; Section 125 health reduces FICA wages too.",
+      "input": {
+        "daysInMonth": 31,
+        "paidDays": 31,
+        "gender": null,
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "month": "2026-01",
+        "annualCtc": 90000,
+        "state": "Texas",
+        "countryProfile": {
+          "filingStatus": "single",
+          "k401Percent": 6,
+          "preTaxHealth": 250
+        }
+      },
+      "expect": {
+        "gross": 7500,
+        "totalDeductions": 2014.8,
+        "net": 5485.2,
+        "tds": 760.17,
+        "employerCost": 596.63,
+        "lines": {
+          "earn.basic": 7500,
+          "ded.k401": 450,
+          "ded.health": 250,
+          "ded.fit": 760.17,
+          "ded.ss": 449.5,
+          "ded.medicare": 105.13,
+          "emp.ss_er": 449.5,
+          "emp.medicare_er": 105.13,
+          "emp.futa_er": 42
+        }
+      }
+    },
+    {
+      "name": "Over the Social Security wage base",
+      "why": "Only what's left under $184,500 pays Social Security; Additional Medicare above $200,000.",
+      "input": {
+        "daysInMonth": 31,
+        "paidDays": 31,
+        "gender": null,
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "month": "2026-11",
+        "annualCtc": 240000,
+        "state": "Texas",
+        "ytd": {
+          "taxableGross": 200000,
+          "tds": 0,
+          "employeePf": 0,
+          "professionalTax": 0
+        },
+        "countryProfile": {
+          "filingStatus": "single"
+        }
+      },
+      "expect": {
+        "gross": 20000,
+        "totalDeductions": 4478.67,
+        "net": 15521.33,
+        "tds": 4008.67,
+        "employerCost": 290,
+        "lines": {
+          "earn.basic": 20000,
+          "ded.fit": 4008.67,
+          "ded.medicare": 290,
+          "ded.medicare_addl": 180,
+          "emp.medicare_er": 290
+        }
+      }
+    },
+    {
+      "name": "Extra withholding",
+      "why": "Step 4(c) adds a fixed amount every paycheck.",
+      "input": {
+        "daysInMonth": 31,
+        "paidDays": 31,
+        "gender": null,
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "month": "2026-01",
+        "annualCtc": 48000,
+        "state": "Texas",
+        "countryProfile": {
+          "filingStatus": "single",
+          "extraWithholding": 75
+        }
+      },
+      "expect": {
+        "gross": 4000,
+        "totalDeductions": 679.33,
+        "net": 3320.67,
+        "tds": 373.33,
+        "employerCost": 330,
+        "lines": {
+          "earn.basic": 4000,
+          "ded.fit": 373.33,
+          "ded.ss": 248,
+          "ded.medicare": 58,
+          "emp.ss_er": 248,
+          "emp.medicare_er": 58,
+          "emp.futa_er": 24
+        }
+      }
+    },
+    {
+      "name": "Exempt from withholding",
+      "why": "No federal income tax, but FICA still applies.",
+      "input": {
+        "daysInMonth": 31,
+        "paidDays": 31,
+        "gender": null,
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "month": "2026-01",
+        "annualCtc": 30000,
+        "state": "Texas",
+        "countryProfile": {
+          "filingStatus": "single",
+          "exempt": true
+        }
+      },
+      "expect": {
+        "gross": 2500,
+        "totalDeductions": 191.25,
+        "net": 2308.75,
+        "tds": 0,
+        "employerCost": 206.25,
+        "lines": {
+          "earn.basic": 2500,
+          "ded.ss": 155,
+          "ded.medicare": 36.25,
+          "emp.ss_er": 155,
+          "emp.medicare_er": 36.25,
+          "emp.futa_er": 15
+        }
+      }
+    }
+  ]
+}

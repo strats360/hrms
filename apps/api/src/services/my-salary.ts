@@ -39,7 +39,7 @@ export async function mySalary(db: Database, tenantId: string, employeeId: strin
   const pack = packFor(ent.country);
   const structure = resolveStructure(india ? e : { ...e, pfApplicable: false, esiApplicable: false }, current, book, pack.payroll.salaryTemplate);
 
-  const [rules, ytd, decls] = await Promise.all([rulesFor(db, month, ent.country), yearToDate(db, tenantId, month), declarationsFor(db, tenantId, fyOfMonth(month), [employeeId])]);
+  const [rules, ytd, decls] = await Promise.all([rulesFor(db, month, ent.country), yearToDate(db, tenantId, month, packFor(ent.country).payroll.taxYearStartMonth), declarationsFor(db, tenantId, fyOfMonth(month), [employeeId])]);
   const decl = decls.get(employeeId);
   const y = ytd.byEmployee.get(employeeId);
   const regime = ((decl?.regime ?? e.taxRegime) as Regime) ?? "new";
