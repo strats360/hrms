@@ -4,7 +4,6 @@ import { caPayrollProfileSchema, type CaPayrollProfile } from "./profile";
 import { CPP, EI, FEDERAL, ONTARIO, PROVINCES, provinceCode, QPIP, QPP, TAX_YEAR, type Bracket } from "./rules";
 
 const cents = (n: number) => Math.round(n * 100) / 100;
-const P = 12;
 
 function bracketTax(income: number, brackets: Bracket[]) {
   let tax = 0;
@@ -37,7 +36,8 @@ export function ontarioHealthPremium(a: number) {
 }
 
 /** CPP (or QPP) this month: base plus enhanced on pay over the monthly exemption, up to the year's maximum; CPP2 between the YMPE and the YAMPE. */
-export function pensionThisMonth(o: { pay: number; ytdPay: number; monthsBefore: number; quebec: boolean }) {
+export function pensionThisMonth(o: { pay: number; ytdPay: number; monthsBefore: number; quebec: boolean; periods?: number }) {
+  const P = o.periods ?? 12;
   const plan = o.quebec ? QPP : CPP;
   const max = (plan.ympe - plan.exemption) * plan.rate;
   const per = plan.exemption / P;
@@ -54,11 +54,12 @@ export function eiThisMonth(o: { pay: number; ytdPay: number; quebec: boolean })
 }
 
 /**
- * Income tax for one monthly pay, the T4127 way: annualise taxable pay (less the enhanced CPP
+ * Income tax for one pay, the T4127 way: annualise taxable pay (less the enhanced CPP
  * and CPP2, which are deductions), apply the brackets, take off credits at the lowest rate for
  * the TD1 claim, CPP base, EI and the Canada employment amount, then spread over the year.
  */
-export function incomeTaxThisMonth(o: { taxablePay: number; cpp: { base: number; enhanced: number; cpp2: number }; ei: number; profile: CaPayrollProfile; province: string | null }) {
+export function incomeTaxThisMonth(o: { taxablePay: number; cpp: { base: number; enhanced: number; cpp2: number }; ei: number; profile: CaPayrollProfile; province: string | null; periods?: number }) {
+  const P = o.periods ?? 12;
   const a = Math.max(0, (o.taxablePay - o.cpp.enhanced - o.cpp.cpp2) * P);
   const quebec = o.province === "QC";
   const cppCredit = Math.min(o.cpp.base * P, (CPP.ympe - CPP.exemption) * CPP.baseRate);
@@ -91,13 +92,15 @@ export function canadaStatutory(ctx: StatutoryContext): StatutoryResult {
   const gross = ctx.gross;
   const taxablePay = gross - ctx.nonTaxableEarnings;
   const ytdPay = input.ytd?.taxableGross ?? 0;
-  const monthsBefore = Number(input.month.slice(5, 7)) - 1;
+  const P = ctx.periodsPerYear;
+  // the exemption is spread over the year's pay periods; count the ones already paid
+  const monthsBefore = ctx.periodIndex - 1;
 
-  const pension = profile.cppExempt ? { cpp: 0, cpp2: 0, base: 0, enhanced: 0 } : pensionThisMonth({ pay: gross, ytdPay, monthsBefore, quebec });
+  const pension = profile.cppExempt ? { cpp: 0, cpp2: 0, base: 0, enhanced: 0 } : pensionThisMonth({ pay: gross, ytdPay, monthsBefore, quebec, periods: P });
   const ei = profile.eiExempt ? 0 : eiThisMonth({ pay: gross, ytdPay, quebec });
   const qpip = quebec ? cents(Math.max(0, Math.min(ytdPay + gross, QPIP.maxInsurable) - ytdPay) * QPIP.rate) : 0;
   const qpipEr = quebec ? cents(Math.max(0, Math.min(ytdPay + gross, QPIP.maxInsurable) - ytdPay) * QPIP.employerRate) : 0;
-  const tax = incomeTaxThisMonth({ taxablePay, cpp: { base: pension.base, enhanced: pension.enhanced, cpp2: pension.cpp2 }, ei, profile, province });
+  const tax = incomeTaxThisMonth({ taxablePay, cpp: { base: pension.base, enhanced: pension.enhanced, cpp2: pension.cpp2 }, ei, profile, province, periods: P });
 
   const plan = quebec ? "QPP" : "CPP";
   const deductions: PayLine[] = [
@@ -125,7 +128,7 @@ export function canadaStatutory(ctx: StatutoryContext): StatutoryResult {
     deductions,
     employer,
     tds: cents(fedProv),
-    tax: { taxableIncome: tax.annualTaxable, baseTax: fedProv * P, rebate: 0, surcharge: 0, cess: 0, total: fedProv * P, projectedAnnualGross: input.structure.gross * P, monthsLeft: 12 - Number(input.month.slice(5, 7)), annualised: true },
+    tax: { taxableIncome: tax.annualTaxable, baseTax: fedProv * P, rebate: 0, surcharge: 0, cess: 0, total: fedProv * P, projectedAnnualGross: input.structure.gross * 12, monthsLeft: 12 - Number(input.month.slice(5, 7)), annualised: true },
     warnings,
   };
 }

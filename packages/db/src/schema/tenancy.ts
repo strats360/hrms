@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { numeric, boolean, index, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { numeric, boolean, date, index, jsonb, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import type { NotificationPrefs, PermissionMatrix, TenantSettings } from "@hrms/shared";
 import { user } from "./auth";
 import { id, timestamps, money } from "./_helpers";
@@ -67,6 +67,10 @@ export const legalEntities = pgTable(
     registrations: jsonb("registrations").$type<Record<string, string | null>>().notNull().default({}),
     /** Country specific schemes and their registrations, e.g. { epf: { enabled, registration } }. */
     statutory: jsonb("statutory").$type<Record<string, StatutoryRegistration>>().notNull().default({}),
+    /** How often the entity pays: monthly, semi_monthly, biweekly or weekly (only where its country pack allows). */
+    payFrequency: text("pay_frequency").notNull().default("monthly"),
+    /** The first day of any one pay period, for biweekly and weekly pay. */
+    payAnchor: date("pay_anchor", { mode: "string" }),
     isDefault: boolean("is_default").notNull().default(false),
     ...timestamps,
   },

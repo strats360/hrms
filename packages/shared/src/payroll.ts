@@ -536,6 +536,12 @@ export interface PayslipInput {
   countryProfile?: Record<string, unknown> | null;
   structure: Structure;
   template?: SalaryTemplate;
+  /**
+   * The pay period, when it isn't a month: how many there are in a year and which one this is in
+   * the tax year (1 for the first). The structure stays monthly; the engine scales it.
+   */
+  period?: { perYear: number; index: number };
+  /** Days in the pay period (the month, unless `period` says otherwise). */
   daysInMonth: number;
   paidDays: number;
   adjustments?: Adjustment[];
@@ -583,6 +589,18 @@ export interface PayslipResult {
   wages?: number;
 }
 
+function scaleComponents(c: MonthlyComponents, k: number): MonthlyComponents {
+  if (k === 1) return c;
+  return {
+    basic: c.basic * k,
+    hra: c.hra * k,
+    conveyance: c.conveyance * k,
+    medical: c.medical * k,
+    special: c.special * k,
+    ...(c.extras ? { extras: c.extras.map((x) => ({ ...x, amount: x.amount * k })) } : {}),
+  };
+}
+
 export function computePayslip(input: PayslipInput): PayslipResult {
   const pack = packFor(input.country);
   // payslip lines round the way the country pays: whole rupees in India, fils or baisa in the Gulf
@@ -592,7 +610,9 @@ export function computePayslip(input: PayslipInput): PayslipResult {
   const month1 = Number(input.month.slice(5, 7));
   const warnings: string[] = [];
   const factor = input.daysInMonth > 0 ? Math.max(0, Math.min(1, input.paidDays / input.daysInMonth)) : 0;
-  const c = input.structure.components;
+  // a monthly structure paid over a shorter period: semi-monthly is half a month, biweekly 12/26
+  const scale = input.period ? 12 / input.period.perYear : 1;
+  const c = scaleComponents(input.structure.components, scale);
 
   const labels = { ...COMPONENT_LABELS, ...(pack.payroll.componentLabels ?? {}) };
   const std = (k: Exclude<keyof MonthlyComponents, "extras">) => ({ code: k, label: labels[k], amount: r(c[k] * factor) });
@@ -615,6 +635,8 @@ export function computePayslip(input: PayslipInput): PayslipResult {
     rules: R,
     month1,
     factor,
+    periodsPerYear: input.period?.perYear ?? 12,
+    periodIndex: input.period?.index ?? month1,
     components: c,
     earnings,
     gross,

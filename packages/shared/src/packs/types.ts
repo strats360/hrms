@@ -23,6 +23,8 @@ export interface CountryPack {
     salaryTemplate?: SalaryTemplate;
     /** The month the tax year starts, for year to date figures: 4 (April) unless set; 1 for the US. */
     taxYearStartMonth?: number;
+    /** Pay frequencies the country's rules are built for. Monthly only unless set. */
+    payFrequencies?: readonly ("monthly" | "semi_monthly" | "biweekly" | "weekly")[];
     /** Decimals payslip lines are rounded to: 0 for whole rupees, 3 for Kuwaiti fils. */
     roundingDecimals: number;
     /** Net pay in words on payslips, in the country's style. */
@@ -45,8 +47,12 @@ export interface StatutoryContext {
   rules: StatutoryRules;
   /** Calendar month, 1 to 12. */
   month1: number;
-  /** Paid days over days in the month, 0 to 1. */
+  /** Paid days over days in the period, 0 to 1. */
   factor: number;
+  /** Pay periods in a year: 12 for monthly, 24 semi-monthly, 26 biweekly, 52 weekly. */
+  periodsPerYear: number;
+  /** This period's position in the tax year, from 1. */
+  periodIndex: number;
   components: MonthlyComponents;
   earnings: PayLine[];
   gross: number;
