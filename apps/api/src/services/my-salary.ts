@@ -1,6 +1,6 @@
 import { and, asc, eq, lte } from "drizzle-orm";
 import { branches, employees, salaryStructures, tenants, type Database } from "@hrms/db";
-import { computePayslip, fyOfMonth, templateFor, todayLocal, type CountryCode, type Regime } from "@hrms/shared";
+import { computePayslip, packFor, fyOfMonth, templateFor, todayLocal, type CountryCode, type Regime } from "@hrms/shared";
 import { entityOf } from "./entities";
 import { getTemplate, insuredSince, resolveStructure, yearToDate } from "./payroll";
 import { declarationsFor } from "./tax";
@@ -36,7 +36,8 @@ export async function mySalary(db: Database, tenantId: string, employeeId: strin
   const current = history[history.length - 1];
   const book = await getTemplate(db, tenantId);
   const india = ent.country === "IN";
-  const structure = resolveStructure(india ? e : { ...e, pfApplicable: false, esiApplicable: false }, current, book);
+  const pack = packFor(ent.country);
+  const structure = resolveStructure(india ? e : { ...e, pfApplicable: false, esiApplicable: false }, current, book, pack.payroll.salaryTemplate);
 
   const [rules, ytd, decls] = await Promise.all([rulesFor(db, month, ent.country), yearToDate(db, tenantId, month), declarationsFor(db, tenantId, fyOfMonth(month), [employeeId])]);
   const decl = decls.get(employeeId);
@@ -47,7 +48,8 @@ export async function mySalary(db: Database, tenantId: string, employeeId: strin
     rules,
     month,
     structure,
-    template: templateFor(book, e.salaryTemplateId),
+    template: pack.payroll.salaryTemplate ?? templateFor(book, e.salaryTemplateId),
+    countryProfile: e.countryProfile,
     daysInMonth: 30,
     paidDays: 30,
     pfApplicable: e.pfApplicable && statOn("epf"),

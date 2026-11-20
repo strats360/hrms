@@ -1,0 +1,367 @@
+{
+  "country": "GB",
+  "signedOff": {
+    "by": null,
+    "on": null,
+    "note": "Built from HMRC's 2026/27 rates for PAYE, Class 1 NI, student loans and auto enrolment. A UK payroll professional must check every case against HMRC's tables, especially the Scottish bands (2025/26 bands are used), the student loan thresholds and the pension basis (relief at source is assumed)."
+  },
+  "cases": [
+    {
+      "name": "Basic rate, April",
+      "why": "1257L in month 1: PAYE on pay over £1,048.25, NI at 8% over £1,048, pension on qualifying earnings.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "female",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 36000,
+        "month": "2026-04",
+        "countryProfile": {
+          "taxCode": "1257L"
+        }
+      },
+      "expect": {
+        "gross": 3000,
+        "totalDeductions": 645.56,
+        "net": 2354.44,
+        "tds": 390.2,
+        "employerCost": 461.85,
+        "lines": {
+          "earn.basic": 3000,
+          "ded.paye": 390.2,
+          "ded.ni": 156.16,
+          "ded.pension": 99.2,
+          "emp.ni_er": 387.45,
+          "emp.pension_er": 74.4
+        }
+      }
+    },
+    {
+      "name": "Basic rate, November",
+      "why": "Cumulative PAYE in month 8 after seven months at the same pay.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "female",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 36000,
+        "month": "2026-11",
+        "ytd": {
+          "taxableGross": 21000,
+          "tds": 2731.4,
+          "employeePf": 0,
+          "professionalTax": 0
+        },
+        "countryProfile": {
+          "taxCode": "1257L"
+        }
+      },
+      "expect": {
+        "gross": 3000,
+        "totalDeductions": 646.76,
+        "net": 2353.24,
+        "tds": 391.4,
+        "employerCost": 461.85,
+        "lines": {
+          "earn.basic": 3000,
+          "ded.paye": 391.4,
+          "ded.ni": 156.16,
+          "ded.pension": 99.2,
+          "emp.ni_er": 387.45,
+          "emp.pension_er": 74.4
+        }
+      }
+    },
+    {
+      "name": "Higher rate",
+      "why": "40% above the basic rate band, NI at 2% above £4,189.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "female",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 72000,
+        "month": "2026-04",
+        "countryProfile": {
+          "taxCode": "1257L"
+        }
+      },
+      "expect": {
+        "gross": 6000,
+        "totalDeductions": 1786.32,
+        "net": 4213.68,
+        "tds": 1352.06,
+        "employerCost": 947.52,
+        "lines": {
+          "earn.basic": 6000,
+          "ded.paye": 1352.06,
+          "ded.ni": 287.5,
+          "ded.pension": 146.76,
+          "emp.ni_er": 837.45,
+          "emp.pension_er": 110.07
+        }
+      }
+    },
+    {
+      "name": "Additional rate",
+      "why": "45% on taxable pay above £125,140 a year, here on a 0T code.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "female",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 180000,
+        "month": "2026-04",
+        "countryProfile": {
+          "taxCode": "0T"
+        }
+      },
+      "expect": {
+        "gross": 15000,
+        "totalDeductions": 6214.51,
+        "net": 8785.49,
+        "tds": 5600.25,
+        "employerCost": 2297.52,
+        "lines": {
+          "earn.basic": 15000,
+          "ded.paye": 5600.25,
+          "ded.ni": 467.5,
+          "ded.pension": 146.76,
+          "emp.ni_er": 2187.45,
+          "emp.pension_er": 110.07
+        }
+      }
+    },
+    {
+      "name": "Scottish taxpayer",
+      "why": "S code: starter, basic and intermediate bands.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "female",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 36000,
+        "month": "2026-04",
+        "countryProfile": {
+          "taxCode": "S1257L"
+        }
+      },
+      "expect": {
+        "gross": 3000,
+        "totalDeductions": 650.28,
+        "net": 2349.72,
+        "tds": 394.92,
+        "employerCost": 461.85,
+        "lines": {
+          "earn.basic": 3000,
+          "ded.paye": 394.92,
+          "ded.ni": 156.16,
+          "ded.pension": 99.2,
+          "emp.ni_er": 387.45,
+          "emp.pension_er": 74.4
+        }
+      }
+    },
+    {
+      "name": "Emergency code",
+      "why": "1257L M1: each month on its own, whatever was paid before.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "female",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 36000,
+        "month": "2026-11",
+        "ytd": {
+          "taxableGross": 0,
+          "tds": 0,
+          "employeePf": 0,
+          "professionalTax": 0
+        },
+        "countryProfile": {
+          "taxCode": "1257L M1"
+        }
+      },
+      "expect": {
+        "gross": 3000,
+        "totalDeductions": 645.56,
+        "net": 2354.44,
+        "tds": 390.2,
+        "employerCost": 461.85,
+        "lines": {
+          "earn.basic": 3000,
+          "ded.paye": 390.2,
+          "ded.ni": 156.16,
+          "ded.pension": 99.2,
+          "emp.ni_er": 387.45,
+          "emp.pension_er": 74.4
+        }
+      }
+    },
+    {
+      "name": "K code",
+      "why": "K475 adds £4,750 a year to taxable pay.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "female",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 30000,
+        "month": "2026-04",
+        "countryProfile": {
+          "taxCode": "K475"
+        }
+      },
+      "expect": {
+        "gross": 2500,
+        "totalDeductions": 774.36,
+        "net": 1725.64,
+        "tds": 579,
+        "employerCost": 371.85,
+        "lines": {
+          "earn.basic": 2500,
+          "ded.paye": 579,
+          "ded.ni": 116.16,
+          "ded.pension": 79.2,
+          "emp.ni_er": 312.45,
+          "emp.pension_er": 59.4
+        }
+      }
+    },
+    {
+      "name": "Student and postgraduate loans",
+      "why": "Plan 2 at 9% over £2,372.50 a month and a postgraduate loan at 6% over £1,750.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "female",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 42000,
+        "month": "2026-04",
+        "countryProfile": {
+          "taxCode": "1257L",
+          "studentLoans": [
+            "plan2"
+          ],
+          "postgraduateLoan": true
+        }
+      },
+      "expect": {
+        "gross": 3500,
+        "totalDeductions": 1011.56,
+        "net": 2488.44,
+        "tds": 490.2,
+        "employerCost": 551.85,
+        "lines": {
+          "earn.basic": 3500,
+          "ded.paye": 490.2,
+          "ded.ni": 196.16,
+          "ded.sl_plan2": 101,
+          "ded.pgl": 105,
+          "ded.pension": 119.2,
+          "emp.ni_er": 462.45,
+          "emp.pension_er": 89.4
+        }
+      }
+    },
+    {
+      "name": "Under 21",
+      "why": "Category M: no employer NI below the upper secondary threshold.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "female",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 24000,
+        "month": "2026-04",
+        "countryProfile": {
+          "taxCode": "1257L",
+          "niCategory": "M"
+        }
+      },
+      "expect": {
+        "gross": 2000,
+        "totalDeductions": 325.56,
+        "net": 1674.44,
+        "tds": 190.2,
+        "employerCost": 44.4,
+        "lines": {
+          "earn.basic": 2000,
+          "ded.paye": 190.2,
+          "ded.ni": 76.16,
+          "ded.pension": 59.2,
+          "emp.pension_er": 44.4
+        }
+      }
+    },
+    {
+      "name": "Opted out of the pension",
+      "why": "No pension lines after an opt out.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "female",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "annualCtc": 36000,
+        "month": "2026-04",
+        "countryProfile": {
+          "taxCode": "1257L",
+          "pensionOptOut": true
+        }
+      },
+      "expect": {
+        "gross": 3000,
+        "totalDeductions": 546.36,
+        "net": 2453.64,
+        "tds": 390.2,
+        "employerCost": 387.45,
+        "lines": {
+          "earn.basic": 3000,
+          "ded.paye": 390.2,
+          "ded.ni": 156.16,
+          "emp.ni_er": 387.45
+        }
+      }
+    }
+  ]
+}

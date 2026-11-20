@@ -29,7 +29,7 @@ export const COUNTRIES: Record<CountryCode, CountryInfo> = {
   KW: { code: "KW", name: "Kuwait", currency: "KWD", decimals: 3, timeZone: "Asia/Kuwait", timeZones: ["Asia/Kuwait"], weekend: [5, 6], hasPack: true },
   OM: { code: "OM", name: "Oman", currency: "OMR", decimals: 3, timeZone: "Asia/Muscat", timeZones: ["Asia/Muscat"], weekend: [5, 6], hasPack: true },
   BH: { code: "BH", name: "Bahrain", currency: "BHD", decimals: 3, timeZone: "Asia/Bahrain", timeZones: ["Asia/Bahrain"], weekend: [5, 6], hasPack: true },
-  GB: { code: "GB", name: "United Kingdom", currency: "GBP", decimals: 2, timeZone: "Europe/London", timeZones: ["Europe/London"], weekend: [0, 6], hasPack: false },
+  GB: { code: "GB", name: "United Kingdom", currency: "GBP", decimals: 2, timeZone: "Europe/London", timeZones: ["Europe/London"], weekend: [0, 6], hasPack: true },
   US: {
     code: "US",
     name: "United States",

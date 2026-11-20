@@ -7,7 +7,7 @@
  * by hand and fills it in. When the law changes, regenerate with `pnpm --filter @hrms/shared golden`,
  * review the differences, and get the new figures signed off again.
  */
-import { computePayslip, structureFromCtc, type Adjustment, type PayslipInput, type PayslipResult, type Regime } from "../src";
+import { computePayslip, packFor, structureFromCtc, type Adjustment, type PayslipInput, type PayslipResult, type Regime } from "../src";
 import type { CountryCode } from "../src/countries";
 import type { TaxDeclarationData } from "../src/tax";
 
@@ -30,7 +30,9 @@ export interface GoldenCase {
     adjustments?: Adjustment[];
     declaration?: TaxDeclarationData;
     /** Nationality and state or emirate, for packs that need them. */
-    profile?: { nationality?: string | null; region?: string | null };
+    profile?: { nationality?: string | null; region?: string | null; insuredSince?: string | null; joinedOn?: string | null };
+    /** Per employee details a pack reads, such as the UK tax code. */
+    countryProfile?: Record<string, unknown>;
   };
   expect?: Figures;
 }
@@ -56,7 +58,7 @@ export function run(country: CountryCode, c: GoldenCase): PayslipResult {
   return computePayslip({
     country,
     month: i.month,
-    structure: structureFromCtc(i.annualCtc, undefined, { pfApplicable: i.pfApplicable, esiApplicable: i.esiApplicable }),
+    structure: structureFromCtc(i.annualCtc, packFor(country).payroll.salaryTemplate, { pfApplicable: i.pfApplicable, esiApplicable: i.esiApplicable }),
     daysInMonth: i.daysInMonth,
     paidDays: i.paidDays,
     state: i.state,
@@ -69,6 +71,7 @@ export function run(country: CountryCode, c: GoldenCase): PayslipResult {
     adjustments: i.adjustments,
     taxProfile: i.declaration ? { declaration: i.declaration } : undefined,
     profile: i.profile,
+    countryProfile: i.countryProfile,
   });
 }
 

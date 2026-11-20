@@ -52,6 +52,7 @@ export interface EmployeeDetail {
   dateOfBirth: string | null;
   gender: string | null;
   nationality: string | null;
+  countryProfile?: Record<string, unknown> | null;
   maritalStatus: string | null;
   bloodGroup: string | null;
   currentAddress: string | null;

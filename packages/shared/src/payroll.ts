@@ -447,6 +447,8 @@ export interface PayslipInput {
    */
   /** Nationality, state or emirate, and (Saudi Arabia) when they were first insured with GOSI. */
   profile?: { nationality?: string | null; region?: string | null; insuredSince?: string | null; joinedOn?: string | null };
+  /** Per employee payroll details a country pack reads (the UK's tax code, NI category, loans, P45). */
+  countryProfile?: Record<string, unknown> | null;
   structure: Structure;
   template?: SalaryTemplate;
   daysInMonth: number;
@@ -507,7 +509,7 @@ export function computePayslip(input: PayslipInput): PayslipResult {
   const adj = input.adjustments ?? [];
   for (const [i, a] of adj.entries()) if (a.kind === "earning" && a.amount) earnings.push({ code: `adj_e${i}`, label: a.label, amount: r(a.amount) });
 
-  const gross = earnings.reduce((s, e) => s + e.amount, 0);
+  const gross = r(earnings.reduce((s, e) => s + e.amount, 0));
   const basicEarned = earnings.find((e) => e.code === "basic")?.amount ?? 0;
   const nonEsiAdj = adj.filter((a) => a.kind === "earning" && a.esiWage === false).reduce((s, a) => s + r(a.amount), 0) + extras.filter((x) => !x.esiWage).reduce((s, x) => s + x.amount, 0);
   const nonTaxableAdj = adj.filter((a) => a.kind === "earning" && a.taxable === false).reduce((s, a) => s + r(a.amount), 0) + extras.filter((x) => !x.taxable).reduce((s, x) => s + x.amount, 0);
@@ -536,13 +538,13 @@ export function computePayslip(input: PayslipInput): PayslipResult {
   const deductions: PayLine[] = [...stat.deductions];
   for (const [i, a] of adj.entries()) if (a.kind === "deduction" && a.amount) deductions.push({ code: `adj_d${i}`, label: a.label, amount: r(a.amount) });
   const deductionLines = deductions.filter((d) => d.amount > 0);
-  const totalDeductions = deductionLines.reduce((s, d) => s + d.amount, 0);
+  const totalDeductions = r(deductionLines.reduce((s, d) => s + d.amount, 0));
 
   const employer: PayLine[] = stat.employer.filter((e) => e.amount > 0);
-  const employerCost = employer.reduce((s, e) => s + e.amount, 0);
+  const employerCost = r(employer.reduce((s, e) => s + e.amount, 0));
 
   const reimbursement = Math.max(0, r(input.reimbursement ?? 0));
-  const net = gross - totalDeductions + reimbursement;
+  const net = r(gross - totalDeductions + reimbursement);
   const salaryNet = net - reimbursement;
   if (salaryNet < 0) warnings.push("Deductions exceed earnings");
   else if (gross > 0 && salaryNet < gross * 0.5) warnings.push("Net pay is below half of gross");

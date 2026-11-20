@@ -41,7 +41,7 @@ export async function settlementFor(db: Database, exit: Exit, emp: Employee) {
   const structs = await structuresAsOf(db, tenantId, [emp.id], exit.lastWorkingDay);
   const entity = await entityOf(db, tenantId, emp.entityId);
   const india = entity.country === "IN";
-  const s = resolveStructure(india ? emp : { ...emp, pfApplicable: false, esiApplicable: false }, structs.get(emp.id), template);
+  const s = resolveStructure(india ? emp : { ...emp, pfApplicable: false, esiApplicable: false }, structs.get(emp.id), template, packFor(entity.country).payroll.salaryTemplate);
   const money = (n: number) => fmtMoney(n, { currency: entity.currency });
   const year = Number(exit.lastWorkingDay.slice(0, 4));
   const encashable = new Set((await db.select({ id: leaveTypes.id }).from(leaveTypes).where(and(eq(leaveTypes.tenantId, tenantId), eq(leaveTypes.encashable, true)))).map((r) => r.id));
@@ -91,7 +91,7 @@ export async function settlementFor(db: Database, exit: Exit, emp: Employee) {
   if (claims?.n) warnings.push(`${claims.n} reimbursement claim${claims.n === 1 ? " is" : "s are"} still open (${money(claims.s)}). Pay or reject ${claims.n === 1 ? "it" : "them"} through reimbursements.`);
   if (owed?.n) warnings.push(`${owed.n} payment${owed.n === 1 ? " is" : "s are"} pending, failed or held (${money(owed.s)}). Clear ${owed.n === 1 ? "it" : "them"} under Payments.`);
   if (india && !result.gratuityEligible && result.service.days >= 4 * 365) warnings.push("Close to gratuity eligibility (4 years 240 days). Check the service dates.");
-  if (result.taxable > 0 && !(inputs.tds ?? 0)) warnings.push(`${money(result.taxable)} of the settlement is taxable. Enter the TDS from the employee's tax computation.`);
+  if (india && result.taxable > 0 && !(inputs.tds ?? 0)) warnings.push(`${money(result.taxable)} of the settlement is taxable. Enter the TDS from the employee's tax computation.`);
 
   return {
     result,

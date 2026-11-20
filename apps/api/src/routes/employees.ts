@@ -29,6 +29,7 @@ import {
   idType,
   todayLocal,
   type EmployeeStatus,
+  ukPayrollProfileSchema,
 } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
@@ -155,7 +156,7 @@ employeeRoutes.get("/export.csv", requirePerm("employees", "export"), async (c) 
 const PRIVATE_BLANK = {
   personalEmail: null, dateOfBirth: null, maritalStatus: null, bloodGroup: null, currentAddress: null, permanentAddress: null,
   emergencyContactName: null, emergencyContactRelation: null, emergencyContactPhone: null,
-  accountHolderName: null, bankName: null, accountLast4: null, ifsc: null, pan: null, aadhaarLast4: null, uan: null, esicIpNumber: null,
+  accountHolderName: null, bankName: null, accountLast4: null, ifsc: null, pan: null, aadhaarLast4: null, uan: null, esicIpNumber: null, countryProfile: null,
 };
 
 employeeRoutes.get("/:id", requirePerm("employees", "view"), async (c) => {
@@ -225,12 +226,23 @@ async function assertRefs(c: Context<AppEnv>, tid: string, body: Record<string, 
   if (selfId && body.managerId === selfId) throw badRequest("An employee can't report to themselves");
 }
 
+/** Checks the country payroll details against the employee's entity: the UK's tax code, NI category and loans. */
+async function countryProfileFor(c: Context<AppEnv>, tid: string, entityId: string | null | undefined, profile: Record<string, unknown> | null | undefined) {
+  if (profile === undefined || profile === null) return profile;
+  const ent = await entityOf(c.get("db"), tid, entityId);
+  if (ent.country !== "GB") return profile;
+  const parsed = ukPayrollProfileSchema.safeParse(profile);
+  if (!parsed.success) throw badRequest(parsed.error.issues[0]?.message ?? "Check the UK payroll details");
+  return parsed.data as Record<string, unknown>;
+}
+
 employeeRoutes.post("/", requirePerm("employees", "edit"), v("json", employeeCreateSchema), async (c) => {
   const body = c.req.valid("json");
   const db = c.get("db");
   const tid = c.get("tenant").tenantId;
   await assertRefs(c, tid, body);
   const { sendInvite, accountNumber, ...rest } = body;
+  rest.countryProfile = await countryProfileFor(c, tid, body.entityId, body.countryProfile);
   const code = body.employeeCode || (await nextEmployeeCode(db, tid));
   const fullName = [body.firstName, body.lastName].filter(Boolean).join(" ");
   const status = sendInvite ? "onboarding" : body.status;
@@ -260,6 +272,7 @@ employeeRoutes.patch("/:id", requirePerm("employees", "edit"), vPatch(employeeUp
   if (!cur) throw notFound("Employee");
   await assertRefs(c, tid, body, id);
   const { accountNumber, ...rest } = body;
+  if (rest.countryProfile !== undefined) rest.countryProfile = await countryProfileFor(c, tid, body.entityId !== undefined ? body.entityId : cur.entityId, rest.countryProfile);
   const patch: Partial<typeof employees.$inferInsert> = { ...(rest as Partial<typeof employees.$inferInsert>), ...(await bankFields(accountNumber, c.env.ENCRYPTION_KEY)) };
   if (body.firstName !== undefined || body.lastName !== undefined) {
     patch.fullName = [body.firstName ?? cur.firstName, body.lastName !== undefined ? body.lastName : cur.lastName].filter(Boolean).join(" ");

@@ -644,6 +644,11 @@ export function StepPayout({ run }: { run: PayrollRun }) {
                     <Download size={15} /> WPS file
                   </Button>
                 ) : null}
+                {run.country === "GB" ? (
+                  <Button disabled={!can("payroll", "export")} loading={exporting} onClick={() => void exportFile(`/admin/payroll/runs/${run.id}/rti.csv`, `rti-${run.month}.csv`, "RTI summary downloaded")} title="Each employee's figures for the Full Payment Submission, to key into HMRC's Basic PAYE Tools or your filing service">
+                    <Download size={15} /> RTI summary
+                  </Button>
+                ) : null}
                 {run.country === "SA" ? (
                   <Button disabled={!locked || !can("payroll", "export")} loading={exporting} onClick={exportMudad} title="Salary sheet for Mudad wage protection and your bank">
                     <Download size={15} /> Mudad sheet

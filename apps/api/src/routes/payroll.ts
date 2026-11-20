@@ -15,7 +15,7 @@ import {
   employeeIdentities,
   user,
 } from "@hrms/db";
-import { buildMudadSheet, buildQatarWps, buildWpsSif, checkMudad, checkQatarWps, checkWps, can, decryptField, markPaidSchema, payrollAdjustmentSchema, payrollItemPatchSchema, payrollRunCreateSchema, reopenSchema, structureFromComponents, templateFor, minimumWageShortfall, structureFromCtc, structureRevisionSchema, tenantPayrollSettingsSchema, todayLocal, fmtDate, fmtMoney, zonedDateTime } from "@hrms/shared";
+import { taxMonthOf, taxYearOf, buildMudadSheet, buildQatarWps, buildWpsSif, checkMudad, checkQatarWps, checkWps, can, decryptField, markPaidSchema, payrollAdjustmentSchema, payrollItemPatchSchema, payrollRunCreateSchema, reopenSchema, structureFromComponents, templateFor, minimumWageShortfall, structureFromCtc, structureRevisionSchema, tenantPayrollSettingsSchema, todayLocal, fmtDate, fmtMoney, zonedDateTime } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
 import { requirePerm } from "../lib/context";
@@ -659,6 +659,75 @@ payrollRoutes.get("/runs/:id/qatar-wps.csv", requirePerm("payroll", "export"), a
   const out = buildQatarWps(file);
   await audit(c, { action: "payroll.wps_file", entity: "payroll_run", entityId: run.id, summary: `Exported the Qatar WPS file for ${run.month}: ${people.length} payments` });
   return c.body(out.content, 200, { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="${out.fileName}"` });
+});
+
+/**
+ * UK: the figures an RTI Full Payment Submission needs for each employee, this month and for the
+ * tax year to date. Saralix can't file to HMRC yet, so this goes into HMRC's Basic PAYE Tools or
+ * your filing service.
+ */
+payrollRoutes.get("/runs/:id/rti.csv", requirePerm("payroll", "export"), async (c) => {
+  const run = await loadRun(c, c.req.param("id"));
+  if (run.status === "draft") throw badRequest("Calculate the payroll first");
+  const db = c.get("db");
+  const ent = await entityOf(db, tid(c), run.entityId);
+  if (ent.country !== "GB") throw badRequest("The RTI summary is for UK entities only");
+  const items = await db.select().from(payrollItems).where(eq(payrollItems.runId, run.id)).orderBy(asc(sql`${payrollItems.snapshot}->>'code'`));
+  const ids = items.map((i) => i.employeeId);
+  // the tax year so far: locked runs of this entity from April up to this month, plus this one
+  const taxYear = taxYearOf(run.month);
+  const startMonth = `${taxYear.slice(0, 4)}-04`;
+  const earlier = ids.length
+    ? await db
+        .select({ item: payrollItems })
+        .from(payrollItems)
+        .innerJoin(payrollRuns, eq(payrollRuns.id, payrollItems.runId))
+        .where(and(eq(payrollRuns.tenantId, tid(c)), eq(payrollRuns.entityId, run.entityId), inArray(payrollRuns.status, ["approved", "paid"]), gte(payrollRuns.month, startMonth), sql`${payrollRuns.month} < ${run.month}`, inArray(payrollItems.employeeId, ids)))
+    : [];
+  const [emps, ninos] = ids.length
+    ? await Promise.all([
+        db.select({ id: employees.id, profile: employees.countryProfile }).from(employees).where(inArray(employees.id, ids)),
+        db.select({ e: employeeIdentities.employeeId, n: employeeIdentities.number }).from(employeeIdentities).where(and(eq(employeeIdentities.tenantId, tid(c)), eq(employeeIdentities.type, "ni_number"), inArray(employeeIdentities.employeeId, ids))),
+      ])
+    : [[], []];
+  const profile = new Map(emps.map((e) => [e.id, (e.profile ?? {}) as { taxCode?: string; niCategory?: string }]));
+  const nino = new Map(ninos.map((r) => [r.e, r.n.replace(/\s/g, "").toUpperCase()]));
+  type Item = typeof payrollItems.$inferSelect;
+  const sum = (list: Item[], f: (i: Item) => number) => Math.round(list.reduce((s, i) => s + f(i), 0) * 100) / 100;
+  const ded = (code: string) => (i: Item) => i.deductions.filter((d) => d.code === code || (code === "sl" && d.code.startsWith("sl_"))).reduce((s, d) => s + d.amount, 0);
+  const er = (code: string) => (i: Item) => i.employer.filter((d) => d.code === code).reduce((s, d) => s + d.amount, 0);
+  const taxable = (i: Item) => Number(i.taxableGross);
+  const rows = items.map((i) => {
+    const ytd = [...earlier.map((x) => x.item).filter((x) => x.employeeId === i.employeeId), i];
+    const p = profile.get(i.employeeId) ?? {};
+    return [
+      i.snapshot.code,
+      i.snapshot.name,
+      nino.get(i.employeeId) ?? "",
+      p.taxCode ?? "1257L",
+      p.niCategory ?? "A",
+      taxMonthOf(run.month),
+      taxable(i).toFixed(2),
+      sum(ytd, taxable).toFixed(2),
+      ded("paye")(i).toFixed(2),
+      sum(ytd, ded("paye")).toFixed(2),
+      ded("ni")(i).toFixed(2),
+      sum(ytd, ded("ni")).toFixed(2),
+      er("ni_er")(i).toFixed(2),
+      sum(ytd, er("ni_er")).toFixed(2),
+      ded("sl")(i).toFixed(2),
+      ded("pgl")(i).toFixed(2),
+      ded("pension")(i).toFixed(2),
+      er("pension_er")(i).toFixed(2),
+      Number(i.net).toFixed(2),
+    ];
+  });
+  const csv = toCsv(
+    ["Employee ID", "Name", "NI number", "Tax code", "NI category", "Tax month", "Taxable pay", "Taxable pay to date", "Tax", "Tax to date", "Employee NI", "Employee NI to date", "Employer NI", "Employer NI to date", "Student loan", "Postgraduate loan", "Pension (employee)", "Pension (employer)", "Net pay"],
+    rows,
+  );
+  await audit(c, { action: "payroll.rti_summary", entity: "payroll_run", entityId: run.id, summary: `Exported the RTI summary for ${run.month}` });
+  return c.body(csv, 200, { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="rti-${taxYear}-month${taxMonthOf(run.month)}.csv"` });
 });
 
 payrollRoutes.get("/runs/:id/register.csv", requirePerm("payroll", "export"), async (c) => {

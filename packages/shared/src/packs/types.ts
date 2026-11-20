@@ -19,6 +19,8 @@ export interface CountryPack {
     statutory(ctx: StatutoryContext): StatutoryResult;
     /** Names for the standard salary parts where the country uses other words (housing for HRA). */
     componentLabels?: Partial<Record<"basic" | "hra" | "conveyance" | "medical" | "special", string>>;
+    /** How the country splits a salary, used in place of the company's Indian style template (the UK pays one salary line). */
+    salaryTemplate?: SalaryTemplate;
     /** Decimals payslip lines are rounded to: 0 for whole rupees, 3 for Kuwaiti fils. */
     roundingDecimals: number;
     /** Net pay in words on payslips, in the country's style. */

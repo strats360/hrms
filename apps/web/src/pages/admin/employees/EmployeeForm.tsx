@@ -1,4 +1,5 @@
-import { countryName, ISO_COUNTRIES, WAGE_CATEGORIES, WAGE_CATEGORY_LABELS } from "@hrms/shared";
+import { countryName, ISO_COUNTRIES, ukPayrollProfileSchema, WAGE_CATEGORIES, WAGE_CATEGORY_LABELS } from "@hrms/shared";
+import { EMPTY_UK, UkPayrollFields, ukFromProfile, ukToProfile, type UkForm } from "@/components/employees/UkPayroll";
 
 const NATIONALITY_OPTIONS = ISO_COUNTRIES.map((code) => ({ code, name: countryName(code)! })).sort((a, b) => a.name.localeCompare(b.name));
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -139,6 +140,8 @@ export default function EmployeeForm() {
 
   const [form, setForm] = useState<Form>(EMPTY);
   const [initial, setInitial] = useState<Form>(EMPTY);
+  const [uk, setUk] = useState<UkForm>(EMPTY_UK);
+  const [ukInitial, setUkInitial] = useState<UkForm>(EMPTY_UK);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -147,6 +150,9 @@ export default function EmployeeForm() {
       const f = fromDetail(detail.data);
       setForm(f);
       setInitial(f);
+      const u = ukFromProfile(detail.data.countryProfile);
+      setUk(u);
+      setUkInitial(u);
     }
   }, [detail.data]);
 
@@ -200,13 +206,20 @@ export default function EmployeeForm() {
   const submit = () => {
     setServerError(null);
     let payload: Record<string, unknown>;
+    const ukChanged = country === "GB" && (!isEdit || JSON.stringify(uk) !== JSON.stringify(ukInitial));
+    const ukProfile = ukChanged ? ukPayrollProfileSchema.safeParse(ukToProfile(uk)) : null;
+    if (ukProfile && !ukProfile.success) {
+      setServerError(ukProfile.error.issues[0]?.message ?? "Check the UK payroll details");
+      document.getElementById("f-taxCode")?.focus();
+      return;
+    }
     if (isEdit) {
       const changed = (Object.keys(form) as (keyof Form)[]).filter((k) => k !== "sendInvite" && k !== "employeeCode" && form[k] !== initial[k]);
       if (form.accountNumber.trim() === "") {
         const i = changed.indexOf("accountNumber");
         if (i >= 0) changed.splice(i, 1);
       }
-      if (!changed.length) {
+      if (!changed.length && !ukChanged) {
         toast("Nothing to save");
         return;
       }
@@ -228,9 +241,12 @@ export default function EmployeeForm() {
       return;
     }
     setErrors({});
+    if (ukProfile?.success) payload.countryProfile = ukProfile.data;
     save.mutate(payload);
   };
 
+  // the entity's country decides which statutory details the form asks for
+  const country = lookups.data?.entities?.find((x) => x.id === (form.entityId || lookups.data?.entities?.find((y) => y.isDefault)?.id))?.country ?? "IN";
   const monthly = useMemo(() => {
     const n = Number(form.annualCtc.replace(/[,₹\s]/g, ""));
     return n > 0 ? fmtMoney(n / 12) : null;
@@ -377,7 +393,7 @@ export default function EmployeeForm() {
             <Field label="Account number" error={err("accountNumber")} htmlFor="f-accountNumber" hint={isEdit && detail.data?.accountLast4 ? "Leave blank to keep the current account" : undefined}>
               <Input inputMode="numeric" autoComplete="off" {...text("accountNumber")} placeholder={isEdit && detail.data?.accountLast4 ? `···· ${detail.data.accountLast4}` : "50100…"} />
             </Field>
-            <Field label="IFSC" error={err("ifsc")} htmlFor="f-ifsc"><Input {...text("ifsc")} placeholder="HDFC0000412" className="uppercase" /></Field>
+            <Field label={country === "IN" ? "IFSC" : country === "GB" ? "Sort code" : "Bank routing code"} error={err("ifsc")} htmlFor="f-ifsc"><Input {...text("ifsc")} placeholder={country === "IN" ? "HDFC0000412" : country === "GB" ? "12-34-56" : "9 digits"} className="uppercase" /></Field>
             <Field label="Payment method" htmlFor="f-paymentMethod">
               <Select {...text("paymentMethod")}>
                 <option value="bank_transfer">Bank transfer (NEFT / IMPS)</option>
@@ -387,6 +403,13 @@ export default function EmployeeForm() {
             </Field>
           </Section>
 
+          {country === "GB" ? (
+            <Section title="UK payroll" sub="Tax code, National Insurance, student loans and pension. Add their NI number under IDs & visas.">
+              <UkPayrollFields value={uk} onChange={setUk} />
+            </Section>
+          ) : null}
+
+          {country === "IN" ? (
           <Section title="Statutory">
             <Field label="PAN" error={err("pan")} htmlFor="f-pan"><Input {...text("pan")} placeholder="ABCDE1234F" className="uppercase" maxLength={10} /></Field>
             <Field label="Aadhaar (last 4 digits only)" error={err("aadhaarLast4")} htmlFor="f-aadhaarLast4"><Input inputMode="numeric" {...text("aadhaarLast4")} placeholder="1234" maxLength={4} /></Field>
@@ -403,6 +426,7 @@ export default function EmployeeForm() {
               </div>
             </Field>
           </Section>
+          ) : null}
 
           {!isEdit ? (
             <Card className="!gap-2">

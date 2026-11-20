@@ -32,6 +32,8 @@ export const employees = pgTable(
     gender: text("gender"),
     /** ISO country code. Decides schemes only nationals join, such as GPSSA pension in the UAE. */
     nationality: text("nationality"),
+    /** Payroll details a country pack reads, such as the UK tax code, NI category and student loans. */
+    countryProfile: jsonb("country_profile").$type<Record<string, unknown> | null>(),
     maritalStatus: text("marital_status"),
     bloodGroup: text("blood_group"),
     currentAddress: text("current_address"),

@@ -6,12 +6,13 @@ import { qatarPack } from "./gcc/qa";
 import { kuwaitPack } from "./gcc/kw";
 import { omanPack } from "./gcc/om";
 import { bahrainPack } from "./gcc/bh";
+import { ukPack } from "./gb";
 import type { CountryPack } from "./types";
 
 export type { CountryPack, StatutoryContext, StatutoryResult } from "./types";
 
 /** Every built country pack. Packs still waiting for a local expert's sign off say so in `review`. */
-const PACKS: Partial<Record<CountryCode, CountryPack>> = { IN: indiaPack, AE: uaePack, SA: saudiPack, QA: qatarPack, KW: kuwaitPack, OM: omanPack, BH: bahrainPack };
+const PACKS: Partial<Record<CountryCode, CountryPack>> = { IN: indiaPack, AE: uaePack, SA: saudiPack, QA: qatarPack, KW: kuwaitPack, OM: omanPack, BH: bahrainPack, GB: ukPack };
 
 /** Countries with a finished pack, e.g. for golden payroll tests. */
 export const PACK_CODES = Object.keys(PACKS) as CountryCode[];
@@ -43,3 +44,9 @@ export { qatarGratuity, QATAR_PENSION } from "./gcc/qa";
 export { kuwaitIndemnity, kuwaitResignationShare, KUWAIT_PIFSS } from "./gcc/kw";
 export { omanGratuity, OMAN_SPF } from "./gcc/om";
 export { bahrainIndemnity, BAHRAIN_SIO } from "./gcc/bh";
+
+export { parseTaxCode, payeThisMonth, type TaxCode } from "./gb/tax";
+export { classOneNi, taxMonthOf, taxYearOf } from "./gb/payroll";
+export { ukPayrollProfileSchema, STUDENT_LOAN_OPTIONS, type UkPayrollProfile } from "./gb/profile";
+export { NI_CATEGORIES, TAX_YEAR as UK_TAX_YEAR } from "./gb/rules";
+export { englandBankHolidays } from "./gb/holidays";

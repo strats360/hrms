@@ -19,6 +19,7 @@ import {
 } from "@hrms/db";
 import {
   computePayslip,
+  packFor,
   dateRange,
   daysInMonth,
   DEFAULT_SALARY_TEMPLATE,
@@ -87,8 +88,10 @@ export function resolveStructure(
   emp: { annualCtc: number; pfApplicable: boolean; esiApplicable: boolean; salaryTemplateId?: string | null },
   row: { annualCtc: number; components: MonthlyComponents | null } | undefined,
   book: TemplateBook,
+  /** A country's own salary split (the UK's single salary line) in place of the company template. */
+  countryTemplate?: SalaryTemplate,
 ): Structure {
-  const template = templateFor(book, emp.salaryTemplateId);
+  const template = countryTemplate ?? templateFor(book, emp.salaryTemplateId);
   const opts = { pfApplicable: emp.pfApplicable, esiApplicable: emp.esiApplicable };
   if (row?.components) return structureFromComponents(row.components, template, opts);
   return structureFromCtc(row ? Number(row.annualCtc) : Number(emp.annualCtc), template, opts);
@@ -232,6 +235,7 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
   const rules = await rulesFor(db, run.month, ent.country);
   const insured = ent.country === "SA" ? await insuredSince(db, tenantId, ids) : new Map<string, string>();
   const india = ent.country === "IN";
+  const pack = packFor(ent.country);
   const statOn = (entity: { statutory: Record<string, { enabled?: boolean }> }, k: string) => entity.statutory?.[k]?.enabled ?? statutory[k as keyof typeof statutory]?.enabled ?? true;
 
   const rows: (typeof payrollItems.$inferInsert)[] = [];
@@ -251,14 +255,15 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
     const lopUsed = before?.lopOverride ?? lop;
     const paidDays = Math.max(0, employed.length - Number(lopUsed));
     // PF and ESI are Indian schemes: outside India they don't come out of the CTC
-    const structure = resolveStructure(india ? e : { ...e, pfApplicable: false, esiApplicable: false }, structs.get(e.id), template);
+    const structure = resolveStructure(india ? e : { ...e, pfApplicable: false, esiApplicable: false }, structs.get(e.id), template, pack.payroll.salaryTemplate);
     const y = ytd.byEmployee.get(e.id);
     const slip = computePayslip({
       country: ent.country as CountryCode,
       rules,
       month: run.month,
       structure,
-      template: templateFor(template, e.salaryTemplateId),
+      template: pack.payroll.salaryTemplate ?? templateFor(template, e.salaryTemplateId),
+      countryProfile: e.countryProfile,
       daysInMonth: days,
       paidDays,
       adjustments: adjustments

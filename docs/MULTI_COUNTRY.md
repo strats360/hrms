@@ -179,7 +179,17 @@ Cloudflare is one account for all instances. Neon is roughly $19 a month per pro
    - **Oman:** SPF for Omanis (7% pension and 1% job security from the employee; 11.5%, 1% work injury and 1% job security from the employer, up to OMR 3,000). Expats get 1% work injury from the employer, and a month's basic a year as gratuity. Three decimals.
    - **Bahrain:** SIO for Bahrainis (6% pension and 1% unemployment; 12%, 3% and 1% from the employer, up to BHD 4,000). Expats pay 1% unemployment, and the employer pays work injury, unemployment and the monthly leaving indemnity (4.2% for the first three years, 8.4% after). The final settlement only covers service before March 2024, since the SIO pays the rest. Three decimals.
    - Still to do: golden cases signed off by a local expert in each country (`packages/shared/golden/QA.json`, `KW.json`, `OM.json`, `BH.json`), wage protection files for Kuwait, Oman and Bahrain (they're bank specific, so use the bank file until then), localisation quotas (Kuwaitisation, Omanisation, Bahrainisation), and the rates in the statutory master UI.
-4. UK pack, then HMRC recognition
+4. UK pack, then HMRC recognition ✅ for the pack, waiting on sign off; HMRC recognition still to do. What's in it (2026/27 tax year):
+   - **PAYE** from the tax code: cumulative, or month 1 for emergency codes. Codes supported: L codes, K codes (capped at half the pay), BR, D0, D1, D2, 0T and NT. S codes use the Scottish bands, and C codes the Welsh ones. Pay and tax from an earlier job this tax year (the P45) count toward the year so far.
+   - **Class 1 NI** by category (A, C, H, M, X): 8% employee between £1,048 and £4,189 a month and 2% above, and 15% employer above £417.
+   - **Student loans** (plans 1, 2, 4 and 5) and the postgraduate loan, in whole pounds.
+   - **Pension auto enrolment** on qualifying earnings, assuming relief at source: 4% from net pay (5% with tax relief), plus 3% from the employer. Below the trigger or after an opt out, there's no pension.
+   - **One salary line.** UK payslips show "Salary", not Indian style allowances.
+   - **Employee form.** UK entities get a UK payroll section (tax code, NI category, student loans, pension opt out, P45 figures) in place of PAN and PF. Bank details take a sort code and an 8 digit account number.
+   - **Final pay.** Unused holiday at salary over 260 days, and pay in lieu of notice. All of it is taxed through the last payslip, and there's no gratuity. Statutory redundancy pay goes in as a manual line.
+   - **RTI summary.** Each run downloads the figures an FPS needs, for the month and the tax year to date, to key into HMRC's Basic PAYE Tools or a filing service.
+   - **Bank holidays.** England and Wales bank holidays, with Easter and substitute days worked out.
+   - Still to do: golden cases signed off by a UK payroll professional (`packages/shared/golden/GB.json`); HMRC RTI filing (FPS and EPS through HMRC's API, which needs HMRC to recognise the software); Scottish bands for 2026/27 (the 2025/26 bands are used); SSP, SMP and other statutory pay (manual adjustments for now); a net pay arrangement option for pensions; P60s and P45s; the employment allowance on the EPS; and salaries to the penny (structures round to whole pounds today).
 5. USA: HR core, with payroll tax through a partner
 6. Canada: federal and provincial income tax, CPP or QPP, EI, ROE and T4 (or a payroll partner, as for the USA)
 
