@@ -8,7 +8,9 @@ export function monthLabel(month: string) {
 }
 
 /** A payroll run's name: its month, or its pay period ("1 to 15 Mar 2026") when the entity pays more often. */
-export function runLabel(run: { month: string; frequency?: string | null; periodStart: string; periodEnd: string }) {
+export function runLabel(run: { month: string; frequency?: string | null; periodStart: string; periodEnd: string; kind?: string | null; label?: string | null }) {
+  // off-cycle runs go by what they pay and when
+  if (run.kind === "off_cycle") return `${run.label ?? "Off-cycle"} (${new Date(run.periodStart + "T00:00:00Z").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })})`;
   return !run.frequency || run.frequency === "monthly" ? monthLabel(run.month) : periodLabel(run);
 }
 

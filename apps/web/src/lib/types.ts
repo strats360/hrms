@@ -198,6 +198,8 @@ export interface PayrollRun {
   id: string;
   entityId: string;
   frequency?: string | null;
+  kind?: string | null;
+  label?: string | null;
   entityName?: string | null;
   entityCode?: string | null;
   country?: string | null;

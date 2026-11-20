@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { OffCycleDialog } from "@/components/payroll/OffCycleDialog";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -35,8 +36,9 @@ export default function Runs() {
   const qc = useQueryClient();
   const runs = usePayrollRuns();
   const start = useStartCurrentRun();
+  const [offCycle, setOffCycle] = useState(false);
   const month = todayLocal().slice(0, 7);
-  const current = runs.data?.find((r) => r.month === month);
+  const current = runs.data?.find((r) => r.month === month && (r.kind ?? "regular") === "regular");
 
   const discard = useMutation({
     mutationFn: (id: string) => api.del(`/admin/payroll/runs/${id}`),
@@ -112,7 +114,12 @@ export default function Runs() {
       </Card>
 
       <TableCard>
-        <CardHeader className="py-2" title="Payroll history" sub="Every run for this company. Click a month to open it." />
+        <CardHeader
+          className="py-2"
+          title="Payroll history"
+          sub="Every run for this company. Click a month to open it."
+          actions={can("payroll", "edit") ? <Button onClick={() => setOffCycle(true)}>Off-cycle payment</Button> : null}
+        />
         <DataTable
           data={runs.data ?? []}
           columns={columns}
@@ -129,6 +136,7 @@ export default function Runs() {
           ]}
         />
       </TableCard>
+      <OffCycleDialog open={offCycle} onClose={() => setOffCycle(false)} />
     </>
   );
 }

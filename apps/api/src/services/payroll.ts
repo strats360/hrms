@@ -249,12 +249,16 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
   const statutory = tenant?.statutory ?? {};
   // a run pays one legal entity: its country pack, currency and schemes apply to everyone in it
   const ent = await entityOf(db, tenantId, run.entityId);
-  const emps = await payableEmployees(db, tenantId, start, end, ent);
+  // an off-cycle run pays only the people it has lines for
+  const offCycle = run.kind === "off_cycle";
+  const offCycleIds = offCycle ? [...new Set((await db.select({ e: payrollAdjustments.employeeId }).from(payrollAdjustments).where(eq(payrollAdjustments.runId, runId))).map((r) => r.e))] : [];
+  const emps = offCycle ? (await payableEmployees(db, tenantId, `${run.month.slice(0, 4)}-01-01`, end, ent)).filter((x) => offCycleIds.includes(x.e.id)) : await payableEmployees(db, tenantId, start, end, ent);
   const ids = emps.map((x) => x.e.id);
   // this month's loan and advance instalments, as deduction lines
   // monthly loan instalments come out once a month: in the first pay of the month when pay is more often
-  const [earlierThisMonth] = run.frequency === "monthly" ? [] : await db.select({ id: payrollRuns.id }).from(payrollRuns).where(and(eq(payrollRuns.tenantId, tenantId), eq(payrollRuns.entityId, run.entityId), eq(payrollRuns.month, run.month), lt(payrollRuns.periodStart, run.periodStart))).limit(1);
-  await syncLoanRecoveries(db, { id: run.id, tenantId, month: run.month }, earlierThisMonth ? [] : ids);
+  const [earlierThisMonth] = run.frequency === "monthly" ? [] : await db.select({ id: payrollRuns.id }).from(payrollRuns).where(and(eq(payrollRuns.tenantId, tenantId), eq(payrollRuns.entityId, run.entityId), eq(payrollRuns.kind, "regular"), eq(payrollRuns.month, run.month), lt(payrollRuns.periodStart, run.periodStart))).limit(1);
+  // loans come out of the regular pay, never an off-cycle one
+  await syncLoanRecoveries(db, { id: run.id, tenantId, month: run.month }, earlierThisMonth || offCycle ? [] : ids);
   const [structs, ytd, unpaid, adjustments, existing, decls] = await Promise.all([
     structuresAsOf(db, tenantId, ids, end),
     yearToDate(db, tenantId, run.month, packFor(ent.country).payroll.taxYearStartMonth, run.periodStart),
@@ -263,9 +267,9 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
     db.select().from(payrollItems).where(eq(payrollItems.runId, runId)),
     declarationsFor(db, tenantId, fyOfMonth(run.month), ids),
   ]);
-  const claims = await claimsForRun(db, tenantId, runId, end, ids);
+  const claims = offCycle ? new Map<string, number>() : await claimsForRun(db, tenantId, runId, end, ids);
   const prev = new Map(existing.map((i) => [i.employeeId, i]));
-  const cal = opts.assumePresent ? null : await buildCalendar(db, tenantId, emps.map((x) => ({ id: x.e.id, shiftId: x.e.shiftId, branchId: x.e.branchId, dateOfJoining: x.e.dateOfJoining, lastWorkingDay: x.e.lastWorkingDay })), start, end);
+  const cal = opts.assumePresent || offCycle ? null : await buildCalendar(db, tenantId, emps.map((x) => ({ id: x.e.id, shiftId: x.e.shiftId, branchId: x.e.branchId, dateOfJoining: x.e.dateOfJoining, lastWorkingDay: x.e.lastWorkingDay })), start, end);
   const rules = await rulesFor(db, run.month, ent.country);
   const insured = ent.country === "SA" ? await insuredSince(db, tenantId, ids) : new Map<string, string>();
   const india = ent.country === "IN";
@@ -301,6 +305,7 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
       countryProfile: e.countryProfile,
       ...(run.frequency !== "monthly" ? { period: { perYear: PERIODS_PER_YEAR[run.frequency as PayFrequency], index: periodIndex(periodContaining(run.frequency as PayFrequency, run.periodStart, ent.payAnchor), pack.payroll.taxYearStartMonth ?? 4, ent.payAnchor) } } : {}),
       esiContinue: esiCovered.has(e.id),
+      ...(offCycle ? { offCycle: true } : {}),
       daysInMonth: days,
       paidDays,
       adjustments: adjustments

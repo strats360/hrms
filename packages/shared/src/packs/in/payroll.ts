@@ -8,6 +8,7 @@ import type { StatutoryContext, StatutoryResult } from "../types";
  * PF and ESI eligibility are on Code wages: basic plus wage allowances, at least half the gross.
  */
 export function indiaStatutory(ctx: StatutoryContext): StatutoryResult {
+  if (ctx.input.offCycle) return offCycle(ctx);
   const { input, template: t, rules: R, month1, gross, basicEarned, round: r } = ctx;
   const warnings: string[] = [];
 
@@ -110,4 +111,37 @@ export function indiaStatutory(ctx: StatutoryContext): StatutoryResult {
   ];
   if (perqMonth) warnings.push(`Car perquisite of ${perqMonth.toLocaleString("en-IN")} a month is taxed through TDS`);
   return { deductions, employer, tds, tax: { ...tax, projectedAnnualGross, monthsLeft, annualised }, warnings, wages: wagesEarned, perquisites: perqMonth };
+}
+
+/**
+ * An off-cycle payment (bonus, arrears, incentive): no PF, ESI, PT or LWF, as one-off pay isn't
+ * Code wages. TDS is the extra tax it adds to the year: tax on the year's salary plus this
+ * payment, less tax on the salary alone.
+ */
+function offCycle(ctx: StatutoryContext): StatutoryResult {
+  const { input, rules: R } = ctx;
+  const taxable = ctx.gross - ctx.nonTaxableEarnings;
+  const year = (input.ytd?.taxableGross ?? 0) + input.structure.gross * remainingFyMonths(input.month);
+  const sg = input.structure.gross || 1;
+  const statement = (extra: number) =>
+    computeTaxStatement({
+      regime: input.regime,
+      financialYear: fyOfMonth(input.month),
+      salary: { gross: year + extra, basic: (year * input.structure.components.basic) / sg, hra: (year * input.structure.components.hra) / sg },
+      employeePf: 0,
+      professionalTax: 0,
+      declaration: input.taxProfile?.declaration,
+      verified: input.taxProfile?.verified,
+      rules: R,
+    });
+  const base = statement(0);
+  const withExtra = statement(taxable);
+  const tds = Math.max(0, Math.round(withExtra.tax.total - base.tax.total));
+  return {
+    deductions: [{ code: "tds", label: "Income tax (TDS)", amount: tds }],
+    employer: [],
+    tds,
+    tax: { ...withExtra.tax, projectedAnnualGross: year + taxable, monthsLeft: remainingFyMonths(input.month), annualised: false },
+    warnings: taxable > 0 ? [] : ["Nothing taxable in this payment"],
+  };
 }

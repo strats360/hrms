@@ -559,6 +559,11 @@ export interface PayslipInput {
    */
   esiContinue?: boolean;
   /**
+   * An off-cycle payslip (bonus, arrears) outside the regular run: only the adjustments are paid.
+   * The structure is still passed, so the country can tax the extra against the regular salary.
+   */
+  offCycle?: boolean;
+  /**
    * Year-to-date figures from earlier payroll months of the same FY. Leave undefined when
    * there's no history (e.g. first month on this system): TDS is then annualised, assuming
    * earlier months were paid at the same rate.
@@ -619,7 +624,7 @@ export function computePayslip(input: PayslipInput): PayslipResult {
   const labels = { ...COMPONENT_LABELS, ...(pack.payroll.componentLabels ?? {}) };
   const std = (k: Exclude<keyof MonthlyComponents, "extras">) => ({ code: k, label: labels[k], amount: r(c[k] * factor) });
   const extras = (c.extras ?? []).map((x) => ({ code: `x_${x.code}`, label: x.label, amount: r(x.amount * factor), taxable: x.taxable !== false, esiWage: x.esiWage !== false }));
-  const earnings: PayLine[] = [std("basic"), std("hra"), std("conveyance"), std("medical"), ...extras.map(({ code, label, amount }) => ({ code, label, amount })), std("special")].filter((e) => e.amount > 0);
+  const earnings: PayLine[] = input.offCycle ? [] : [std("basic"), std("hra"), std("conveyance"), std("medical"), ...extras.map(({ code, label, amount }) => ({ code, label, amount })), std("special")].filter((e) => e.amount > 0);
   const adj = input.adjustments ?? [];
   for (const [i, a] of adj.entries()) if (a.kind === "earning" && a.amount) earnings.push({ code: `adj_e${i}`, label: a.label, amount: r(a.amount) });
 

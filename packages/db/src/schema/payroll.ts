@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { boolean, date, index, jsonb, numeric, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import type { MonthlyComponents, PayLine } from "@hrms/shared";
 import { tenantIdColumn as tenantId } from "./org";
@@ -57,6 +58,10 @@ export const payrollRuns = pgTable(
     month: text("month").notNull(),
     /** monthly, semi_monthly, biweekly or weekly: the entity's pay frequency when the run started. */
     frequency: text("frequency").notNull().default("monthly"),
+    /** regular: the period's payroll; off_cycle: one-off payments (bonus, arrears) outside it. */
+    kind: text("kind").notNull().default("regular"),
+    /** What an off-cycle run is for, e.g. "Diwali bonus". */
+    label: text("label"),
     periodStart: date("period_start", { mode: "string" }).notNull(),
     periodEnd: date("period_end", { mode: "string" }).notNull(),
     payDate: date("pay_date", { mode: "string" }),
@@ -74,7 +79,7 @@ export const payrollRuns = pgTable(
     bankFileExportedAt: timestamp("bank_file_exported_at", { withTimezone: true }),
     ...timestamps,
   },
-  (t) => [uniqueIndex("payroll_runs_tenant_entity_period_uq").on(t.tenantId, t.entityId, t.periodStart)],
+  (t) => [uniqueIndex("payroll_runs_tenant_entity_period_uq").on(t.tenantId, t.entityId, t.periodStart).where(sql`${t.kind} = 'regular'`)],
 );
 
 export interface ItemSnapshot {

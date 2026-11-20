@@ -419,6 +419,16 @@ export const structureRevisionSchema = z.object({
  * first day, or nothing for the next period after their last run.
  */
 export const payrollRunCreateSchema = z.object({ month: monthSchema.optional(), periodStart: nullable(isoDate), payDate: nullable(isoDate), entityId: nullable(z.string().min(1)) });
+/** An off-cycle run: one-off payments (bonus, arrears, incentive) outside the regular payroll. */
+export const offCycleRunSchema = z.object({
+  entityId: nullable(z.string().min(1)),
+  label: trimmed(80).pipe(z.string().min(1, "Say what the payment is for")),
+  payDate: isoDate,
+  lines: z
+    .array(z.object({ employeeId: z.string().min(1), label: nullable(trimmed(80)), amount: z.coerce.number().positive("Amount must be more than zero").max(1e8), taxable: z.boolean().default(true) }))
+    .min(1, "Add at least one payment")
+    .max(2000),
+});
 export const payrollAdjustmentSchema = z.object({
   employeeId: z.string().min(1),
   kind: z.enum(["earning", "deduction"]),
