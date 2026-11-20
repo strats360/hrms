@@ -45,6 +45,8 @@ const router = createBrowserRouter([
   { path: "/careers/:slug", element: L(() => import("@/pages/careers/Careers")) },
   { path: "/careers/:slug/jobs/:id", element: L(() => import("@/pages/careers/Careers").then((m) => ({ default: m.CareersJob }))) },
   { path: "/invite/admin/:token", element: L(() => import("@/pages/auth/AdminInvite")) },
+  { path: "/tools", element: L(() => import("@/pages/tools/Tools")) },
+  { path: "/tools/:tool", element: L(() => import("@/pages/tools/Tools")) },
   {
     element: <RequireAuth />,
     children: [

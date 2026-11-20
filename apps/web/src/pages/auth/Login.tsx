@@ -163,6 +163,7 @@ export default function Login() {
             New company? Start free trial
           </Link>
           <span className="text-muted">Got an invite? Use the link in your email.</span>
+          <Link to="/tools" className="no-underline">Free tax and gratuity calculators</Link>
         </div>
       </form>
     </AuthShell>
