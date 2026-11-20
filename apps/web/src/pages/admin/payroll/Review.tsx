@@ -15,7 +15,7 @@ import { Input, Segmented, Select } from "@/components/ui/field";
 import { Empty, ErrorState, Loading, Notice } from "@/components/ui/page";
 import { Tag } from "@/components/ui/tag";
 import { PayslipDialog } from "@/components/payroll/PayslipDialog";
-import { monthLabel } from "@/components/payroll/Payslip";
+import { monthLabel, runLabel } from "@/components/payroll/Payslip";
 import { RUN_STATUS_LABEL } from "@/components/payroll/PayrollCard";
 import { AdjustmentDialog, HoldDialog, LopDialog } from "@/components/payroll/review/dialogs";
 import { OvertimeDialog } from "@/components/payroll/review/OvertimeDialog";
@@ -175,7 +175,7 @@ export default function Review() {
         <Select className="!w-[230px]" value={run.id} onChange={(e) => setParams({ run: e.target.value })} aria-label="Payroll month">
           {reviewable.map((r) => (
             <option key={r.id} value={r.id}>
-              {monthLabel(r.month)} · {RUN_STATUS_LABEL[r.status]}
+              {runLabel(r)} · {RUN_STATUS_LABEL[r.status]}
             </option>
           ))}
         </Select>
@@ -214,7 +214,7 @@ export default function Review() {
       ) : (
         <Notice tone="ok">
           <span className="inline-flex items-center gap-1.5">
-            <Lock size={14} /> {monthLabel(run.month)} is {run.status === "paid" ? "paid" : "approved and locked"}
+            <Lock size={14} /> {runLabel(run)} is {run.status === "paid" ? "paid" : "approved and locked"}
             {run.approvedByName ? ` by ${run.approvedByName}` : ""}. Changes go into next month as arrears or recoveries.
           </span>
         </Notice>
@@ -223,7 +223,7 @@ export default function Review() {
       <TableCard>
         <div className="flex flex-wrap items-center justify-between gap-2 py-2">
           <div className="card-title text-[17px]">
-            {monthLabel(run.month)} · {items.data?.length ?? 0} {filter === "all" && !term && !department ? "employees" : "shown"}
+            {runLabel(run)} · {items.data?.length ?? 0} {filter === "all" && !term && !department ? "employees" : "shown"}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Input className="!w-[220px]" placeholder="Search name or ID" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search employees" />

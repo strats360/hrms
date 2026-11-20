@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import { closeRepaidLoans } from "../services/loans";
 import { allowedRecipients } from "../services/notifications";
-import { and, asc, desc, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, ilike, inArray, lt, lte, or, sql } from "drizzle-orm";
 import {
   attendanceCorrections,
   employees,
@@ -15,7 +15,7 @@ import {
   employeeIdentities,
   user,
 } from "@hrms/db";
-import { taxMonthOf, taxYearOf, buildMudadSheet, buildQatarWps, buildWpsSif, checkMudad, checkQatarWps, checkWps, can, decryptField, markPaidSchema, payrollAdjustmentSchema, payrollItemPatchSchema, payrollRunCreateSchema, reopenSchema, structureFromComponents, templateFor, minimumWageShortfall, structureFromCtc, structureRevisionSchema, tenantPayrollSettingsSchema, todayLocal, fmtDate, fmtMoney, zonedDateTime } from "@hrms/shared";
+import { isPeriodStart, nextPeriod, periodContaining, periodLabel, type PayFrequency, type PayPeriod, taxMonthOf, taxYearOf, buildMudadSheet, buildQatarWps, buildWpsSif, checkMudad, checkQatarWps, checkWps, can, decryptField, markPaidSchema, payrollAdjustmentSchema, payrollItemPatchSchema, payrollRunCreateSchema, reopenSchema, structureFromComponents, templateFor, minimumWageShortfall, structureFromCtc, structureRevisionSchema, tenantPayrollSettingsSchema, todayLocal, fmtDate, fmtMoney, zonedDateTime } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
 import { requirePerm } from "../lib/context";
@@ -250,22 +250,42 @@ payrollRoutes.get("/runs", requirePerm("payroll", "view"), async (c) => {
 payrollRoutes.post("/runs", requirePerm("payroll", "edit"), v("json", payrollRunCreateSchema), async (c) => {
   const b = c.req.valid("json");
   const db = c.get("db");
-  const { start, end } = monthBounds(b.month);
   // each legal entity runs its own payroll; without one, the default entity
   const entities = await listEntities(db, tid(c));
   const ent = b.entityId ? entities.find((e) => e.id === b.entityId) : entities.find((e) => e.isDefault);
   if (!ent) throw badRequest("Pick one of your legal entities");
   const label = entities.length > 1 ? ` for ${ent.name}` : "";
   const scope = and(eq(payrollRuns.tenantId, tid(c)), eq(payrollRuns.entityId, ent.id));
-  const [exists] = await db.select({ id: payrollRuns.id }).from(payrollRuns).where(and(scope, eq(payrollRuns.month, b.month)));
-  if (exists) throw conflict(`A payroll run${label} for ${b.month} already exists`);
-  const [open] = await db.select({ month: payrollRuns.month }).from(payrollRuns).where(and(scope, inArray(payrollRuns.status, ["draft", "calculated"]), sql`${payrollRuns.month} < ${b.month}`));
-  if (open) throw badRequest(`Finish the ${open.month} payroll${label} first (approve and lock it)`);
+  const frequency = (ent.payFrequency ?? "monthly") as PayFrequency;
+
+  // the pay period: a month, or the entity's next (or given) shorter period
+  let period: PayPeriod;
+  if (frequency === "monthly") {
+    if (!b.month) throw badRequest("Give the payroll month");
+    period = periodContaining("monthly", `${b.month}-01`);
+  } else {
+    const anchor = ent.payAnchor;
+    if (b.periodStart) {
+      if (!isPeriodStart(frequency, b.periodStart, anchor)) throw badRequest(`${fmtDate(b.periodStart)} isn't the first day of a pay period on this entity's calendar`);
+      period = periodContaining(frequency, b.periodStart, anchor);
+    } else {
+      // an open run is the one to carry on with
+      const [openRun] = await db.select().from(payrollRuns).where(and(scope, inArray(payrollRuns.status, ["draft", "calculated"]))).orderBy(asc(payrollRuns.periodStart)).limit(1);
+      if (openRun) return c.json(openRun, 200);
+      const [last] = await db.select().from(payrollRuns).where(scope).orderBy(desc(payrollRuns.periodStart)).limit(1);
+      period = last ? nextPeriod(periodContaining(frequency, last.periodStart, anchor), anchor) : periodContaining(frequency, todayLocal(), anchor);
+    }
+  }
+  const name = periodLabel({ frequency, periodStart: period.start, periodEnd: period.end, month: period.month });
+  const [exists] = await db.select({ id: payrollRuns.id }).from(payrollRuns).where(and(scope, eq(payrollRuns.periodStart, period.start)));
+  if (exists) throw conflict(`A payroll run${label} for ${name} already exists`);
+  const [open] = await db.select({ month: payrollRuns.month, frequency: payrollRuns.frequency, periodStart: payrollRuns.periodStart, periodEnd: payrollRuns.periodEnd }).from(payrollRuns).where(and(scope, inArray(payrollRuns.status, ["draft", "calculated"]), lt(payrollRuns.periodStart, period.start)));
+  if (open) throw badRequest(`Finish the ${periodLabel(open)} payroll${label} first (approve and lock it)`);
   const [run] = await db
     .insert(payrollRuns)
-    .values({ tenantId: tid(c), entityId: ent.id, month: b.month, periodStart: start, periodEnd: end, payDate: b.payDate ?? defaultPayDate(b.month), preparedBy: uid(c) })
+    .values({ tenantId: tid(c), entityId: ent.id, month: period.month, frequency, periodStart: period.start, periodEnd: period.end, payDate: b.payDate ?? (frequency === "monthly" ? defaultPayDate(period.month) : period.payDate), preparedBy: uid(c) })
     .returning();
-  await audit(c, { action: "payroll.run_create", entity: "payroll_run", entityId: run!.id, summary: `Started payroll${label} for ${b.month}` });
+  await audit(c, { action: "payroll.run_create", entity: "payroll_run", entityId: run!.id, summary: `Started payroll${label} for ${name}` });
   return c.json(run, 201);
 });
 
@@ -288,7 +308,7 @@ payrollRoutes.get("/runs/:id", requirePerm("payroll", "view"), async (c) => {
   const run = await loadRun(c, c.req.param("id"));
   const db = c.get("db");
   const n = await names(c, [run.calculatedBy, run.approvedBy, run.paidBy, run.preparedBy]);
-  const [prev] = await db.select().from(payrollRuns).where(and(eq(payrollRuns.tenantId, tid(c)), eq(payrollRuns.entityId, run.entityId), sql`${payrollRuns.month} < ${run.month}`)).orderBy(desc(payrollRuns.month)).limit(1);
+  const [prev] = await db.select().from(payrollRuns).where(and(eq(payrollRuns.tenantId, tid(c)), eq(payrollRuns.entityId, run.entityId), lt(payrollRuns.periodStart, run.periodStart))).orderBy(desc(payrollRuns.periodStart)).limit(1);
   const ent = await entityOf(db, tid(c), run.entityId);
   return c.json({
     ...run,
@@ -351,7 +371,7 @@ payrollRoutes.get("/runs/:id/items", requirePerm("payroll", "view"), v("query", 
   if (q.filter === "lop") conds.push(sql`coalesce(${payrollItems.lopOverride}, ${payrollItems.lopDays}) > 0`);
   if (q.filter === "hold") conds.push(eq(payrollItems.onHold, true));
   const rows = await c.get("db").select().from(payrollItems).where(and(...conds)).orderBy(asc(sql`${payrollItems.snapshot}->>'name'`));
-  const prevRun = (await c.get("db").select({ id: payrollRuns.id }).from(payrollRuns).where(and(eq(payrollRuns.tenantId, tid(c)), eq(payrollRuns.entityId, run.entityId), sql`${payrollRuns.month} < ${run.month}`)).orderBy(desc(payrollRuns.month)).limit(1))[0];
+  const prevRun = (await c.get("db").select({ id: payrollRuns.id }).from(payrollRuns).where(and(eq(payrollRuns.tenantId, tid(c)), eq(payrollRuns.entityId, run.entityId), lt(payrollRuns.periodStart, run.periodStart))).orderBy(desc(payrollRuns.periodStart)).limit(1))[0];
   const prevNet = prevRun
     ? new Map((await c.get("db").select({ e: payrollItems.employeeId, net: payrollItems.net }).from(payrollItems).where(eq(payrollItems.runId, prevRun.id))).map((r) => [r.e, Number(r.net)]))
     : new Map<string, number>();
@@ -431,7 +451,7 @@ payrollRoutes.post("/runs/:id/reopen", requirePerm("payroll", "configure"), v("j
   if (run.bankFileExportedAt) throw badRequest("The bank file was already exported. Cancel the bank upload before reopening, then try again.");
   const batch = await activeBatchForRun(c.get("db"), run.id);
   if (batch) throw badRequest(`Payment batch ${batch.code} pays this payroll. Cancel it in Payments first.`);
-  const [later] = await c.get("db").select({ month: payrollRuns.month }).from(payrollRuns).where(and(eq(payrollRuns.tenantId, tid(c)), eq(payrollRuns.entityId, run.entityId), sql`${payrollRuns.month} > ${run.month}`)).limit(1);
+  const [later] = await c.get("db").select({ month: payrollRuns.month }).from(payrollRuns).where(and(eq(payrollRuns.tenantId, tid(c)), eq(payrollRuns.entityId, run.entityId), gt(payrollRuns.periodStart, run.periodStart))).limit(1);
   if (later) throw badRequest(`Payroll for ${later.month} already exists. Discard it first.`);
   const [row] = await c.get("db").update(payrollRuns).set({ status: "calculated", approvedBy: null, approvedAt: null, publishedAt: null }).where(eq(payrollRuns.id, run.id)).returning();
   await audit(c, { action: "payroll.reopen", entity: "payroll_run", entityId: run.id, summary: `Reopened ${run.month} payroll`, data: c.req.valid("json") });
@@ -682,7 +702,7 @@ payrollRoutes.get("/runs/:id/rti.csv", requirePerm("payroll", "export"), async (
         .select({ item: payrollItems })
         .from(payrollItems)
         .innerJoin(payrollRuns, eq(payrollRuns.id, payrollItems.runId))
-        .where(and(eq(payrollRuns.tenantId, tid(c)), eq(payrollRuns.entityId, run.entityId), inArray(payrollRuns.status, ["approved", "paid"]), gte(payrollRuns.month, startMonth), sql`${payrollRuns.month} < ${run.month}`, inArray(payrollItems.employeeId, ids)))
+        .where(and(eq(payrollRuns.tenantId, tid(c)), eq(payrollRuns.entityId, run.entityId), inArray(payrollRuns.status, ["approved", "paid"]), gte(payrollRuns.month, startMonth), lt(payrollRuns.periodStart, run.periodStart), inArray(payrollItems.employeeId, ids)))
     : [];
   const [emps, ninos] = ids.length
     ? await Promise.all([

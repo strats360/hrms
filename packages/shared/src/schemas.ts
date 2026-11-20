@@ -1,3 +1,4 @@
+import { PAY_FREQUENCIES } from "./pay-periods";
 import { z } from "zod";
 import { NOTIFICATION_KEYS } from "./notifications";
 import { EXPORT_COLUMNS, EXPORT_DATE_FORMATS, EXPORT_FILE_TYPES, type ExportColumnKey } from "./payments";
@@ -413,7 +414,11 @@ export const structureRevisionSchema = z.object({
   components: salaryComponentsSchema.nullable().optional(),
   reason: nullable(trimmed(200)),
 });
-export const payrollRunCreateSchema = z.object({ month: monthSchema, payDate: nullable(isoDate), entityId: nullable(z.string().min(1)) });
+/**
+ * Start a payroll run. Monthly entities give the month. Entities paid more often give the period's
+ * first day, or nothing for the next period after their last run.
+ */
+export const payrollRunCreateSchema = z.object({ month: monthSchema.optional(), periodStart: nullable(isoDate), payDate: nullable(isoDate), entityId: nullable(z.string().min(1)) });
 export const payrollAdjustmentSchema = z.object({
   employeeId: z.string().min(1),
   kind: z.enum(["earning", "deduction"]),
@@ -710,5 +715,9 @@ export const legalEntitySchema = z.object({
   state: nullable(trimmed(80)),
   address: nullable(trimmed(400)),
   registrations: z.record(z.string().max(40), z.string().trim().max(60).nullable()).default({}),
+  /** How often the entity pays. Only the frequencies its country pack supports are accepted. */
+  payFrequency: z.enum(PAY_FREQUENCIES).default("monthly"),
+  /** The first day of any one pay period, for biweekly and weekly pay. */
+  payAnchor: nullable(isoDate),
   isDefault: z.boolean().optional(),
 });

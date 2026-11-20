@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { COUNTRIES, fmtDate, hasPackFor, INDIAN_STATES, legalEntitySchema, packFor, type CountryCode, type CountryInfo } from "@hrms/shared";
+import { COUNTRIES, fmtDate, hasPackFor, PAY_FREQUENCY_LABELS, type PayFrequency, INDIAN_STATES, legalEntitySchema, packFor, type CountryCode, type CountryInfo } from "@hrms/shared";
 import { api } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,8 @@ interface Entity {
   address: string | null;
   registrations: Record<string, string | null>;
   isDefault: boolean;
+  payFrequency: PayFrequency;
+  payAnchor: string | null;
   employees: number;
   emiratisation: {
     nationals: number;
@@ -118,7 +120,10 @@ export default function Entities() {
                       <div className="text-muted text-[12px]">{[e.code, e.legalName && e.legalName !== e.name ? e.legalName : null].filter(Boolean).join(" · ")}</div>
                     </td>
                     <td>{e.countryName}</td>
-                    <td>{e.currency}</td>
+                    <td>
+                      {e.currency}
+                      {e.payFrequency && e.payFrequency !== "monthly" ? <div className="text-muted text-[12px]">{PAY_FREQUENCY_LABELS[e.payFrequency]}</div> : null}
+                    </td>
                     <td className="text-muted text-[12.5px]">{e.timeZone}</td>
                     <td className="num text-end">{e.employees}</td>
                     {editable ? (
@@ -197,7 +202,7 @@ export default function Entities() {
               <Input value={edit.legalName ?? ""} onChange={(e) => setEdit({ ...edit, legalName: e.target.value })} placeholder="As registered" />
             </Field>
             <Field label="Country" hint={edit.id && edit.employees ? "Can't change while the entity has employees" : undefined}>
-              <Select value={edit.country} disabled={!!(edit.id && edit.employees)} onChange={(e) => { const c = e.target.value as CountryCode; setEdit({ ...edit, country: c, timeZone: COUNTRIES[c].timeZone, currency: COUNTRIES[c].currency, registrations: {} }); }}>
+              <Select value={edit.country} disabled={!!(edit.id && edit.employees)} onChange={(e) => { const c = e.target.value as CountryCode; setEdit({ ...edit, country: c, timeZone: COUNTRIES[c].timeZone, currency: COUNTRIES[c].currency, registrations: {}, payFrequency: "monthly", payAnchor: null }); }}>
                 {countries.map((c) => (
                   <option key={c.code} value={c.code}>{c.name}</option>
                 ))}
@@ -227,6 +232,20 @@ export default function Entities() {
                     <option key={s}>{s}</option>
                   ))}
                 </Select>
+              </Field>
+            ) : null}
+            {(pack?.payroll.payFrequencies?.length ?? 0) > 1 ? (
+              <Field label="Pay frequency" hint={edit.id && edit.employees ? "Finish any open payroll first" : undefined}>
+                <Select value={edit.payFrequency ?? "monthly"} onChange={(e) => setEdit({ ...edit, payFrequency: e.target.value as PayFrequency })}>
+                  {pack!.payroll.payFrequencies!.map((f) => (
+                    <option key={f} value={f}>{PAY_FREQUENCY_LABELS[f]}</option>
+                  ))}
+                </Select>
+              </Field>
+            ) : null}
+            {edit.payFrequency === "biweekly" || edit.payFrequency === "weekly" ? (
+              <Field label="First day of a pay period" hint="Any one period's start; the rest run on from it">
+                <Input type="date" value={edit.payAnchor ?? ""} onChange={(e) => setEdit({ ...edit, payAnchor: e.target.value || null })} />
               </Field>
             ) : null}
             <Field label="Currency" hint="Set by the country">

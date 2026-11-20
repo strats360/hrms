@@ -15,7 +15,7 @@ import { Input, Select } from "@/components/ui/field";
 import { Empty, ErrorState, Loading, Notice } from "@/components/ui/page";
 import { Tag } from "@/components/ui/tag";
 import { PayslipDialog } from "@/components/payroll/PayslipDialog";
-import { monthLabel } from "@/components/payroll/Payslip";
+import { monthLabel, runLabel } from "@/components/payroll/Payslip";
 import { confirmAction } from "@/components/ui/confirm";
 
 export default function Payslips() {
@@ -93,7 +93,7 @@ export default function Payslips() {
           </div>
         ),
       },
-      { id: "month", header: "Month", enableSorting: false, cell: () => (run ? monthLabel(run.month) : "") },
+      { id: "month", header: "Month", enableSorting: false, cell: () => (run ? runLabel(run) : "") },
       { id: "paid", header: "Paid days", accessorFn: (r) => r.paidDays, cell: ({ row: { original: r } }) => `${r.paidDays} / ${r.daysInMonth}` },
       { id: "gross", header: "Gross", accessorFn: (r) => r.gross, meta: { align: "right" }, cell: ({ getValue }) => fmtMoney(getValue<number>()) },
       { id: "net", header: "Net pay", accessorFn: (r) => r.net, meta: { align: "right" }, cell: ({ getValue }) => <span className="font-semibold">{fmtMoney(getValue<number>())}</span> },
@@ -143,14 +143,14 @@ export default function Payslips() {
       <TableCard>
         <CardHeader
           className="py-2"
-          title={`Payslips · ${monthLabel(run.month)} ${run.publishedAt ? "(published)" : "(not published yet)"}`}
+          title={`Payslips · ${runLabel(run)} ${run.publishedAt ? "(published)" : "(not published yet)"}`}
           sub={run.publishedAt ? `Published ${fmtDate(run.publishedAt.slice(0, 10))}. Employees see these in self-service.` : "Employees can't see these until you publish them."}
           actions={
             <>
               <Select className="!w-[200px]" value={run.id} onChange={(e) => setParams({ run: e.target.value })} aria-label="Payroll month">
                 {locked.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {monthLabel(r.month)}
+                    {runLabel(r)}
                   </option>
                 ))}
               </Select>
@@ -168,7 +168,7 @@ export default function Payslips() {
                 </Button>
               ) : null}
               {run.publishedAt && can("payroll", "approve") ? (
-                <Button loading={!!mailing} onClick={() => void confirmAction({ title: `Email ${monthLabel(run.month)} payslips?`, body: "Each employee gets their payslip as a PDF. Anyone already sent one is skipped.", confirmLabel: "Send emails" }).then((ok) => { if (ok) void emailPdfs(false); })}>
+                <Button loading={!!mailing} onClick={() => void confirmAction({ title: `Email ${runLabel(run)} payslips?`, body: "Each employee gets their payslip as a PDF. Anyone already sent one is skipped.", confirmLabel: "Send emails" }).then((ok) => { if (ok) void emailPdfs(false); })}>
                   <Mail size={15} /> {mailing ? `Sent ${mailing.sent}…` : "Email PDFs"}
                 </Button>
               ) : null}

@@ -1,9 +1,15 @@
+import { periodLabel } from "@hrms/shared";
 import { fmtDate, fmtMoney, rupeesInWords } from "@hrms/shared";
 import type { PayLine, PayslipView } from "@/lib/types";
 import { Tag } from "@/components/ui/tag";
 
 export function monthLabel(month: string) {
   return new Date(month + "-01T00:00:00Z").toLocaleDateString("en-IN", { month: "long", year: "numeric", timeZone: "UTC" });
+}
+
+/** A payroll run's name: its month, or its pay period ("1 to 15 Mar 2026") when the entity pays more often. */
+export function runLabel(run: { month: string; frequency?: string | null; periodStart: string; periodEnd: string }) {
+  return !run.frequency || run.frequency === "monthly" ? monthLabel(run.month) : periodLabel(run);
 }
 
 function Lines({ title, lines, total, totalLabel }: { title: string; lines: PayLine[]; total: number; totalLabel: string }) {

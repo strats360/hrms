@@ -199,7 +199,7 @@ Cloudflare is one account for all instances. Neon is roughly $19 a month per pro
    - **Employee form:** US entities get a W-4 section. SSN and I-9 work authorization live under IDs & visas, with I-9 expiry reminders. Bank details take an ABA routing number.
    - **Final pay:** unused PTO at salary over 260 days; no statutory notice or severance (at will).
    - **Federal holidays,** observed on the nearest weekday.
-   - Still to do: pick the payroll partner and connect it (state and local income tax, SUI, Forms 941 and 940, W-2s, state filings, and money movement); biweekly and semi-monthly pay (runs are monthly today); golden cases signed off by a US payroll professional (`packages/shared/golden/US.json`).
+   - Still to do: pick the payroll partner and connect it (state and local income tax, SUI, Forms 941 and 940, W-2s, state filings, and money movement); golden cases signed off by a US payroll professional (`packages/shared/golden/US.json`).
 6. Canada: federal and provincial income tax, CPP or QPP, EI, ROE and T4 (or a payroll partner, as for the USA) ✅ for federal and Ontario payroll; other provinces and filings through the partner. What's in it (2026, CRA's T4127 formulas):
    - **Federal income tax:** annualised, with credits at the lowest rate for the TD1 claim (or the basic personal amount, reduced for high earners), CPP base contributions, EI premiums and the Canada employment amount. Quebec residents get the 16.5% abatement.
    - **Ontario income tax:** the brackets, surtax and Ontario health premium.
@@ -208,6 +208,16 @@ Cloudflare is one account for all instances. Neon is roughly $19 a month per pro
    - **Employee form:** Canadian entities get a TD1 section (federal and provincial claims, extra tax, CPP and EI exemptions). SIN goes under IDs & visas. Bank details take transit and institution numbers.
    - **Final pay:** unused vacation, and Ontario ESA termination pay in lieu of notice (a week per year, up to eight).
    - **Ontario's public holidays,** with Easter, Family Day and Victoria Day worked out.
-   - Still to do: Quebec income tax and the other provinces and territories (through the payroll partner, or added one by one); remittances, T4s and ROEs (partner); ESA severance pay and other provinces' notice rules (manual lines for now); biweekly pay; golden cases signed off by a Canadian payroll professional (`packages/shared/golden/CA.json`).
+   - Still to do: Quebec income tax and the other provinces and territories (through the payroll partner, or added one by one); remittances, T4s and ROEs (partner); ESA severance pay and other provinces' notice rules (manual lines for now); golden cases signed off by a Canadian payroll professional (`packages/shared/golden/CA.json`).
 
 Compliance details for each country are a starting point only. Every pack needs sign off from a local expert before it pays anyone.
+
+## Pay frequency
+
+Each legal entity has a pay frequency. Monthly is the default and the only option where the country's rules are monthly (India, the Gulf and the UK for now). US and Canadian entities can also pay twice a month (the 1st to 15th and the 16th to the month's end, paid on the 15th and the last day), every two weeks or weekly. Biweekly and weekly periods run on from an anchor date, the first day of any one period, and are paid the Friday after they end.
+
+- A run is one pay period of one entity. Runs are unique by their start date, so a month can hold two or three of them; the run's month is the month its pay date falls in.
+- Salary structures stay monthly. The payslip pays 12/24 of a month twice a month, 12/26 every two weeks and 12/52 weekly, and unpaid days are counted against the period's own days.
+- The US and Canada packs annualise tax by the real number of pays, and Canada spreads the CPP exemption over them. Year to date figures and "the previous run" go by period start.
+- Monthly loan instalments come out once a month, in the first pay of the month.
+- Run payroll opens the entity's open run or starts the next period. An entity's frequency can't change while it has an open run.

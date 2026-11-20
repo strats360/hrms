@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ErrorState, Loading, PageHeader } from "@/components/ui/page";
 import { Tag } from "@/components/ui/tag";
-import { monthLabel } from "@/components/payroll/Payslip";
+import { monthLabel, runLabel } from "@/components/payroll/Payslip";
 import { RUN_STATUS_LABEL } from "@/components/payroll/PayrollCard";
 import { DONE_UPTO, MAX_STEP, START_STEP, STEPS } from "@/components/payroll/wizard/shared";
 import { StepApprove, StepAttendance, StepCalculate, StepInputs, StepMonth, StepPayout, StepReview } from "@/components/payroll/wizard/Steps";
@@ -49,11 +49,11 @@ export default function RunWizard() {
         <Link to="/payroll" className="inline-flex items-center gap-1 text-[13px] no-underline">
           <ChevronLeft size={14} /> All payroll runs
         </Link>
-        <PageHeader title={`${monthLabel(run.month)} payroll`} sub={`${run.totals?.employees ?? "No"} employees · ${RUN_STATUS_LABEL[run.status]}`} actions={<Tag tone={RUN_TONE[run.status]}>{RUN_STATUS_LABEL[run.status]}</Tag>} />
+        <PageHeader title={`${runLabel(run)} payroll`} sub={`${run.totals?.employees ?? "No"} employees · ${RUN_STATUS_LABEL[run.status]}`} actions={<Tag tone={RUN_TONE[run.status]}>{RUN_STATUS_LABEL[run.status]}</Tag>} />
       </div>
       <div className="grid items-start gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
         <Card className="!gap-0.5 !p-3 lg:sticky lg:top-[90px]">
-          <div className="card-kicker px-2 pb-2">{monthLabel(run.month)} run</div>
+          <div className="card-kicker px-2 pb-2">{runLabel(run)} run</div>
           <nav aria-label="Payroll steps" className="flex flex-col gap-0.5">
             {STEPS.map((s, i) => {
               const n = i + 1;

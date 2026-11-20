@@ -15,7 +15,7 @@ import { Loading, Notice } from "@/components/ui/page";
 import { StatCard } from "@/components/ui/card";
 import { Tag } from "@/components/ui/tag";
 import { Spinner } from "@/components/ui/spinner";
-import { monthLabel } from "@/components/payroll/Payslip";
+import { monthLabel, runLabel } from "@/components/payroll/Payslip";
 import { PayslipDialog } from "@/components/payroll/PayslipDialog";
 import { isLocked, Money, names, pctChange, Row, statutoryOutflow } from "./shared";
 
@@ -52,7 +52,7 @@ export function StepMonth({ run }: { run: PayrollRun }) {
     <>
       <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(220px, 100%), 1fr))" }}>
         <Field label="Payroll month">
-          <Input value={monthLabel(run.month)} readOnly />
+          <Input value={runLabel(run)} readOnly />
         </Field>
         <Field label="Pay period">
           <Input value={`${fmtDate(run.periodStart, false)} – ${fmtDate(run.periodEnd)}`} readOnly />
@@ -351,7 +351,7 @@ export function StepReview({ run }: { run: PayrollRun }) {
           <thead>
             <tr>
               <th />
-              <th style={{ textAlign: "right" }}>{monthLabel(run.month)}</th>
+              <th style={{ textAlign: "right" }}>{runLabel(run)}</th>
               <th style={{ textAlign: "right" }}>{run.previous ? monthLabel(run.previous.month) : "Last month"}</th>
               <th style={{ textAlign: "right" }}>Change</th>
             </tr>
@@ -409,7 +409,7 @@ export function StepApprove({ run }: { run: PayrollRun }) {
     mutationFn: () => api.post<PayrollRun>(`/admin/payroll/runs/${run.id}/approve`),
     meta: { silent: true },
     onSuccess: () => {
-      toast.success(`${monthLabel(run.month)} payroll approved and locked`);
+      toast.success(`${runLabel(run)} payroll approved and locked`);
       setConfirmOpen(false);
       setError(null);
       invalidate();
@@ -452,7 +452,7 @@ export function StepApprove({ run }: { run: PayrollRun }) {
           <span className="text-muted">→</span>
           {isLocked(run) ? <Tag tone="ok">{run.approvedByName ?? "Approver"} · approved & locked</Tag> : <Tag tone="warn">Approve & lock</Tag>}
         </div>
-        <div className="text-muted text-[12.5px]">The person who calculated the payroll can't approve it, unless they're a super admin. Locking freezes attendance, salary structures and amounts for {monthLabel(run.month)}.</div>
+        <div className="text-muted text-[12.5px]">The person who calculated the payroll can't approve it, unless they're a super admin. Locking freezes attendance, salary structures and amounts for {runLabel(run)}.</div>
       </div>
       {error ? <Notice tone="bad">{error}</Notice> : null}
       {!isLocked(run) && pendingCorr > 0 && !error ? (
@@ -479,7 +479,7 @@ export function StepApprove({ run }: { run: PayrollRun }) {
       ) : can("payroll", "approve") ? (
         <div>
           <Button variant="primary" disabled={pendingCorr > 0} onClick={() => setConfirmOpen(true)}>
-            <Lock size={16} /> Approve & lock {monthLabel(run.month).split(" ")[0]} payroll
+            <Lock size={16} /> Approve & lock this payroll
           </Button>
         </div>
       ) : (
@@ -489,7 +489,7 @@ export function StepApprove({ run }: { run: PayrollRun }) {
       <Dialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title={`Approve and lock ${monthLabel(run.month)}?`}
+        title={`Approve and lock ${runLabel(run)}?`}
         description="After locking, attendance, salary structures and amounts for this month can't change unless a super admin reopens it."
         footer={
           <>
@@ -549,7 +549,7 @@ export function StepPayout({ run }: { run: PayrollRun }) {
   const markPaid = useMutation({
     mutationFn: () => api.post(`/admin/payroll/runs/${run.id}/mark-paid`, { paidOn, reference: reference.trim() || null }),
     onSuccess: () => {
-      toast.success(`${monthLabel(run.month)} payroll marked as paid`);
+      toast.success(`${runLabel(run)} payroll marked as paid`);
       setPaidOpen(false);
       invalidate();
     },

@@ -23,9 +23,13 @@ export function useStartCurrentRun() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const runs = usePayrollRuns();
+  const lookups = useLookups();
   const month = todayLocal().slice(0, 7);
   return useMutation({
     mutationFn: async (entityId?: string | void) => {
+      const ent = lookups.data?.entities?.find((x) => (entityId ? x.id === entityId : x.isDefault));
+      // entities paid more often than monthly: the server opens the current run or the next period
+      if (ent?.payFrequency && ent.payFrequency !== "monthly") return api.post<PayrollRun>("/admin/payroll/runs", { entityId: ent.id });
       const existing = runs.data?.find((r) => r.month === month && (!entityId || r.entityId === entityId));
       if (existing && (entityId || runs.data?.filter((r) => r.month === month).length === 1)) return existing;
       return api.post<PayrollRun>("/admin/payroll/runs", { month, entityId: entityId || null });

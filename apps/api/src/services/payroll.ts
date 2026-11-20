@@ -20,6 +20,10 @@ import {
 import {
   computePayslip,
   packFor,
+  periodContaining,
+  periodIndex,
+  PERIODS_PER_YEAR,
+  type PayFrequency,
   dateRange,
   daysInMonth,
   DEFAULT_SALARY_TEMPLATE,
@@ -134,7 +138,7 @@ export async function insuredSince(db: Database, tenantId: string, ids: string[]
 }
 
 /** Year-to-date figures (approved/paid runs earlier in the same tax year, which starts in `startMonth`: April unless the country says otherwise). */
-export async function yearToDate(db: Database, tenantId: string, month: string, startMonth = 4) {
+export async function yearToDate(db: Database, tenantId: string, month: string, startMonth = 4, beforeStart = `${month}-01`) {
   const y = Number(month.slice(0, 4));
   const fyStart = `${Number(month.slice(5, 7)) >= startMonth ? y : y - 1}-${String(startMonth).padStart(2, "0")}`;
   const rows = await db
@@ -147,12 +151,12 @@ export async function yearToDate(db: Database, tenantId: string, month: string, 
     })
     .from(payrollItems)
     .innerJoin(payrollRuns, eq(payrollRuns.id, payrollItems.runId))
-    .where(and(eq(payrollRuns.tenantId, tenantId), gte(payrollRuns.month, fyStart), lt(payrollRuns.month, month), inArray(payrollRuns.status, ["approved", "paid"])))
+    .where(and(eq(payrollRuns.tenantId, tenantId), gte(payrollRuns.month, fyStart), lt(payrollRuns.periodStart, beforeStart), inArray(payrollRuns.status, ["approved", "paid"])))
     .groupBy(payrollItems.employeeId);
   const [anyRun] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(payrollRuns)
-    .where(and(eq(payrollRuns.tenantId, tenantId), gte(payrollRuns.month, fyStart), lt(payrollRuns.month, month), inArray(payrollRuns.status, ["approved", "paid"])));
+    .where(and(eq(payrollRuns.tenantId, tenantId), gte(payrollRuns.month, fyStart), lt(payrollRuns.periodStart, beforeStart), inArray(payrollRuns.status, ["approved", "paid"])));
   return { byEmployee: new Map(rows.map((r) => [r.employeeId, r])), hasHistory: (anyRun?.n ?? 0) > 0 };
 }
 
@@ -236,7 +240,10 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
   if (!run) throw notFound("Payroll run");
   if (run.status !== "draft" && run.status !== "calculated") throw badRequest("This payroll is locked. Reopen it to recalculate.");
 
-  const { start, end, days } = monthBounds(run.month);
+  // the run's own period: a month, or a shorter pay period
+  const start = run.periodStart;
+  const end = run.periodEnd;
+  const days = dateRange(start, end).length;
   const [tenant] = await db.select().from(tenants).where(eq(tenants.id, tenantId));
   const template = await getTemplate(db, tenantId);
   const statutory = tenant?.statutory ?? {};
@@ -245,10 +252,12 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
   const emps = await payableEmployees(db, tenantId, start, end, ent);
   const ids = emps.map((x) => x.e.id);
   // this month's loan and advance instalments, as deduction lines
-  await syncLoanRecoveries(db, { id: run.id, tenantId, month: run.month }, ids);
+  // monthly loan instalments come out once a month: in the first pay of the month when pay is more often
+  const [earlierThisMonth] = run.frequency === "monthly" ? [] : await db.select({ id: payrollRuns.id }).from(payrollRuns).where(and(eq(payrollRuns.tenantId, tenantId), eq(payrollRuns.entityId, run.entityId), eq(payrollRuns.month, run.month), lt(payrollRuns.periodStart, run.periodStart))).limit(1);
+  await syncLoanRecoveries(db, { id: run.id, tenantId, month: run.month }, earlierThisMonth ? [] : ids);
   const [structs, ytd, unpaid, adjustments, existing, decls] = await Promise.all([
     structuresAsOf(db, tenantId, ids, end),
-    yearToDate(db, tenantId, run.month, packFor(ent.country).payroll.taxYearStartMonth),
+    yearToDate(db, tenantId, run.month, packFor(ent.country).payroll.taxYearStartMonth, run.periodStart),
     unpaidLeaveDays(db, tenantId, start, end),
     db.select().from(payrollAdjustments).where(eq(payrollAdjustments.runId, runId)),
     db.select().from(payrollItems).where(eq(payrollItems.runId, runId)),
@@ -290,6 +299,7 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
       structure,
       template: pack.payroll.salaryTemplate ?? templateFor(template, e.salaryTemplateId),
       countryProfile: e.countryProfile,
+      ...(run.frequency !== "monthly" ? { period: { perYear: PERIODS_PER_YEAR[run.frequency as PayFrequency], index: periodIndex(periodContaining(run.frequency as PayFrequency, run.periodStart, ent.payAnchor), pack.payroll.taxYearStartMonth ?? 4, ent.payAnchor) } } : {}),
       esiContinue: esiCovered.has(e.id),
       daysInMonth: days,
       paidDays,

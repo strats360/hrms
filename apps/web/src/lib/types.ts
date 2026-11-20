@@ -6,7 +6,7 @@ export interface Lookups {
   shifts: { id: string; name: string; startTime: string; endTime: string; isDefault: boolean }[];
   employees: { id: string; name: string; code: string }[];
   /** Legal entities; most companies have one. */
-  entities?: { id: string; code: string; name: string; country: string; isDefault: boolean }[];
+  entities?: { id: string; code: string; name: string; country: string; isDefault: boolean; payFrequency?: string }[];
 }
 
 export interface EmployeeRow {
@@ -197,6 +197,7 @@ export type RunStatus = "draft" | "calculated" | "approved" | "paid";
 export interface PayrollRun {
   id: string;
   entityId: string;
+  frequency?: string | null;
   entityName?: string | null;
   entityCode?: string | null;
   country?: string | null;

@@ -12,7 +12,7 @@ import { Card, TableCard, CardHeader } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { ErrorState, Loading } from "@/components/ui/page";
 import { Tag, type Tone } from "@/components/ui/tag";
-import { monthLabel } from "@/components/payroll/Payslip";
+import { monthLabel, runLabel } from "@/components/payroll/Payslip";
 import { RUN_STATUS_LABEL, RUN_STEP } from "@/components/payroll/PayrollCard";
 import { usePayrollRuns, useStartCurrentRun } from "./PayrollLayout";
 import { confirmAction } from "@/components/ui/confirm";
@@ -52,7 +52,7 @@ export default function Runs() {
   const money = (r: PayrollRun, n: number) => fmtMoney(n, { currency: r.currency ?? undefined });
   const columns = useMemo<ColumnDef<PayrollRun>[]>(
     () => [
-      { id: "month", header: "Month", accessorKey: "month", cell: ({ row }) => <span className="font-medium">{monthLabel(row.original.month)}</span> },
+      { id: "month", header: "Month", accessorKey: "month", cell: ({ row }) => <span className="font-medium">{runLabel(row.original)}</span> },
       ...(multi ? [{ id: "entity", header: "Entity", accessorFn: (r: PayrollRun) => r.entityName ?? "" } satisfies ColumnDef<PayrollRun>] : []),
       { id: "employees", header: "Employees", accessorFn: (r) => r.totals?.employees ?? 0, meta: { align: "right" } },
       { id: "gross", header: "Gross", accessorFn: (r) => r.totals?.gross ?? 0, cell: ({ row, getValue }) => money(row.original, getValue<number>()), meta: { align: "right" } },
@@ -104,7 +104,7 @@ export default function Runs() {
             <span className="text-muted text-[13px]">A payroll admin hasn't started this month's run yet.</span>
           )}
           {current && (current.status === "draft" || current.status === "calculated") && can("payroll", "edit") ? (
-            <Button variant="danger" loading={discard.isPending} onClick={() => void confirmAction({ title: `Discard the ${monthLabel(current.month)} payroll?`, body: "Adjustments and overrides will be lost.", confirmLabel: "Discard", danger: true }).then((ok) => ok && discard.mutate(current.id))}>
+            <Button variant="danger" loading={discard.isPending} onClick={() => void confirmAction({ title: `Discard the ${runLabel(current)} payroll?`, body: "Adjustments and overrides will be lost.", confirmLabel: "Discard", danger: true }).then((ok) => ok && discard.mutate(current.id))}>
               Discard draft
             </Button>
           ) : null}
@@ -124,7 +124,7 @@ export default function Runs() {
           rowActions={(r) => [
             { label: "Open", onSelect: () => nav(`/payroll/run/${r.id}`) },
             ...((r.status === "draft" || r.status === "calculated") && can("payroll", "edit")
-              ? [{ label: "Discard draft", danger: true, onSelect: () => void confirmAction({ title: `Discard the ${monthLabel(r.month)} payroll?`, body: "Adjustments and overrides will be lost.", confirmLabel: "Discard", danger: true }).then((ok) => ok && discard.mutate(r.id)) }]
+              ? [{ label: "Discard draft", danger: true, onSelect: () => void confirmAction({ title: `Discard the ${runLabel(r)} payroll?`, body: "Adjustments and overrides will be lost.", confirmLabel: "Discard", danger: true }).then((ok) => ok && discard.mutate(r.id)) }]
               : []),
           ]}
         />

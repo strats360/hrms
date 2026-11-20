@@ -1,8 +1,8 @@
 import { approvalPolicy } from "../services/approvals";
 import { Hono } from "hono";
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
-import { branches, departments, designations, employees, holidays, legalEntities, shifts, tenants } from "@hrms/db";
+import { branches, departments, designations, employees, holidays, legalEntities, payrollRuns, shifts, tenants } from "@hrms/db";
 import {
   APPROVAL_STEP_LABELS,
   approvalPolicySchema,
@@ -96,7 +96,7 @@ orgRoutes.get("/lookups", async (c) => {
       .orderBy(asc(employees.fullName)),
     listEntities(db, tid),
   ]);
-  const entities = ents.map((e) => ({ id: e.id, code: e.code, name: e.name, country: e.country, isDefault: e.isDefault }));
+  const entities = ents.map((e) => ({ id: e.id, code: e.code, name: e.name, country: e.country, isDefault: e.isDefault, payFrequency: e.payFrequency }));
   return c.json({ branches: b, departments: d, designations: g, shifts: s, employees: m, entities });
 });
 
@@ -113,8 +113,12 @@ function entityValues(c: { env: AppEnv["Bindings"] }, body: z.infer<typeof legal
   const info = COUNTRIES[body.country];
   const timeZone = body.timeZone ?? info.timeZone;
   if (!info.timeZones.includes(timeZone)) throw badRequest(`Pick a time zone used in ${info.name}`);
+  // pay frequency: monthly everywhere; others only where the country's rules are built for them
+  const freqs = packFor(body.country).payroll.payFrequencies ?? ["monthly"];
+  if (!freqs.includes(body.payFrequency)) throw badRequest(`${info.name} payroll is monthly only`);
+  if ((body.payFrequency === "biweekly" || body.payFrequency === "weekly") && !body.payAnchor) throw badRequest("Give the first day of any one pay period");
   const { isDefault: _d, ...rest } = body;
-  return { ...rest, currency: body.currency ?? info.currency, timeZone };
+  return { ...rest, payAnchor: body.payFrequency === "biweekly" || body.payFrequency === "weekly" ? body.payAnchor : null, currency: body.currency ?? info.currency, timeZone };
 }
 
 orgRoutes.get("/entities", async (c) => {
@@ -175,6 +179,10 @@ orgRoutes.patch("/entities/:id", requirePerm("settings", "configure"), v("json",
   if (cur.country !== values.country) {
     const [used] = await db.select({ id: employees.id }).from(employees).where(and(eq(employees.tenantId, tid), cur.isDefault ? sql`(${employees.entityId} = ${cur.id} or ${employees.entityId} is null)` : eq(employees.entityId, cur.id))).limit(1);
     if (used) throw conflict("This entity has employees, so its country can't change. Add a new entity for the other country instead.");
+  }
+  if (cur.payFrequency !== values.payFrequency || (cur.payAnchor ?? null) !== (values.payAnchor ?? null)) {
+    const [open] = await db.select({ id: payrollRuns.id }).from(payrollRuns).where(and(eq(payrollRuns.tenantId, tid), eq(payrollRuns.entityId, cur.id), inArray(payrollRuns.status, ["draft", "calculated"]))).limit(1);
+    if (open) throw conflict("Finish or discard this entity's open payroll before changing how often it pays.");
   }
   const [row] = await db.update(legalEntities).set({ ...values, updatedAt: new Date() }).where(eq(legalEntities.id, cur.id)).returning();
   // the default entity mirrors the tenant's company profile (Phase 1)
