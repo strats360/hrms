@@ -3,7 +3,7 @@ import { sendNotification } from "../services/notifications";
 import { and, asc, desc, eq, gte, ilike, inArray, lte, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { claimReceipts, departments, employees, paymentBatches, payments, payrollRuns, reimbursementCategories, reimbursementClaims, tenants } from "@hrms/db";
-import { bulkDecisionSchema, claimCreateSchema, decisionSchema, fmtMoney, reimbursementCategorySchema, todayLocal } from "@hrms/shared";
+import { bulkDecisionSchema, claimCreateSchema, decisionSchema, fmtMoney, fyOfMonth, reimbursementCategorySchema, todayLocal } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
 import { requireEmployee, requirePerm } from "../lib/context";
@@ -13,6 +13,7 @@ import { audit } from "../lib/audit";
 import { toCsv } from "../lib/csv";
 import { layout } from "../lib/email";
 import { ALLOWED_TYPES, getFile, MAX_UPLOAD_BYTES, putFile, safeName } from "../lib/storage";
+import { fbpBalances } from "../services/fbp";
 import { canDecide, claimAmount, initialStatus, isOrgWide, nextClaimCode, nextStatus, OPEN, overLimit, type Claim } from "../services/reimbursements";
 import { monthLabel } from "../lib/months";
 
@@ -161,6 +162,12 @@ async function createClaim(c: Context<AppEnv>, employeeId: string, form: FormDat
     .from(reimbursementClaims)
     .where(and(eq(reimbursementClaims.tenantId, tid(c)), eq(reimbursementClaims.employeeId, emp.id), eq(reimbursementClaims.categoryId, cat.id), eq(reimbursementClaims.expenseDate, b.expenseDate), eq(reimbursementClaims.amount, amount), inArray(reimbursementClaims.status, [...OPEN, "approved", "paid"])));
   if (dup) throw badRequest(`This looks like a duplicate of ${dup.code}`);
+  if (cat.fbpHead) {
+    // flexible benefit claims are paid from what has built up for that head this year
+    const fy = fyOfMonth(b.expenseDate.slice(0, 7));
+    const left = (await fbpBalances(db, tid(c), emp.id, fy))[cat.fbpHead]?.balance ?? 0;
+    if (amount > left) throw badRequest(left > 0 ? `You have ${fmtMoney(left)} left to claim under ${cat.name} so far this year` : `Nothing has built up under ${cat.name} yet. It's credited with each month's salary.`);
+  }
   const limit = await overLimit(db, tid(c), cat, emp.id, b.expenseDate, amount);
   const status = initialStatus(cat, !!emp.managerId);
   const code = await nextClaimCode(db, tid(c));

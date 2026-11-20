@@ -830,6 +830,7 @@ export async function payslipView(c: Context<AppEnv>, run: typeof payrollRuns.$i
     gross: item.gross,
     totalDeductions: item.totalDeductions,
     reimbursement: item.reimbursement,
+    fbpCredit: item.fbpCredit ? Object.values(item.fbpCredit).reduce((s, n) => s + n, 0) : 0,
     net: item.net,
     employerCost: item.employerCost,
     tax: item.tax,

@@ -73,6 +73,7 @@ export function Payslip({ slip }: { slip: PayslipView }) {
           <div className="text-[26px] font-medium num">{fmtMoney(slip.net)}</div>
           <div className="text-[12px]">{rupeesInWords(slip.net)}</div>
           {slip.reimbursement ? <div className="mt-1 text-[12px]">Includes reimbursements of {fmtMoney(slip.reimbursement)} (not taxable)</div> : null}
+          {slip.fbpCredit ? <div className="mt-1 text-[12px]">{fmtMoney(slip.fbpCredit)} added to your flexible benefits, to claim against bills</div> : null}
         </div>
         <div className="text-end text-[12.5px]">
           <div>

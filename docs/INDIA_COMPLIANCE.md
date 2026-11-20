@@ -37,3 +37,18 @@ To confirm with a consultant: whether ESI contributions move to Code wages too (
 ## Phase D: new modules
 
 POSH; Grievance Redressal Committee; maternity eligibility and benefits; contract labour; women's night shift consent; health checks from 40; statutory registers and the unified annual return; DPDP privacy notice, consent log, breach workflow and retention rules.
+
+## Payroll product gaps (in progress)
+
+| Gap | Status |
+| --- | --- |
+| Off-cycle runs and contractor TDS (194C, 194J) | ✅ Done |
+| VPF, payroll NPS and the car perquisite | ✅ Done |
+| PT for more states and LWF beyond Gujarat and Maharashtra | ✅ Done |
+| Free tax and gratuity calculators | ✅ Done at /tools |
+| Formula allowances | ✅ An allowance in a salary template can be a formula over gross, basic and HRA, like `min(basic * 0.1, 1600)`. Checked when the template is saved. |
+| Custom employee fields | ✅ Settings, Custom employee fields: text, number, date, yes or no, or a list. On the employee form, profile and export, and on the employee's own profile when HR allows it. |
+| Flexible benefit plan | ✅ Payroll, Flexible benefits. HR sets the heads and yearly caps (starting points: fuel, phone, meals, gifts, books, LTA; check them with a tax advisor). Employees pick amounts on their Tax page, within their special allowance; heads that don't save tax in the new regime aren't offered there. Approved plans hold a twelfth of each head back from special allowance every month. Employees claim it through an expense category linked to the head, up to what has built up. In the year's last pay, or the last pay before someone leaves, whatever is unclaimed is paid as taxable salary. TDS is projected as if the plan is claimed in full, and catches up on what wasn't. |
+| Accounting journals, public API and webhooks, Zoho Books | Next |
+| WhatsApp payslips | Needs a WhatsApp Business provider account |
+| Native mobile apps, live bank API | Need a decision on stores and the bank partner |

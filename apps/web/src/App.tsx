@@ -159,6 +159,7 @@ const router = createBrowserRouter([
               { path: "payslips", element: L(() => import("@/pages/admin/payroll/Payslips")) },
               { path: "loans", element: L(() => import("@/pages/admin/payroll/Loans")) },
               { path: "contractors", element: L(() => import("@/pages/admin/payroll/Contractors")) },
+              { path: "benefits", element: L(() => import("@/pages/admin/payroll/Fbp")) },
             ],
           },
           {

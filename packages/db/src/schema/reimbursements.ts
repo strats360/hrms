@@ -18,6 +18,8 @@ export const reimbursementCategories = pgTable(
     gstCapture: boolean("gst_capture").notNull().default(false),
     approval: text("approval").notNull().default("manager"), // manager | finance | manager_finance
     receiptRequiredAbove: money("receipt_required_above").notNull().default(0),
+    /** Claims here are paid from this flexible benefit head (fbp.heads code), up to what has built up. */
+    fbpHead: text("fbp_head"),
     active: boolean("active").notNull().default(true),
     ...timestamps,
   },

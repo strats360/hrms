@@ -307,6 +307,8 @@ export interface PayslipView {
   totalDeductions: number;
   net: number;
   reimbursement: number;
+  /** Flexible benefits credited this period, held back from special allowance to claim against bills. */
+  fbpCredit?: number;
   employerCost: number;
   tax: { taxableIncome: number; total: number; projectedAnnualGross: number; annualised?: boolean } | null;
   onHold: boolean;
@@ -485,6 +487,8 @@ export interface ExpenseCategory {
   gstCapture: boolean;
   approval: ClaimApproval;
   receiptRequiredAbove: number;
+  /** Paid from this flexible benefit head, up to what has built up. */
+  fbpHead?: string | null;
   active: boolean;
 }
 export interface Claim {

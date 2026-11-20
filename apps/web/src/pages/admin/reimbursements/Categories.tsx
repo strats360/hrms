@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
@@ -73,15 +73,16 @@ const PERIODS: { value: LimitPeriod; label: string }[] = [
 function CategoryDialog({ value, onClose }: { value: ExpenseCategory | "new" | null; onClose: () => void }) {
   const qc = useQueryClient();
   const existing = value && value !== "new" ? value : null;
-  const [f, setF] = useState({ name: "", limitAmount: "", limitPeriod: "claim" as LimitPeriod, ratePerKm: "", gstCapture: false, approval: "manager" as ClaimApproval, receiptRequiredAbove: "0", active: true });
+  const [f, setF] = useState({ name: "", limitAmount: "", limitPeriod: "claim" as LimitPeriod, ratePerKm: "", gstCapture: false, approval: "manager" as ClaimApproval, receiptRequiredAbove: "0", fbpHead: "", active: true });
+  const fbp = useQuery({ queryKey: ["fbp-admin"], queryFn: () => api.get<{ settings: { heads: { code: string; label: string }[] } | null }>("/admin/payroll/fbp"), enabled: !!value, retry: false });
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     if (!value) return;
     setError(null);
     setF(
       existing
-        ? { name: existing.name, limitAmount: existing.limitAmount === null ? "" : String(existing.limitAmount), limitPeriod: existing.limitPeriod, ratePerKm: existing.ratePerKm === null ? "" : String(existing.ratePerKm), gstCapture: existing.gstCapture, approval: existing.approval, receiptRequiredAbove: String(existing.receiptRequiredAbove), active: existing.active }
-        : { name: "", limitAmount: "", limitPeriod: "claim", ratePerKm: "", gstCapture: false, approval: "manager", receiptRequiredAbove: "0", active: true },
+        ? { name: existing.name, limitAmount: existing.limitAmount === null ? "" : String(existing.limitAmount), limitPeriod: existing.limitPeriod, ratePerKm: existing.ratePerKm === null ? "" : String(existing.ratePerKm), gstCapture: existing.gstCapture, approval: existing.approval, receiptRequiredAbove: String(existing.receiptRequiredAbove), fbpHead: existing.fbpHead ?? "", active: existing.active }
+        : { name: "", limitAmount: "", limitPeriod: "claim", ratePerKm: "", gstCapture: false, approval: "manager", receiptRequiredAbove: "0", fbpHead: "", active: true },
     );
   }, [value, existing]);
   const perKm = f.limitPeriod === "km";
@@ -97,6 +98,7 @@ function CategoryDialog({ value, onClose }: { value: ExpenseCategory | "new" | n
         gstCapture: f.gstCapture,
         approval: f.approval,
         receiptRequiredAbove: Number(f.receiptRequiredAbove || 0),
+        fbpHead: f.fbpHead || null,
         active: f.active,
       };
       return existing ? api.patch(`/admin/reimbursements/categories/${existing.id}`, body) : api.post("/admin/reimbursements/categories", body);
@@ -155,6 +157,14 @@ function CategoryDialog({ value, onClose }: { value: ExpenseCategory | "new" | n
         <Field label="Receipt required above (₹)" hint="0 means always">
           <Input inputMode="decimal" value={f.receiptRequiredAbove} onChange={(e) => set("receiptRequiredAbove", e.target.value.replace(/[^\d.]/g, ""))} />
         </Field>
+        {fbp.data?.settings?.heads.length ? (
+          <Field label="Flexible benefit" hint="Claims are paid from what has built up for this benefit">
+            <Select value={f.fbpHead} onChange={(e) => set("fbpHead", e.target.value)}>
+              <option value="">Not a flexible benefit</option>
+              {fbp.data.settings.heads.map((h) => <option key={h.code} value={h.code}>{h.label}</option>)}
+            </Select>
+          </Field>
+        ) : null}
       </div>
       <Checkbox checked={f.gstCapture} onChange={(v) => set("gstCapture", v)} label="Capture vendor GSTIN and GST amount" />
       <Checkbox checked={f.active} onChange={(v) => set("active", v)} label="Active (employees can claim under it)" />

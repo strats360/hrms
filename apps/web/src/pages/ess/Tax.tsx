@@ -15,6 +15,7 @@ import { TaxStatementView } from "@/components/tax/TaxStatementView";
 import { Form16View } from "@/components/tax/Form16View";
 import { monthLabel, printPayslip } from "@/components/payroll/Payslip";
 import { grid2, MoneyInput, SectionCard } from "@/components/tax/ess/fields";
+import { MyBenefits } from "@/components/fbp/MyBenefits";
 
 type Regime = "new" | "old";
 interface TaxResp extends EmployeeTax {
@@ -188,6 +189,8 @@ export default function EssTax() {
         </div>
         {t.excess ? <div className="text-muted text-[12.5px]">No more TDS will be deducted this year. You can claim the extra {fmtMoney(t.excess)} as a refund when you file your income tax return.</div> : null}
       </Card>
+
+      <MyBenefits />
 
       {!editable ? (
         <Notice tone="sel">

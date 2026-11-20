@@ -132,6 +132,8 @@ export const payrollItems = pgTable(
     employeePf: money("employee_pf").notNull().default(0),
     professionalTax: money("professional_tax").notNull().default(0),
     tax: jsonb("tax").$type<Record<string, unknown>>(),
+    /** Flexible benefits credited this period per head, held back from the special allowance. */
+    fbpCredit: jsonb("fbp_credit").$type<Record<string, number>>(),
     onHold: boolean("on_hold").notNull().default(false),
     /** When the payslip was emailed to the employee. */
     payslipEmailedAt: timestamp("payslip_emailed_at", { withTimezone: true }),

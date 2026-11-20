@@ -40,11 +40,15 @@ import {
   minimumWageShortfall,
   type Structure,
   type CountryCode,
+  fbpMonthlyCredit,
+  sumFbp,
+  type FbpAllocations,
 } from "@hrms/shared";
 import { badRequest, notFound } from "../lib/errors";
 import { buildCalendar } from "./attendance";
 import { declarationsFor } from "./tax";
 import { claimsForRun } from "./reimbursements";
+import { approvedPlans, claimedSoFar, creditedSoFar, fbpSettings } from "./fbp";
 import { rulesFor } from "./statutory";
 import { syncLoanRecoveries } from "./loans";
 
@@ -268,6 +272,13 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
     declarationsFor(db, tenantId, fyOfMonth(run.month), ids),
   ]);
   const claims = offCycle ? new Map<string, number>() : await claimsForRun(db, tenantId, runId, end, ids);
+  // flexible benefits: held back from the special allowance, claimed against bills, and whatever is
+  // left paid as taxable salary in the year's last pay (or the last pay before someone leaves)
+  const fy = fyOfMonth(run.month);
+  const fbp = ent.country === "IN" && !offCycle ? await fbpSettings(db, tenantId) : null;
+  const [plans, credited, claimedFbp] = fbp ? await Promise.all([approvedPlans(db, tenantId, fy, ids), creditedSoFar(db, tenantId, fy, ids, runId), claimedSoFar(db, tenantId, fy, ids, { approvedOnly: true })]) : [new Map(), new Map(), new Map()];
+  const dayAfterEnd = new Date(Date.parse(`${end}T00:00:00Z`) + 86400000).toISOString().slice(0, 10);
+  const lastPayOfYear = fyOfMonth(dayAfterEnd.slice(0, 7)) !== fy;
   const prev = new Map(existing.map((i) => [i.employeeId, i]));
   const cal = opts.assumePresent || offCycle ? null : await buildCalendar(db, tenantId, emps.map((x) => ({ id: x.e.id, shiftId: x.e.shiftId, branchId: x.e.branchId, dateOfJoining: x.e.dateOfJoining, lastWorkingDay: x.e.lastWorkingDay })), start, end);
   const rules = await rulesFor(db, run.month, ent.country);
@@ -295,12 +306,28 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
     const paidDays = Math.max(0, employed.length - Number(lopUsed));
     // PF and ESI are Indian schemes: outside India they don't come out of the CTC
     const structure = resolveStructure(india ? e : { ...e, pfApplicable: false, esiApplicable: false }, structs.get(e.id), template, pack.payroll.salaryTemplate);
+    const regime = (((decls.get(e.id)?.regime ?? e.taxRegime) as Regime) ?? "new") as Regime;
+    const plan = fbp ? plans.get(e.id) : undefined;
+    const fbpFull = plan && fbp ? fbpMonthlyCredit(fbp.heads, regime as "new" | "old", plan, structure.components.special) : {};
+    const fbpHeld = sumFbp(fbpFull);
+    const paidStructure = fbpHeld ? { ...structure, gross: structure.gross - fbpHeld, components: { ...structure.components, special: structure.components.special - fbpHeld } } : structure;
+    const share = days ? paidDays / days : 0;
+    const fbpCredit = Object.fromEntries(Object.entries(fbpFull).map(([h, n]) => [h, Math.round(n * share * 100) / 100]).filter(([, n]) => (n as number) > 0));
+    const leaving = !!e.lastWorkingDay && e.lastWorkingDay <= end;
+    let fbpPayout = 0;
+    if (fbp && (lastPayOfYear || leaving)) {
+      const c = credited.get(e.id) ?? {};
+      const k = claimedFbp.get(e.id) ?? {};
+      const heads = new Set([...Object.keys(c), ...Object.keys(fbpCredit), ...Object.keys(k)]);
+      for (const h of heads) fbpPayout += Math.max(0, (c[h] ?? 0) + ((fbpCredit as FbpAllocations)[h] ?? 0) - (k[h] ?? 0));
+      fbpPayout = Math.round(fbpPayout);
+    }
     const y = ytd.byEmployee.get(e.id);
     const slip = computePayslip({
       country: ent.country as CountryCode,
       rules,
       month: run.month,
-      structure,
+      structure: paidStructure,
       template: pack.payroll.salaryTemplate ?? templateFor(template, e.salaryTemplateId),
       countryProfile: e.countryProfile,
       ...(run.frequency !== "monthly" ? { period: { perYear: PERIODS_PER_YEAR[run.frequency as PayFrequency], index: periodIndex(periodContaining(run.frequency as PayFrequency, run.periodStart, ent.payAnchor), pack.payroll.taxYearStartMonth ?? 4, ent.payAnchor) } } : {}),
@@ -310,19 +337,21 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
       paidDays,
       adjustments: adjustments
         .filter((a) => a.employeeId === e.id)
-        .map((a) => ({ label: a.label, kind: a.kind as "earning" | "deduction", amount: Number(a.amount), taxable: a.taxable, esiWage: a.esiWage })),
+        .map((a) => ({ label: a.label, kind: a.kind as "earning" | "deduction", amount: Number(a.amount), taxable: a.taxable, esiWage: a.esiWage }))
+        .concat(fbpPayout > 0 ? [{ label: "Unclaimed flexible benefits", kind: "earning" as const, amount: fbpPayout, taxable: true, esiWage: false }] : []),
       pfApplicable: e.pfApplicable && statOn(ent, "epf"),
       esiApplicable: e.esiApplicable && statOn(ent, "esi"),
       ptApplicable: e.ptApplicable && statOn(ent, "pt"),
       state: branchState ?? ent.state ?? tenant?.state ?? null,
       gender: e.gender,
       profile: { nationality: e.nationality, region: ent.state, insuredSince: insured.get(e.id) ?? null, joinedOn: e.dateOfJoining },
-      regime: ((decls.get(e.id)?.regime ?? e.taxRegime) as Regime) ?? "new",
+      regime,
       reimbursement: claims.get(e.id) ?? 0,
       taxProfile: decls.get(e.id) ? { declaration: decls.get(e.id)!.data, verified: decls.get(e.id)!.verified } : undefined,
       ytd: y ? { taxableGross: y.taxableGross, tds: y.tds, employeePf: y.employeePf, professionalTax: y.professionalTax } : ytd.hasHistory ? { taxableGross: 0, tds: 0, employeePf: 0, professionalTax: 0 } : undefined,
     });
     const warnings = [...slip.warnings];
+    if (fbpHeld) warnings.push(`Flexible benefits of ${inrPlain(sumFbp(fbpCredit as FbpAllocations))} held back from special allowance, to claim against bills`);
     if (!e.accountLast4 || (india && !e.ifsc)) warnings.push("No bank account on file");
     if (india && !e.pan) warnings.push("PAN missing: TDS should be at least 20%");
     if (e.lastWorkingDay && e.lastWorkingDay <= end) warnings.push("Leaving this month: settle full and final separately");
@@ -375,6 +404,7 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
       employeePf: slip.deductions.find((d) => d.code === "pf")?.amount ?? 0,
       professionalTax: slip.deductions.find((d) => d.code === "pt")?.amount ?? 0,
       tax: slip.tax as unknown as Record<string, unknown>,
+      fbpCredit: Object.keys(fbpCredit).length ? (fbpCredit as FbpAllocations) : null,
       onHold: before?.onHold ?? false,
       holdReason: before?.holdReason ?? null,
       warnings,

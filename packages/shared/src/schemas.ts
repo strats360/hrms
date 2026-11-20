@@ -1,5 +1,6 @@
 import { formulaError } from "./formula";
 import { customFieldDefsSchema } from "./custom-fields";
+import { fbpSettingsSchema } from "./fbp";
 import { PAY_FREQUENCIES } from "./pay-periods";
 import { z } from "zod";
 import { NOTIFICATION_KEYS } from "./notifications";
@@ -221,6 +222,7 @@ export const tenantPayrollSettingsSchema = z.object({
   compOff: z.object({ expiryDays: z.number().int().min(7).max(365), claimWithinDays: z.number().int().min(1).max(90) }).optional(),
   punchPolicy: z.object({ location: z.enum(["off", "flag", "block"]), ip: z.enum(["off", "flag", "block"]), wfhExempt: z.boolean(), selfie: z.enum(["off", "optional", "required"]).optional(), selfieRetentionDays: z.number().int().min(7).max(365).optional() }).optional(),
   customFields: customFieldDefsSchema.optional(),
+  fbp: fbpSettingsSchema.optional(),
   overtime: z
     .object({
       enabled: z.boolean(),
@@ -475,6 +477,8 @@ export const reimbursementCategorySchema = z.object({
   gstCapture: z.boolean().default(false),
   approval: z.enum(["manager", "finance", "manager_finance"]).default("manager"),
   receiptRequiredAbove: z.coerce.number().min(0).max(1e8).default(0),
+  /** Pays from this flexible benefit head (Payroll, Flexible benefits), up to what has built up. */
+  fbpHead: z.string().trim().max(24).nullable().optional(),
   active: z.boolean().default(true),
 });
 export const claimCreateSchema = z.object({

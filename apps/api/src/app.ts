@@ -24,6 +24,7 @@ import { attendanceRoutes } from "./routes/attendance";
 import { leaveRoutes } from "./routes/leave";
 import { dashboardRoutes } from "./routes/dashboard";
 import { essRoutes } from "./routes/ess";
+import { essFbpRoutes, fbpAdminRoutes } from "./routes/fbp";
 import { essExitRoutes, exitRoutes } from "./routes/exits";
 import { attendanceImportRoutes, devicePunchRoutes } from "./routes/attendance-devices";
 import { leaveExtrasRoutes, payrollExtrasRoutes } from "./routes/pay-extras";
@@ -178,6 +179,7 @@ export function buildApp() {
   t.use("/admin/compliance/*", requireFeature("module.compliance"));
   t.route("/ess/tax", essTaxRoutes);
   t.route("/ess/claims", essClaimRoutes);
+  t.route("/ess/fbp", essFbpRoutes);
   t.route("/notifications/mine", myNotificationRoutes);
   t.route("/photos", photoIndexRoutes);
   t.route("/ess/photo", essPhotoRoutes);
@@ -224,6 +226,7 @@ export function buildApp() {
   t.route("/admin/payroll", payrollExtrasRoutes);
   t.route("/admin/payroll", payslipFileRoutes);
   t.route("/admin/payroll/loans", loanRoutes);
+  t.route("/admin/payroll/fbp", fbpAdminRoutes);
   t.route("/admin/payroll", payrollRoutes);
   t.route("/admin/compliance", complianceRoutes);
   t.route("/admin/tds", tdsRoutes);
