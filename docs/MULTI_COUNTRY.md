@@ -173,7 +173,12 @@ Cloudflare is one account for all instances. Neon is roughly $19 a month per pro
    - **Saudization.** The Legal entities page shows how many Saudis count for Nitaqat (full from SAR 4,000, half from 3,000). The band depends on activity and size, so check it in Qiwa.
    - **IDs.** Saudi national ID, iqama and GOSI number.
    - Still to do: golden cases signed off by a Saudi payroll expert (`packages/shared/golden/SA.json`), the rates in the statutory master UI, Mudad's exact template, and the in Kingdom hosting for the Saudi site.
-3. Qatar, Kuwait, Oman and Bahrain packs
+3. Qatar, Kuwait, Oman and Bahrain packs ✅ for the packs, waiting on expert sign off. They share one Gulf helper (`packages/shared/src/packs/gcc`), so each country is mostly its rates:
+   - **Qatar:** GRSIA for Qataris (7% employee, 14% employer, on basic plus housing). Gratuity of three weeks' basic a year after the first year, with no cut on resignation. A locked Qatar payroll downloads the WPS salary file (SIF); it needs the MoL establishment ID, the salary bank and its IBAN on the entity, plus each employee's Qatar ID, bank name and IBAN.
+   - **Kuwait:** PIFSS for Kuwaitis (10.5% and 11.5%, on wage up to KWD 2,750). Indemnity of 15 days a year for five years and a month after, capped at 18 months, cut on resignation under 10 years. Amounts in fils (three decimals).
+   - **Oman:** SPF for Omanis (7% pension and 1% job security from the employee; 11.5%, 1% work injury and 1% job security from the employer, up to OMR 3,000). Expats get 1% work injury from the employer, and a month's basic a year as gratuity. Three decimals.
+   - **Bahrain:** SIO for Bahrainis (6% pension and 1% unemployment; 12%, 3% and 1% from the employer, up to BHD 4,000). Expats pay 1% unemployment, and the employer pays work injury, unemployment and the monthly leaving indemnity (4.2% for the first three years, 8.4% after). The final settlement only covers service before March 2024, since the SIO pays the rest. Three decimals.
+   - Still to do: golden cases signed off by a local expert in each country (`packages/shared/golden/QA.json`, `KW.json`, `OM.json`, `BH.json`), wage protection files for Kuwait, Oman and Bahrain (they're bank specific, so use the bank file until then), localisation quotas (Kuwaitisation, Omanisation, Bahrainisation), and the rates in the statutory master UI.
 4. UK pack, then HMRC recognition
 5. USA: HR core, with payroll tax through a partner
 6. Canada: federal and provincial income tax, CPP or QPP, EI, ROE and T4 (or a payroll partner, as for the USA)

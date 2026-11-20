@@ -168,7 +168,7 @@ export default function Entities() {
         );
       })}
       <Notice tone="sel">
-        {countries.length > 1 ? `This site supports ${countries.map((c) => c.name).join(", ")}.` : `This site supports ${countries[0]?.name ?? "India"}.`} Qatar, Kuwait, Oman, Bahrain, the UK, the USA and Canada will show up as their payroll and compliance rules are ready.
+        {countries.length > 1 ? `This site supports ${countries.map((c) => c.name).join(", ")}.` : `This site supports ${countries[0]?.name ?? "India"}.`} The UK, the USA and Canada will show up as their payroll and compliance rules are ready.
       </Notice>
 
       <Dialog

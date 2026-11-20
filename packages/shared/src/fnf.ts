@@ -78,7 +78,7 @@ export interface FnfInput {
   /** Amounts the employee still owes the company (loans, advances), taken from the settlement. */
   recoveries?: { key: string; label: string; amount: number }[];
   /** Facts some country packs need, e.g. nationals in a Gulf pension scheme get no gratuity. */
-  profile?: { nationality?: string | null; region?: string | null; insuredSince?: string | null };
+  profile?: { nationality?: string | null; region?: string | null; insuredSince?: string | null; joinedOn?: string | null };
   /** Unpaid leave days, which some countries leave out of the service that counts. */
   unpaidLeaveDays?: number;
 }

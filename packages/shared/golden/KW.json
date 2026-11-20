@@ -1,0 +1,176 @@
+{
+  "country": "KW",
+  "signedOff": {
+    "by": null,
+    "on": null,
+    "note": "Built from the PIFSS social security rules and Labour Law No. 6 of 2010. A Kuwait payroll expert must check every case by hand, especially the split of PIFSS into its parts and their ceilings."
+  },
+  "cases": [
+    {
+      "name": "Expat in Kuwait City",
+      "why": "No income tax and no social insurance for expats.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "month": "2026-11",
+        "annualCtc": 24000,
+        "profile": {
+          "nationality": "EG",
+          "region": "Al Asimah"
+        }
+      },
+      "expect": {
+        "gross": 2000,
+        "totalDeductions": 0,
+        "net": 2000,
+        "tds": 0,
+        "employerCost": 0,
+        "lines": {
+          "earn.basic": 1000,
+          "earn.hra": 400,
+          "earn.conveyance": 600
+        }
+      }
+    },
+    {
+      "name": "Kuwaiti national",
+      "why": "PIFSS: 10.5% employee and 11.5% employer on the full wage.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "month": "2026-11",
+        "annualCtc": 24000,
+        "profile": {
+          "nationality": "KW",
+          "region": "Hawalli"
+        }
+      },
+      "expect": {
+        "gross": 2000,
+        "totalDeductions": 210,
+        "net": 1790,
+        "tds": 0,
+        "employerCost": 230,
+        "lines": {
+          "earn.basic": 1000,
+          "earn.hra": 400,
+          "earn.conveyance": 600,
+          "ded.pension": 210,
+          "emp.pension_er": 230
+        }
+      }
+    },
+    {
+      "name": "Kuwaiti on a high salary",
+      "why": "PIFSS stops at KWD 2,750 a month.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "month": "2026-11",
+        "annualCtc": 60000,
+        "profile": {
+          "nationality": "KW",
+          "region": "Al Asimah"
+        }
+      },
+      "expect": {
+        "gross": 5000,
+        "totalDeductions": 288.75,
+        "net": 4711.25,
+        "tds": 0,
+        "employerCost": 316.25,
+        "lines": {
+          "earn.basic": 2500,
+          "earn.hra": 1000,
+          "earn.conveyance": 1500,
+          "ded.pension": 288.75,
+          "emp.pension_er": 316.25
+        }
+      }
+    },
+    {
+      "name": "Kuwaiti with unpaid days",
+      "why": "Ten unpaid days cut pay and contributions by a third, in fils.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 20,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "month": "2026-11",
+        "annualCtc": 18000,
+        "profile": {
+          "nationality": "KW",
+          "region": "Ahmadi"
+        }
+      },
+      "expect": {
+        "gross": 1000,
+        "totalDeductions": 105,
+        "net": 895,
+        "tds": 0,
+        "employerCost": 115,
+        "lines": {
+          "earn.basic": 500,
+          "earn.hra": 200,
+          "earn.conveyance": 300,
+          "ded.pension": 105,
+          "emp.pension_er": 115
+        }
+      }
+    },
+    {
+      "name": "Bahraini national",
+      "why": "GCC nationals follow their home scheme: nothing here, with a warning.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "month": "2026-11",
+        "annualCtc": 24000,
+        "profile": {
+          "nationality": "BH",
+          "region": "Al Asimah"
+        }
+      },
+      "expect": {
+        "gross": 2000,
+        "totalDeductions": 0,
+        "net": 2000,
+        "tds": 0,
+        "employerCost": 0,
+        "lines": {
+          "earn.basic": 1000,
+          "earn.hra": 400,
+          "earn.conveyance": 600
+        }
+      }
+    }
+  ]
+}

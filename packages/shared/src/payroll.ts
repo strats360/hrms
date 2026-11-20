@@ -446,7 +446,7 @@ export interface PayslipInput {
    * national pension scheme in the Gulf; region is the entity's state or emirate.
    */
   /** Nationality, state or emirate, and (Saudi Arabia) when they were first insured with GOSI. */
-  profile?: { nationality?: string | null; region?: string | null; insuredSince?: string | null };
+  profile?: { nationality?: string | null; region?: string | null; insuredSince?: string | null; joinedOn?: string | null };
   structure: Structure;
   template?: SalaryTemplate;
   daysInMonth: number;

@@ -577,6 +577,17 @@ export function StepPayout({ run }: { run: PayrollRun }) {
       setExporting(false);
     }
   };
+  const exportFile = async (path: string, name: string, done: string) => {
+    setExporting(true);
+    try {
+      await download(path, name);
+      toast.success(done);
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setExporting(false);
+    }
+  };
   const exportMudad = async () => {
     setExporting(true);
     try {
@@ -625,6 +636,11 @@ export function StepPayout({ run }: { run: PayrollRun }) {
                 </Button>
                 {run.country === "AE" ? (
                   <Button disabled={!locked || !can("payroll", "export")} loading={exporting} onClick={exportWps} title="Salary information file for the UAE Wage Protection System">
+                    <Download size={15} /> WPS file
+                  </Button>
+                ) : null}
+                {run.country === "QA" ? (
+                  <Button disabled={!locked || !can("payroll", "export")} loading={exporting} onClick={() => void exportFile(`/admin/payroll/runs/${run.id}/qatar-wps.csv`, `qatar-wps-${run.month}.csv`, "WPS file downloaded")} title="Salary information file for Qatar's Wage Protection System">
                     <Download size={15} /> WPS file
                   </Button>
                 ) : null}

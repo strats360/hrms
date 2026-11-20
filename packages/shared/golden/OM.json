@@ -1,0 +1,186 @@
+{
+  "country": "OM",
+  "signedOff": {
+    "by": null,
+    "on": null,
+    "note": "Built from the Social Protection Law (Royal Decree 52/2023) and the Labour Law (Royal Decree 53/2023). An Oman payroll expert must check every case by hand, especially each SPF rate, the ceiling and which parts already apply to expats."
+  },
+  "cases": [
+    {
+      "name": "Expat in Muscat",
+      "why": "No income tax; the employer pays 1% work injury.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "month": "2026-11",
+        "annualCtc": 12000,
+        "profile": {
+          "nationality": "IN",
+          "region": "Muscat"
+        }
+      },
+      "expect": {
+        "gross": 1000,
+        "totalDeductions": 0,
+        "net": 1000,
+        "tds": 0,
+        "employerCost": 10,
+        "lines": {
+          "earn.basic": 500,
+          "earn.hra": 200,
+          "earn.conveyance": 300,
+          "emp.injury_er": 10
+        }
+      }
+    },
+    {
+      "name": "Omani national",
+      "why": "SPF: 7% pension and 1% job security from the employee; 11.5%, 1% and 1% from the employer.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "month": "2026-11",
+        "annualCtc": 12000,
+        "profile": {
+          "nationality": "OM",
+          "region": "Muscat"
+        }
+      },
+      "expect": {
+        "gross": 1000,
+        "totalDeductions": 80,
+        "net": 920,
+        "tds": 0,
+        "employerCost": 135,
+        "lines": {
+          "earn.basic": 500,
+          "earn.hra": 200,
+          "earn.conveyance": 300,
+          "ded.pension": 70,
+          "ded.job_security": 10,
+          "emp.pension_er": 115,
+          "emp.injury_er": 10,
+          "emp.job_security_er": 10
+        }
+      }
+    },
+    {
+      "name": "Omani on a high salary",
+      "why": "The SPF wage stops at OMR 3,000.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "month": "2026-11",
+        "annualCtc": 60000,
+        "profile": {
+          "nationality": "OM",
+          "region": "Dhofar"
+        }
+      },
+      "expect": {
+        "gross": 5000,
+        "totalDeductions": 240,
+        "net": 4760,
+        "tds": 0,
+        "employerCost": 405,
+        "lines": {
+          "earn.basic": 2500,
+          "earn.hra": 1000,
+          "earn.conveyance": 1500,
+          "ded.pension": 210,
+          "ded.job_security": 30,
+          "emp.pension_er": 345,
+          "emp.injury_er": 30,
+          "emp.job_security_er": 30
+        }
+      }
+    },
+    {
+      "name": "Omani with unpaid days",
+      "why": "Ten unpaid days cut pay and contributions by a third, in baisa.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 20,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "month": "2026-11",
+        "annualCtc": 9000,
+        "profile": {
+          "nationality": "OM",
+          "region": "Muscat"
+        }
+      },
+      "expect": {
+        "gross": 500,
+        "totalDeductions": 40,
+        "net": 460,
+        "tds": 0,
+        "employerCost": 67.5,
+        "lines": {
+          "earn.basic": 250,
+          "earn.hra": 100,
+          "earn.conveyance": 150,
+          "ded.pension": 35,
+          "ded.job_security": 5,
+          "emp.pension_er": 57.5,
+          "emp.injury_er": 5,
+          "emp.job_security_er": 5
+        }
+      }
+    },
+    {
+      "name": "Emirati national",
+      "why": "GCC nationals follow their home scheme: nothing here, with a warning.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "month": "2026-11",
+        "annualCtc": 12000,
+        "profile": {
+          "nationality": "AE",
+          "region": "Muscat"
+        }
+      },
+      "expect": {
+        "gross": 1000,
+        "totalDeductions": 0,
+        "net": 1000,
+        "tds": 0,
+        "employerCost": 0,
+        "lines": {
+          "earn.basic": 500,
+          "earn.hra": 200,
+          "earn.conveyance": 300
+        }
+      }
+    }
+  ]
+}

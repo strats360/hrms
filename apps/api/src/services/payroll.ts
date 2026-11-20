@@ -269,7 +269,7 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
       ptApplicable: e.ptApplicable && statOn(ent, "pt"),
       state: branchState ?? ent.state ?? tenant?.state ?? null,
       gender: e.gender,
-      profile: { nationality: e.nationality, region: ent.state, insuredSince: insured.get(e.id) ?? null },
+      profile: { nationality: e.nationality, region: ent.state, insuredSince: insured.get(e.id) ?? null, joinedOn: e.dateOfJoining },
       regime: ((decls.get(e.id)?.regime ?? e.taxRegime) as Regime) ?? "new",
       reimbursement: claims.get(e.id) ?? 0,
       taxProfile: decls.get(e.id) ? { declaration: decls.get(e.id)!.data, verified: decls.get(e.id)!.verified } : undefined,

@@ -1,0 +1,196 @@
+{
+  "country": "BH",
+  "signedOff": {
+    "by": null,
+    "on": null,
+    "note": "Built from the SIO social insurance rules and Labour Law No. 36 of 2012. A Bahrain payroll expert must check every case by hand, especially the leaving indemnity rates for expats and the BHD 4,000 ceiling."
+  },
+  "cases": [
+    {
+      "name": "Expat in their second year",
+      "why": "Expats pay 1% unemployment; the employer pays work injury, unemployment and 4.2% leaving indemnity.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "month": "2026-11",
+        "annualCtc": 12000,
+        "profile": {
+          "nationality": "IN",
+          "region": "Capital",
+          "joinedOn": "2025-01-01"
+        }
+      },
+      "expect": {
+        "gross": 1000,
+        "totalDeductions": 10,
+        "net": 990,
+        "tds": 0,
+        "employerCost": 82,
+        "lines": {
+          "earn.basic": 500,
+          "earn.hra": 200,
+          "earn.conveyance": 300,
+          "ded.unemployment": 10,
+          "emp.injury_er": 30,
+          "emp.unemployment_er": 10,
+          "emp.indemnity_er": 42
+        }
+      }
+    },
+    {
+      "name": "Expat after five years",
+      "why": "Leaving indemnity rises to 8.4% after three years of service.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "month": "2026-11",
+        "annualCtc": 12000,
+        "profile": {
+          "nationality": "IN",
+          "region": "Capital",
+          "joinedOn": "2020-01-01"
+        }
+      },
+      "expect": {
+        "gross": 1000,
+        "totalDeductions": 10,
+        "net": 990,
+        "tds": 0,
+        "employerCost": 124,
+        "lines": {
+          "earn.basic": 500,
+          "earn.hra": 200,
+          "earn.conveyance": 300,
+          "ded.unemployment": 10,
+          "emp.injury_er": 30,
+          "emp.unemployment_er": 10,
+          "emp.indemnity_er": 84
+        }
+      }
+    },
+    {
+      "name": "Bahraini national",
+      "why": "SIO: 6% pension and 1% unemployment from the employee; 12%, 3% and 1% from the employer.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "month": "2026-11",
+        "annualCtc": 12000,
+        "profile": {
+          "nationality": "BH",
+          "region": "Muharraq"
+        }
+      },
+      "expect": {
+        "gross": 1000,
+        "totalDeductions": 70,
+        "net": 930,
+        "tds": 0,
+        "employerCost": 160,
+        "lines": {
+          "earn.basic": 500,
+          "earn.hra": 200,
+          "earn.conveyance": 300,
+          "ded.pension": 60,
+          "ded.unemployment": 10,
+          "emp.pension_er": 120,
+          "emp.injury_er": 30,
+          "emp.unemployment_er": 10
+        }
+      }
+    },
+    {
+      "name": "Bahraini on a high salary",
+      "why": "The SIO wage stops at BHD 4,000.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "month": "2026-11",
+        "annualCtc": 72000,
+        "profile": {
+          "nationality": "BH",
+          "region": "Capital"
+        }
+      },
+      "expect": {
+        "gross": 6000,
+        "totalDeductions": 280,
+        "net": 5720,
+        "tds": 0,
+        "employerCost": 640,
+        "lines": {
+          "earn.basic": 3000,
+          "earn.hra": 1200,
+          "earn.conveyance": 1600,
+          "earn.medical": 200,
+          "ded.pension": 240,
+          "ded.unemployment": 40,
+          "emp.pension_er": 480,
+          "emp.injury_er": 120,
+          "emp.unemployment_er": 40
+        }
+      }
+    },
+    {
+      "name": "Bahraini with unpaid days",
+      "why": "Ten unpaid days cut pay and contributions by a third, in fils.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 20,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "month": "2026-11",
+        "annualCtc": 9000,
+        "profile": {
+          "nationality": "BH",
+          "region": "Northern"
+        }
+      },
+      "expect": {
+        "gross": 500,
+        "totalDeductions": 35,
+        "net": 465,
+        "tds": 0,
+        "employerCost": 80,
+        "lines": {
+          "earn.basic": 250,
+          "earn.hra": 100,
+          "earn.conveyance": 150,
+          "ded.pension": 30,
+          "ded.unemployment": 5,
+          "emp.pension_er": 60,
+          "emp.injury_er": 15,
+          "emp.unemployment_er": 5
+        }
+      }
+    }
+  ]
+}

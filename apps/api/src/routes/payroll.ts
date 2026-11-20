@@ -15,7 +15,7 @@ import {
   employeeIdentities,
   user,
 } from "@hrms/db";
-import { buildMudadSheet, buildWpsSif, checkMudad, checkWps, can, decryptField, markPaidSchema, payrollAdjustmentSchema, payrollItemPatchSchema, payrollRunCreateSchema, reopenSchema, structureFromComponents, templateFor, minimumWageShortfall, structureFromCtc, structureRevisionSchema, tenantPayrollSettingsSchema, todayLocal, fmtDate, fmtMoney, zonedDateTime } from "@hrms/shared";
+import { buildMudadSheet, buildQatarWps, buildWpsSif, checkMudad, checkQatarWps, checkWps, can, decryptField, markPaidSchema, payrollAdjustmentSchema, payrollItemPatchSchema, payrollRunCreateSchema, reopenSchema, structureFromComponents, templateFor, minimumWageShortfall, structureFromCtc, structureRevisionSchema, tenantPayrollSettingsSchema, todayLocal, fmtDate, fmtMoney, zonedDateTime } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
 import { requirePerm } from "../lib/context";
@@ -612,6 +612,53 @@ payrollRoutes.get("/runs/:id/mudad.csv", requirePerm("payroll", "export"), async
   const file = buildMudadSheet(sheet);
   await audit(c, { action: "payroll.mudad_file", entity: "payroll_run", entityId: run.id, summary: `Exported the Mudad salary sheet for ${run.month}: ${people.length} payments` });
   return c.body(file.content, 200, { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="${file.fileName}"` });
+});
+
+/** Qatar Wage Protection System salary file for a run of a Qatar entity. Same people as the bank file. */
+payrollRoutes.get("/runs/:id/qatar-wps.csv", requirePerm("payroll", "export"), async (c) => {
+  const run = await loadRun(c, c.req.param("id"));
+  if (run.status !== "approved" && run.status !== "paid") throw badRequest("Approve and lock the payroll first");
+  const db = c.get("db");
+  const ent = await entityOf(db, tid(c), run.entityId);
+  if (ent.country !== "QA") throw badRequest("The Qatar WPS file is for Qatar entities only");
+  const rows = await db
+    .select({ item: payrollItems, enc: employees.accountNumberEnc, bank: employees.bankName })
+    .from(payrollItems)
+    .innerJoin(employees, eq(employees.id, payrollItems.employeeId))
+    .where(eq(payrollItems.runId, run.id))
+    .orderBy(asc(sql`${payrollItems.snapshot}->>'code'`));
+  const ids = rows.map((r) => r.item.employeeId);
+  const qids = new Map(
+    ids.length
+      ? (await db.select({ e: employeeIdentities.employeeId, n: employeeIdentities.number }).from(employeeIdentities).where(and(eq(employeeIdentities.tenantId, tid(c)), eq(employeeIdentities.type, "qid"), inArray(employeeIdentities.employeeId, ids)))).map((r) => [r.e, r.n.replace(/\s/g, "")])
+      : [],
+  );
+  const people = [];
+  for (const r of rows) {
+    const net = Number(r.item.net);
+    if (r.item.onHold || net <= 0) continue;
+    const basic = r.item.earnings.find((l) => l.code === "basic")?.amount ?? 0;
+    const extra = Math.round((Number(r.item.gross) - basic + Number(r.item.reimbursement ?? 0)) * 100) / 100;
+    people.push({
+      name: r.item.snapshot.name,
+      qid: qids.get(r.item.employeeId) ?? "",
+      bank: r.bank ?? "",
+      iban: (await decryptField(r.enc, c.env.ENCRYPTION_KEY)) ?? "",
+      workingDays: Number(r.item.paidDays),
+      net,
+      basic,
+      extraHours: 0,
+      extraIncome: extra,
+      deductions: Number(r.item.totalDeductions),
+    });
+  }
+  const reg = (ent.registrations ?? {}) as Record<string, string | null>;
+  const file = { employerId: reg.establishmentId ?? "", payerBank: reg.payerBank ?? "", payerIban: reg.payerIban ?? "", month: run.month, createdAt: new Date(), employees: people };
+  const errors = checkQatarWps(file);
+  if (errors.length) throw badRequest(errors.length === 1 ? errors[0]! : `${errors.length} things need fixing before the WPS file can go: ${errors.slice(0, 5).join(" ")}${errors.length > 5 ? " ..." : ""}`);
+  const out = buildQatarWps(file);
+  await audit(c, { action: "payroll.wps_file", entity: "payroll_run", entityId: run.id, summary: `Exported the Qatar WPS file for ${run.month}: ${people.length} payments` });
+  return c.body(out.content, 200, { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="${out.fileName}"` });
 });
 
 payrollRoutes.get("/runs/:id/register.csv", requirePerm("payroll", "export"), async (c) => {

@@ -55,7 +55,7 @@ export async function mySalary(db: Database, tenantId: string, employeeId: strin
     ptApplicable: e.ptApplicable && statOn("pt"),
     state: row.state ?? ent.state ?? tenant?.state ?? null,
     gender: e.gender,
-    profile: { nationality: e.nationality, region: ent.state, insuredSince: ent.country === "SA" ? ((await insuredSince(db, tenantId, [employeeId])).get(employeeId) ?? null) : null },
+    profile: { nationality: e.nationality, region: ent.state, insuredSince: ent.country === "SA" ? ((await insuredSince(db, tenantId, [employeeId])).get(employeeId) ?? null) : null, joinedOn: e.dateOfJoining },
     regime,
     taxProfile: decl ? { declaration: decl.data, verified: decl.verified } : undefined,
     ytd: y ? { taxableGross: y.taxableGross, tds: y.tds, employeePf: y.employeePf, professionalTax: y.professionalTax } : ytd.hasHistory ? { taxableGross: 0, tds: 0, employeePf: 0, professionalTax: 0 } : undefined,

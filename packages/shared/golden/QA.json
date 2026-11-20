@@ -1,0 +1,186 @@
+{
+  "country": "QA",
+  "signedOff": {
+    "by": null,
+    "on": null,
+    "note": "Built from Social Insurance Law No. 1 of 2022 (GRSIA) and Labour Law No. 14 of 2004. A Qatar payroll expert must check every case by hand, especially the GRSIA rates and which allowances count in the contribution salary."
+  },
+  "cases": [
+    {
+      "name": "Expat in Doha",
+      "why": "No income tax and no social insurance for expats.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "month": "2026-11",
+        "annualCtc": 240000,
+        "profile": {
+          "nationality": "PH",
+          "region": "Doha"
+        }
+      },
+      "expect": {
+        "gross": 20000,
+        "totalDeductions": 0,
+        "net": 20000,
+        "tds": 0,
+        "employerCost": 0,
+        "lines": {
+          "earn.basic": 10000,
+          "earn.hra": 4000,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 3150
+        }
+      }
+    },
+    {
+      "name": "Qatari national",
+      "why": "GRSIA: 7% employee and 14% employer on basic plus housing.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "month": "2026-11",
+        "annualCtc": 240000,
+        "profile": {
+          "nationality": "QA",
+          "region": "Doha"
+        }
+      },
+      "expect": {
+        "gross": 20000,
+        "totalDeductions": 980,
+        "net": 19020,
+        "tds": 0,
+        "employerCost": 1960,
+        "lines": {
+          "earn.basic": 10000,
+          "earn.hra": 4000,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 3150,
+          "ded.pension": 980,
+          "emp.pension_er": 1960
+        }
+      }
+    },
+    {
+      "name": "Qatari on a high salary",
+      "why": "Contributions keep going on the whole basic plus housing.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "month": "2026-11",
+        "annualCtc": 960000,
+        "profile": {
+          "nationality": "QA",
+          "region": "Al Rayyan"
+        }
+      },
+      "expect": {
+        "gross": 80000,
+        "totalDeductions": 3920,
+        "net": 76080,
+        "tds": 0,
+        "employerCost": 7840,
+        "lines": {
+          "earn.basic": 40000,
+          "earn.hra": 16000,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 21150,
+          "ded.pension": 3920,
+          "emp.pension_er": 7840
+        }
+      }
+    },
+    {
+      "name": "Qatari with unpaid days",
+      "why": "Ten unpaid days cut pay and contributions by a third.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 20,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "month": "2026-11",
+        "annualCtc": 240000,
+        "profile": {
+          "nationality": "QA",
+          "region": "Doha"
+        }
+      },
+      "expect": {
+        "gross": 13333.34,
+        "totalDeductions": 653.33,
+        "net": 12680.01,
+        "tds": 0,
+        "employerCost": 1306.67,
+        "lines": {
+          "earn.basic": 6666.67,
+          "earn.hra": 2666.67,
+          "earn.conveyance": 1066.67,
+          "earn.medical": 833.33,
+          "earn.special": 2100,
+          "ded.pension": 653.33,
+          "emp.pension_er": 1306.67
+        }
+      }
+    },
+    {
+      "name": "Saudi national",
+      "why": "GCC nationals follow their home scheme: nothing here, with a warning.",
+      "input": {
+        "daysInMonth": 30,
+        "paidDays": 30,
+        "gender": "male",
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "state": null,
+        "month": "2026-11",
+        "annualCtc": 240000,
+        "profile": {
+          "nationality": "SA",
+          "region": "Doha"
+        }
+      },
+      "expect": {
+        "gross": 20000,
+        "totalDeductions": 0,
+        "net": 20000,
+        "tds": 0,
+        "employerCost": 0,
+        "lines": {
+          "earn.basic": 10000,
+          "earn.hra": 4000,
+          "earn.conveyance": 1600,
+          "earn.medical": 1250,
+          "earn.special": 3150
+        }
+      }
+    }
+  ]
+}

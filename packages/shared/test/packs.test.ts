@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import { allowedCountries, computePayslip, COUNTRIES, hasPackFor, packFor, structureFromCtc } from "../src";
 
 describe("country packs", () => {
-  it("has India, the UAE and Saudi Arabia", () => {
+  it("has India and the six Gulf states", () => {
     expect(packFor("IN").code).toBe("IN");
     expect(packFor().code).toBe("IN"); // default
     expect(hasPackFor("IN")).toBe(true);
     expect(packFor("AE").review?.status).toBe("pending"); // waiting for a UAE expert's sign off
-    expect(packFor("SA").review?.status).toBe("pending");
-    for (const c of ["QA", "KW", "OM", "BH", "GB", "US", "CA"]) {
+    for (const c of ["SA", "QA", "KW", "OM", "BH"]) expect(packFor(c).review?.status).toBe("pending");
+    for (const c of ["GB", "US", "CA"]) {
       expect(hasPackFor(c)).toBe(false);
       expect(() => packFor(c)).toThrow(/isn't supported yet/);
     }
@@ -16,8 +16,8 @@ describe("country packs", () => {
 
   it("only lets an instance use countries that have a pack", () => {
     expect(allowedCountries(undefined)).toEqual(["IN"]);
-    expect(allowedCountries("IN, AE, QA, xx")).toEqual(["IN", "AE"]); // QA has no pack yet, xx isn't a country
-    expect(allowedCountries("QA")).toEqual([]);
+    expect(allowedCountries("IN, AE, GB, xx")).toEqual(["IN", "AE"]); // GB has no pack yet, xx isn't a country
+    expect(allowedCountries("GB")).toEqual([]);
   });
 
   it("knows each country's currency, decimals and weekend", () => {
@@ -36,7 +36,7 @@ describe("country packs", () => {
 
   it("refuses to run payroll for a country without a pack", () => {
     const base = { month: "2026-11", daysInMonth: 30, paidDays: 30, pfApplicable: false, esiApplicable: false, ptApplicable: false, state: null, regime: "new" as const, structure: structureFromCtc(600000) };
-    expect(() => computePayslip({ ...base, country: "QA" })).toThrow(/Qatar isn't supported yet/);
+    expect(() => computePayslip({ ...base, country: "GB" })).toThrow(/United Kingdom isn't supported yet/);
   });
 
   it("India pack lists the entity registrations and rule categories", () => {
