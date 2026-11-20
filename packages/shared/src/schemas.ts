@@ -48,13 +48,14 @@ export const payAccountSchema = z
   .toUpperCase()
   .transform((v) => (/^[A-Z]{2}/.test(v) ? v.replace(/\s/g, "") : v))
   .refine((v) => /^\d{6,18}$/.test(v) || /^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(v), "Enter a 6 to 18 digit account number or an IBAN");
-/** The bank's code for salary transfers: an IFSC in India, a 9 digit routing code for UAE WPS, a sort code in the UK. */
+/** The bank's code for salary transfers: an IFSC in India, a 9 digit routing code for UAE WPS, a sort code in the UK, transit and institution numbers in Canada. */
 export const bankCodeSchema = z
   .string()
   .trim()
   .toUpperCase()
   .transform((v) => (/^\d{2}-?\d{2}-?\d{2}$/.test(v) ? v.replace(/-/g, "").replace(/^(\d{2})(\d{2})(\d{2})$/, "$1-$2-$3") : v))
-  .refine((v) => /^[A-Z]{4}0[A-Z0-9]{6}$/.test(v) || /^\d{9}$/.test(v) || /^\d{2}-\d{2}-\d{2}$/.test(v), "Enter an IFSC like HDFC0001234, a 9 digit routing code or a UK sort code");
+  .transform((v) => (/^\d{5}-\d{3}$/.test(v) || /^\d{8}$/.test(v) ? v.replace(/^(\d{5})-?(\d{3})$/, "$1-$2") : v))
+  .refine((v) => /^[A-Z]{4}0[A-Z0-9]{6}$/.test(v) || /^\d{9}$/.test(v) || /^\d{2}-\d{2}-\d{2}$/.test(v) || /^\d{5}-\d{3}$/.test(v), "Enter an IFSC like HDFC0001234, a 9 digit routing code, a UK sort code or a Canadian transit and institution number");
 export const phoneSchema = z
   .string()
   .trim()

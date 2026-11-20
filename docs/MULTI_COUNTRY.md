@@ -200,6 +200,14 @@ Cloudflare is one account for all instances. Neon is roughly $19 a month per pro
    - **Final pay:** unused PTO at salary over 260 days; no statutory notice or severance (at will).
    - **Federal holidays,** observed on the nearest weekday.
    - Still to do: pick the payroll partner and connect it (state and local income tax, SUI, Forms 941 and 940, W-2s, state filings, and money movement); biweekly and semi-monthly pay (runs are monthly today); golden cases signed off by a US payroll professional (`packages/shared/golden/US.json`).
-6. Canada: federal and provincial income tax, CPP or QPP, EI, ROE and T4 (or a payroll partner, as for the USA)
+6. Canada: federal and provincial income tax, CPP or QPP, EI, ROE and T4 (or a payroll partner, as for the USA) ✅ for federal and Ontario payroll; other provinces and filings through the partner. What's in it (2026, CRA's T4127 formulas):
+   - **Federal income tax:** annualised, with credits at the lowest rate for the TD1 claim (or the basic personal amount, reduced for high earners), CPP base contributions, EI premiums and the Canada employment amount. Quebec residents get the 16.5% abatement.
+   - **Ontario income tax:** the brackets, surtax and Ontario health premium.
+   - **CPP** at 5.95% over the monthly exemption up to the YMPE, and **CPP2** at 4% between the YMPE and the YAMPE. The enhanced part and CPP2 come off taxable income, as CRA requires. Quebec uses **QPP** instead.
+   - **EI** up to the maximum insurable earnings, with the employer at 1.4 times. Quebec uses its lower EI rate plus **QPIP**.
+   - **Employee form:** Canadian entities get a TD1 section (federal and provincial claims, extra tax, CPP and EI exemptions). SIN goes under IDs & visas. Bank details take transit and institution numbers.
+   - **Final pay:** unused vacation, and Ontario ESA termination pay in lieu of notice (a week per year, up to eight).
+   - **Ontario's public holidays,** with Easter, Family Day and Victoria Day worked out.
+   - Still to do: Quebec income tax and the other provinces and territories (through the payroll partner, or added one by one); remittances, T4s and ROEs (partner); ESA severance pay and other provinces' notice rules (manual lines for now); biweekly pay; golden cases signed off by a Canadian payroll professional (`packages/shared/golden/CA.json`).
 
 Compliance details for each country are a starting point only. Every pack needs sign off from a local expert before it pays anyone.

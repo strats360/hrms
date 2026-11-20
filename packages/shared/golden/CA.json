@@ -1,0 +1,283 @@
+{
+  "country": "CA",
+  "signedOff": {
+    "by": null,
+    "on": null,
+    "note": "Built from CRA's T4127 payroll formulas for 2026 (federal and Ontario) and Revenu Québec's QPP and QPIP rates. A Canadian payroll professional must check every case against CRA's January 2026 tables, especially the indexed brackets, basic personal amounts, YMPE, YAMPE and EI maximum."
+  },
+  "cases": [
+    {
+      "name": "Ontario, $60,000",
+      "why": "Federal and Ontario tax with the basic personal amounts, CPP on pay over the exemption, EI.",
+      "input": {
+        "daysInMonth": 31,
+        "paidDays": 31,
+        "gender": null,
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "month": "2026-01",
+        "annualCtc": 60000,
+        "state": "Ontario",
+        "countryProfile": {}
+      },
+      "expect": {
+        "gross": 5000,
+        "totalDeductions": 1055.03,
+        "net": 3944.97,
+        "tds": 693.38,
+        "employerCost": 394.25,
+        "lines": {
+          "earn.basic": 5000,
+          "ded.fed_tax": 444.86,
+          "ded.prov_tax": 248.52,
+          "ded.cpp": 280.15,
+          "ded.ei": 81.5,
+          "emp.cpp_er": 280.15,
+          "emp.ei_er": 114.1
+        }
+      }
+    },
+    {
+      "name": "Ontario, $45,000",
+      "why": "A lower salary: smaller Ontario health premium.",
+      "input": {
+        "daysInMonth": 31,
+        "paidDays": 31,
+        "gender": null,
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "month": "2026-01",
+        "annualCtc": 45000,
+        "state": "Ontario",
+        "countryProfile": {}
+      },
+      "expect": {
+        "gross": 3750,
+        "totalDeductions": 703.81,
+        "net": 3046.19,
+        "tds": 436.92,
+        "employerCost": 291.34,
+        "lines": {
+          "earn.basic": 3750,
+          "ded.fed_tax": 278.18,
+          "ded.prov_tax": 158.74,
+          "ded.cpp": 205.77,
+          "ded.ei": 61.12,
+          "emp.cpp_er": 205.77,
+          "emp.ei_er": 85.57
+        }
+      }
+    },
+    {
+      "name": "Ontario, $150,000",
+      "why": "Ontario surtax kicks in; EI and CPP in full this month.",
+      "input": {
+        "daysInMonth": 31,
+        "paidDays": 31,
+        "gender": null,
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "month": "2026-01",
+        "annualCtc": 150000,
+        "state": "Ontario",
+        "countryProfile": {}
+      },
+      "expect": {
+        "gross": 12500,
+        "totalDeductions": 4243.81,
+        "net": 8256.19,
+        "tds": 3313.66,
+        "employerCost": 1011.65,
+        "lines": {
+          "earn.basic": 12500,
+          "ded.fed_tax": 2101.19,
+          "ded.prov_tax": 1212.47,
+          "ded.cpp": 726.4,
+          "ded.ei": 203.75,
+          "emp.cpp_er": 726.4,
+          "emp.ei_er": 285.25
+        }
+      }
+    },
+    {
+      "name": "Ontario, CPP2 in July",
+      "why": "Past the YMPE in July: CPP is maxed out and CPP2 takes 4% of pay up to the YAMPE.",
+      "input": {
+        "daysInMonth": 31,
+        "paidDays": 31,
+        "gender": null,
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "month": "2026-07",
+        "annualCtc": 150000,
+        "state": "Ontario",
+        "ytd": {
+          "taxableGross": 75000,
+          "tds": 0,
+          "employeePf": 0,
+          "professionalTax": 0
+        },
+        "countryProfile": {}
+      },
+      "expect": {
+        "gross": 12500,
+        "totalDeductions": 3677.65,
+        "net": 8822.35,
+        "tds": 3277.65,
+        "employerCost": 400,
+        "lines": {
+          "earn.basic": 12500,
+          "ded.fed_tax": 2083.09,
+          "ded.prov_tax": 1194.56,
+          "ded.cpp2": 400,
+          "emp.cpp2_er": 400
+        }
+      }
+    },
+    {
+      "name": "Ontario, bigger TD1 claim",
+      "why": "A spouse amount on the TD1 lowers both taxes.",
+      "input": {
+        "daysInMonth": 31,
+        "paidDays": 31,
+        "gender": null,
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "month": "2026-01",
+        "annualCtc": 80000,
+        "state": "Ontario",
+        "countryProfile": {
+          "federalClaim": 32904,
+          "provincialClaim": 24000
+        }
+      },
+      "expect": {
+        "gross": 6667,
+        "totalDeductions": 1431.14,
+        "net": 5235.86,
+        "tds": 943.14,
+        "employerCost": 531.47,
+        "lines": {
+          "earn.basic": 6667,
+          "ded.fed_tax": 581.11,
+          "ded.prov_tax": 362.03,
+          "ded.cpp": 379.33,
+          "ded.ei": 108.67,
+          "emp.cpp_er": 379.33,
+          "emp.ei_er": 152.14
+        }
+      }
+    },
+    {
+      "name": "Ontario, extra tax",
+      "why": "TD1 additional tax each pay.",
+      "input": {
+        "daysInMonth": 31,
+        "paidDays": 31,
+        "gender": null,
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "month": "2026-01",
+        "annualCtc": 70000,
+        "state": "Ontario",
+        "countryProfile": {
+          "extraTax": 150
+        }
+      },
+      "expect": {
+        "gross": 5833,
+        "totalDeductions": 1502.52,
+        "net": 4330.48,
+        "tds": 1077.73,
+        "employerCost": 462.82,
+        "lines": {
+          "earn.basic": 5833,
+          "ded.fed_tax": 756.45,
+          "ded.prov_tax": 321.28,
+          "ded.cpp": 329.71,
+          "ded.ei": 95.08,
+          "emp.cpp_er": 329.71,
+          "emp.ei_er": 133.11
+        }
+      }
+    },
+    {
+      "name": "Quebec",
+      "why": "QPP at 6.4%, QPIP, Quebec's EI rate and the 16.5% federal abatement; Quebec tax comes from the partner.",
+      "input": {
+        "daysInMonth": 31,
+        "paidDays": 31,
+        "gender": null,
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "month": "2026-01",
+        "annualCtc": 60000,
+        "state": "Quebec",
+        "countryProfile": {}
+      },
+      "expect": {
+        "gross": 5000,
+        "totalDeductions": 761.94,
+        "net": 4238.06,
+        "tds": 370.91,
+        "employerCost": 426.93,
+        "lines": {
+          "earn.basic": 5000,
+          "ded.fed_tax": 370.91,
+          "ded.cpp": 301.33,
+          "ded.ei": 65,
+          "ded.qpip": 24.7,
+          "emp.cpp_er": 301.33,
+          "emp.ei_er": 91,
+          "emp.qpip_er": 34.6
+        }
+      }
+    },
+    {
+      "name": "Alberta",
+      "why": "Federal tax, CPP and EI here; Alberta tax comes from the partner.",
+      "input": {
+        "daysInMonth": 31,
+        "paidDays": 31,
+        "gender": null,
+        "regime": "new",
+        "pfApplicable": false,
+        "esiApplicable": false,
+        "ptApplicable": false,
+        "month": "2026-01",
+        "annualCtc": 60000,
+        "state": "Alberta",
+        "countryProfile": {}
+      },
+      "expect": {
+        "gross": 5000,
+        "totalDeductions": 806.51,
+        "net": 4193.49,
+        "tds": 444.86,
+        "employerCost": 394.25,
+        "lines": {
+          "earn.basic": 5000,
+          "ded.fed_tax": 444.86,
+          "ded.cpp": 280.15,
+          "ded.ei": 81.5,
+          "emp.cpp_er": 280.15,
+          "emp.ei_er": 114.1
+        }
+      }
+    }
+  ]
+}

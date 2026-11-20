@@ -48,7 +48,7 @@ export const COUNTRIES: Record<CountryCode, CountryInfo> = {
     timeZone: "America/Toronto",
     timeZones: ["America/Toronto", "America/Vancouver", "America/Edmonton", "America/Winnipeg", "America/Halifax", "America/St_Johns", "America/Regina"],
     weekend: [0, 6],
-    hasPack: false,
+    hasPack: true,
   },
 };
 

@@ -8,12 +8,13 @@ import { omanPack } from "./gcc/om";
 import { bahrainPack } from "./gcc/bh";
 import { ukPack } from "./gb";
 import { usPack } from "./us";
+import { canadaPack } from "./ca";
 import type { CountryPack } from "./types";
 
 export type { CountryPack, StatutoryContext, StatutoryResult } from "./types";
 
 /** Every built country pack. Packs still waiting for a local expert's sign off say so in `review`. */
-const PACKS: Partial<Record<CountryCode, CountryPack>> = { IN: indiaPack, AE: uaePack, SA: saudiPack, QA: qatarPack, KW: kuwaitPack, OM: omanPack, BH: bahrainPack, GB: ukPack, US: usPack };
+const PACKS: Partial<Record<CountryCode, CountryPack>> = { IN: indiaPack, AE: uaePack, SA: saudiPack, QA: qatarPack, KW: kuwaitPack, OM: omanPack, BH: bahrainPack, GB: ukPack, US: usPack, CA: canadaPack };
 
 /** Countries with a finished pack, e.g. for golden payroll tests. */
 export const PACK_CODES = Object.keys(PACKS) as CountryCode[];
@@ -56,3 +57,9 @@ export { federalWithholding } from "./us/payroll";
 export { usPayrollProfileSchema, type UsPayrollProfile } from "./us/profile";
 export { FILING_STATUSES, US_STATES } from "./us/rules";
 export { usFederalHolidays } from "./us/holidays";
+
+export { eiThisMonth, federalBpa, incomeTaxThisMonth, ontarioHealthPremium, pensionThisMonth } from "./ca/payroll";
+export { caPayrollProfileSchema, type CaPayrollProfile } from "./ca/profile";
+export { PROVINCES } from "./ca/rules";
+export { ontarioHolidays } from "./ca/holidays";
+export { ontarioNoticeWeeks } from "./ca/settlement";
