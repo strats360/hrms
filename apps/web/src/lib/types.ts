@@ -122,7 +122,7 @@ export interface LeaveType {
   name: string;
   isPaid: boolean;
   annualQuota: number;
-  accrual: "yearly" | "monthly" | "none";
+  accrual: "yearly" | "monthly" | "none" | "worked_days";
   carryForwardMax: number;
   encashable: boolean;
   allowHalfDay: boolean;

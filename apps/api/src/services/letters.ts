@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { branches, departments, designations, employees, tenants, type Database } from "@hrms/db";
-import { BUILT_IN_LETTERS, COMPONENT_LABELS, letterBlocks, probationEndDate, pronouns, rupeesInWords, todayLocal, type LetterTemplate, type LetterValues, type MonthlyComponents } from "@hrms/shared";
+import { WAGE_CATEGORY_LABELS, BUILT_IN_LETTERS, COMPONENT_LABELS, letterBlocks, probationEndDate, pronouns, rupeesInWords, todayLocal, type LetterTemplate, type LetterValues, type MonthlyComponents } from "@hrms/shared";
 import { A4, colors, MARGIN, PdfWriter } from "../lib/pdf";
 import { getTemplate, resolveStructure, structuresAsOf } from "./payroll";
 
@@ -72,6 +72,12 @@ export async function letterValues(db: Database, tenantId: string, employeeId: s
     "employee.permanent_address": e.permanentAddress ?? e.currentAddress ?? "",
     "employee.date_of_birth": longDate(e.dateOfBirth),
     "employee.pan": e.pan ?? "",
+    "employee.aadhaar_last4": e.aadhaarLast4 ?? "",
+    "employee.skill_category": e.wageCategory ? (WAGE_CATEGORY_LABELS[e.wageCategory as keyof typeof WAGE_CATEGORY_LABELS] ?? e.wageCategory) : "",
+    "employee.uan": e.uan ?? "",
+    "employee.esic_number": e.esicIpNumber ?? "",
+    // the appointment letter must state the social security cover (OSH Code)
+    "employee.social_security": [e.pfApplicable ? `Provident Fund${e.uan ? ` (UAN ${e.uan})` : ""}` : null, e.esiApplicable ? `ESI${e.esicIpNumber ? ` (IP ${e.esicIpNumber})` : ""}` : null].filter(Boolean).join(" and ") || "Not covered by PF or ESI",
     ...pronouns(e.gender),
     "company.name": t?.legalName ?? t?.name ?? "",
     "company.address": t?.registeredAddress ?? "",

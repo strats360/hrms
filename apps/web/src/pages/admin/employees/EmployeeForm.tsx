@@ -146,8 +146,8 @@ export default function EmployeeForm() {
   const [ukInitial, setUkInitial] = useState<UkForm>(EMPTY_UK);
   const [us, setUs] = useState<UsForm>(EMPTY_US);
   const [usInitial, setUsInitial] = useState<UsForm>(EMPTY_US);
-  const [disability, setDisability] = useState(false);
-  const [disabilityInitial, setDisabilityInitial] = useState(false);
+  const [india, setIndia] = useState({ disability: false, overtimeConsent: false });
+  const [indiaInitial, setIndiaInitial] = useState({ disability: false, overtimeConsent: false });
   const [ca, setCa] = useState<CaForm>(EMPTY_CA);
   const [caInitial, setCaInitial] = useState<CaForm>(EMPTY_CA);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -164,9 +164,10 @@ export default function EmployeeForm() {
       const w = usFromProfile(detail.data.countryProfile);
       setUs(w);
       setUsInitial(w);
-      const dis = !!(detail.data.countryProfile as { disability?: boolean } | null | undefined)?.disability;
-      setDisability(dis);
-      setDisabilityInitial(dis);
+      const ip = (detail.data.countryProfile ?? {}) as { disability?: boolean; overtimeConsent?: boolean };
+      const iv = { disability: !!ip.disability, overtimeConsent: !!ip.overtimeConsent };
+      setIndia(iv);
+      setIndiaInitial(iv);
       const t = caFromProfile(detail.data.countryProfile);
       setCa(t);
       setCaInitial(t);
@@ -224,13 +225,13 @@ export default function EmployeeForm() {
     setServerError(null);
     let payload: Record<string, unknown>;
     // country payroll details: the UK's tax code and NI category, the US W-4
-    const forms = { IN: [disability, disabilityInitial], GB: [uk, ukInitial], US: [us, usInitial], CA: [ca, caInitial] } as Record<string, [unknown, unknown]>;
+    const forms = { IN: [india, indiaInitial], GB: [uk, ukInitial], US: [us, usInitial], CA: [ca, caInitial] } as Record<string, [unknown, unknown]>;
     const pair = forms[country];
     const ukChanged = !!pair && (!isEdit || JSON.stringify(pair[0]) !== JSON.stringify(pair[1]));
     const ukProfile = !ukChanged
       ? null
       : country === "IN"
-        ? indiaPayrollProfileSchema.safeParse({ disability })
+        ? indiaPayrollProfileSchema.safeParse(india)
         : country === "GB"
         ? ukPayrollProfileSchema.safeParse(ukToProfile(uk))
         : country === "US"
@@ -463,7 +464,8 @@ export default function EmployeeForm() {
                 <Checkbox checked={form.pfApplicable} onChange={(v) => set("pfApplicable", v)} label="PF" />
                 <Checkbox checked={form.esiApplicable} onChange={(v) => set("esiApplicable", v)} label="ESI (Code wages up to ₹21,000)" />
                 <Checkbox checked={form.ptApplicable} onChange={(v) => set("ptApplicable", v)} label="Professional Tax" />
-                <Checkbox checked={disability} onChange={setDisability} label="Person with disability (ESI limit ₹25,000)" />
+                <Checkbox checked={india.disability} onChange={(v) => setIndia((x) => ({ ...x, disability: v }))} label="Person with disability (ESI limit ₹25,000, PT exempt)" />
+                <Checkbox checked={india.overtimeConsent} onChange={(v) => setIndia((x) => ({ ...x, overtimeConsent: v }))} label="Has given written consent to overtime" />
               </div>
             </Field>
           </Section>

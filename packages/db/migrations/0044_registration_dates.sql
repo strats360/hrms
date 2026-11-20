@@ -1,0 +1,1 @@
+ALTER TABLE "legal_entities" ADD COLUMN "registration_dates" jsonb DEFAULT '{}'::jsonb NOT NULL;

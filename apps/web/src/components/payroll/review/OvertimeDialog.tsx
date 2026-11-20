@@ -18,10 +18,13 @@ interface OtRow {
   ratePerHour: number;
   amount: number;
   overLimit: boolean;
+  quarterHours?: number;
+  overQuarter?: boolean;
+  consent?: boolean;
   paid: { hours: number; amount: number } | null;
 }
 interface Ot {
-  settings: { multiplier: number; basis: "gross" | "basic"; daysPerMonth: number; hoursPerDay: number; monthlyLimitHours: number };
+  settings: { multiplier: number; basis: "gross" | "basic"; daysPerMonth: number; hoursPerDay: number; monthlyLimitHours: number; quarterlyLimitHours?: number };
   rows: OtRow[];
 }
 
@@ -86,6 +89,8 @@ export function OvertimeDialog({ runId, open, onClose }: { runId: string; open: 
                     <td className="num text-end">
                       {r.hours} h<span className="text-muted"> · {r.days} day{r.days === 1 ? "" : "s"}</span>
                       {r.overLimit ? <Tag tone="warn" className="ms-1">Over {s?.monthlyLimitHours} h</Tag> : null}
+                      {r.overQuarter ? <Tag tone="bad" className="ms-1">{r.quarterHours} h this quarter, over {s?.quarterlyLimitHours}</Tag> : null}
+                      {r.consent === false ? <Tag tone="warn" className="ms-1">No overtime consent on file</Tag> : null}
                     </td>
                     <td className="num text-end">{fmtMoney(r.ratePerHour)}</td>
                     <td>

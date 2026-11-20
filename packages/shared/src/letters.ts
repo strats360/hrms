@@ -24,6 +24,11 @@ export const LETTER_FIELDS = [
   { key: "employee.permanent_address", label: "Permanent address", group: "Employee" },
   { key: "employee.date_of_birth", label: "Date of birth", group: "Employee" },
   { key: "employee.pan", label: "PAN", group: "Employee" },
+  { key: "employee.aadhaar_last4", label: "Aadhaar (last 4 digits)", group: "Employee" },
+  { key: "employee.skill_category", label: "Skill category", group: "Employee" },
+  { key: "employee.uan", label: "UAN (PF)", group: "Employee" },
+  { key: "employee.esic_number", label: "ESIC IP number", group: "Employee" },
+  { key: "employee.social_security", label: "Social security cover (PF, ESI)", group: "Employee" },
   { key: "employee.he_she", label: "he / she / they", group: "Pronouns" },
   { key: "employee.He_She", label: "He / She / They", group: "Pronouns" },
   { key: "employee.him_her", label: "him / her / them", group: "Pronouns" },
@@ -139,6 +144,8 @@ Dear {{employee.name}},
 
 With reference to your application and the subsequent discussions, we are pleased to appoint you as {{employee.designation}} in the {{employee.department}} department of {{company.name}}, with effect from {{employee.joining_date}}, on the following terms and conditions.
 
+Your details: Employee ID {{employee.code}}, date of birth {{employee.date_of_birth}}, Aadhaar ending {{employee.aadhaar_last4}} (shared with your consent), type of employment {{employee.employment_type}}, skill category {{employee.skill_category}}.
+
 Place of work: Your place of work will be {{employee.branch}}. You may be transferred to any other location, department or group company as the company decides.
 
 Remuneration: Your annual cost to company will be {{salary.annual_ctc}} ({{salary.annual_ctc_words}}), as broken down below. Your salary details are confidential and must not be shared.
@@ -153,7 +160,7 @@ Working hours and leave: You will follow the working hours, holidays and leave p
 
 Confidentiality: You will keep all information about the company, its clients and its employees confidential, during and after your employment.
 
-Statutory benefits: You will be covered by Provident Fund, ESI (where applicable), gratuity and other benefits as per applicable law.
+Social security: {{employee.social_security}}. You will also be covered by gratuity and the other benefits the Code on Social Security provides. Please give your PF, ESI and gratuity nominations when you join.
 
 Please sign and return a copy of this letter as a token of your acceptance.`,
   },

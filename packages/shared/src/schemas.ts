@@ -311,7 +311,7 @@ export const leaveTypeSchema = z.object({
   name: trimmed(60).min(1),
   isPaid: z.boolean().default(true),
   annualQuota: z.coerce.number().min(0).max(365).default(0),
-  accrual: z.enum(["yearly", "monthly", "none"]).default("yearly"),
+  accrual: z.enum(["yearly", "monthly", "none", "worked_days"]).default("yearly"),
   carryForwardMax: z.coerce.number().min(0).max(365).default(0),
   encashable: z.boolean().default(false),
   allowHalfDay: z.boolean().default(true),
@@ -715,6 +715,8 @@ export const legalEntitySchema = z.object({
   state: nullable(trimmed(80)),
   address: nullable(trimmed(400)),
   registrations: z.record(z.string().max(40), z.string().trim().max(60).nullable()).default({}),
+  /** Issue and renewal dates by registration key; renewals show on the compliance calendar. */
+  registrationDates: z.record(z.string().max(40), z.object({ issuedOn: nullable(isoDate), renewsOn: nullable(isoDate) })).default({}),
   /** How often the entity pays. Only the frequencies its country pack supports are accepted. */
   payFrequency: z.enum(PAY_FREQUENCIES).default("monthly"),
   /** The first day of any one pay period, for biweekly and weekly pay. */

@@ -18,7 +18,15 @@ export function countLeaveDays(
 
 export interface LeaveTypeRule {
   annualQuota: number;
-  accrual: "yearly" | "monthly" | "none";
+  /** worked_days: the OSH Code rule, 1 day for every 20 days worked last year, once 180 were worked. */
+  accrual: "yearly" | "monthly" | "none" | "worked_days";
+}
+
+/** OSH Code annual leave: 1 day for every 20 days worked in the previous calendar year, if 180 or more were worked. */
+export const OSH_LEAVE = { perDaysWorked: 20, minDaysWorked: 180, carryForwardMax: 30 };
+export function oshLeave(daysWorkedLastYear: number) {
+  if (daysWorkedLastYear < OSH_LEAVE.minDaysWorked) return 0;
+  return Math.floor(daysWorkedLastYear / OSH_LEAVE.perDaysWorked);
 }
 
 /**
@@ -27,7 +35,8 @@ export interface LeaveTypeRule {
  * - monthly: quota/12 credited on the 1st of every month the employee is in service.
  * Results are rounded down to the nearest half day.
  */
-export function accruedLeave(rule: LeaveTypeRule, year: number, asOf: string, dateOfJoining?: string | null): number {
+export function accruedLeave(rule: LeaveTypeRule, year: number, asOf: string, dateOfJoining?: string | null, daysWorkedLastYear?: number): number {
+  if (rule.accrual === "worked_days") return Number(asOf.slice(0, 4)) < year ? 0 : oshLeave(daysWorkedLastYear ?? 0);
   if (rule.accrual === "none" || rule.annualQuota <= 0) return 0;
   const [ay, am] = asOf.split("-").map(Number) as [number, number];
   if (ay < year) return 0;

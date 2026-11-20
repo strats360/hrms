@@ -67,6 +67,8 @@ export const legalEntities = pgTable(
     registrations: jsonb("registrations").$type<Record<string, string | null>>().notNull().default({}),
     /** Country specific schemes and their registrations, e.g. { epf: { enabled, registration } }. */
     statutory: jsonb("statutory").$type<Record<string, StatutoryRegistration>>().notNull().default({}),
+    /** When each registration was issued and when it has to be renewed, by registration key. */
+    registrationDates: jsonb("registration_dates").$type<Record<string, { issuedOn?: string | null; renewsOn?: string | null }>>().notNull().default({}),
     /** How often the entity pays: monthly, semi_monthly, biweekly or weekly (only where its country pack allows). */
     payFrequency: text("pay_frequency").notNull().default("monthly"),
     /** The first day of any one pay period, for biweekly and weekly pay. */

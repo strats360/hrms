@@ -1,5 +1,5 @@
 import { and, asc, eq, inArray, isNull, like, ne, notInArray, sql } from "drizzle-orm";
-import {
+import { branches,
   companyBankAccounts,
   employees,
   paymentBatches,
@@ -9,7 +9,8 @@ import {
   reimbursementClaims,
   type Database,
 } from "@hrms/db";
-import { BONUS, daysInMonth, decryptField, statutoryBonus, todayLocal, zonedDateTime } from "@hrms/shared";
+import { rulesFor } from "./statutory";
+import { BONUS, bonusDueDate, codeWages, daysInMonth, decryptField, statutoryBonus, todayLocal, zonedDateTime } from "@hrms/shared";
 import { fyMonths } from "./tax";
 import { exitPaymentEffects } from "./exits";
 import { getTemplate, resolveStructure, structuresAsOf } from "./payroll";
@@ -121,13 +122,15 @@ export async function bonusLines(db: Database, tenantId: string, fy: string, per
   const months = fyMonths(fy).filter((m) => m <= todayLocal().slice(0, 7));
   const emps = await db.select().from(employees).where(and(eq(employees.tenantId, tenantId), notInArray(employees.status, ["onboarding"])));
   const items = await db
-    .select({ employeeId: payrollItems.employeeId, month: payrollRuns.month, earnings: payrollItems.earnings, paidDays: payrollItems.paidDays })
+    .select({ employeeId: payrollItems.employeeId, month: payrollRuns.month, earnings: payrollItems.earnings, paidDays: payrollItems.paidDays, snapshot: payrollItems.snapshot })
     .from(payrollItems)
     .innerJoin(payrollRuns, eq(payrollRuns.id, payrollItems.runId))
     .where(and(eq(payrollItems.tenantId, tenantId), inArray(payrollRuns.status, ["approved", "paid"]), inArray(payrollRuns.month, months)));
   const locked = new Map(items.map((i) => [`${i.employeeId}|${i.month}`, i]));
   const template = await getTemplate(db, tenantId);
   const structs = await structuresAsOf(db, tenantId, emps.map((e) => e.id), `${months.at(-1)}-28`);
+  const rules = await rulesFor(db, months.at(-1) ?? todayLocal().slice(0, 7));
+  const branchState = new Map((await db.select({ id: branches.id, state: branches.state }).from(branches).where(eq(branches.tenantId, tenantId))).map((b) => [b.id, b.state]));
   const lines: (DraftLine & { wageBase: number })[] = [];
   const skipped: { employeeId: string; reason: string }[] = [];
   for (const e of emps) {
@@ -136,19 +139,22 @@ export async function bonusLines(db: Database, tenantId: string, fy: string, per
     for (const m of months) {
       const it = locked.get(`${e.id}|${m}`);
       if (it) {
-        rows.push({ wage: it.earnings.filter((l) => l.code === "basic").reduce((s, l) => s + l.amount, 0), paidDays: Number(it.paidDays) });
+        // Code wages the payslip used; older payslips only kept basic
+        rows.push({ wage: it.snapshot.codeWages ?? it.earnings.filter((l) => l.code === "basic").reduce((s, l) => s + l.amount, 0), paidDays: Number(it.paidDays) });
         continue;
       }
       const [y, mo] = m.split("-").map(Number) as [number, number];
       const end = `${m}-${String(daysInMonth(y, mo)).padStart(2, "0")}`;
       if (e.dateOfJoining > end || (e.lastWorkingDay && e.lastWorkingDay < `${m}-01`)) continue;
-      rows.push({ wage: struct.components.basic, paidDays: daysInMonth(y, mo) });
+      rows.push({ wage: codeWages(struct.components), paidDays: daysInMonth(y, mo) });
     }
-    const r = statutoryBonus(rows, percent);
+    // ₹7,000 a month, or the state's minimum wage if higher
+    const minWage = rules.minWage[branchState.get(e.branchId ?? "") ?? ""]?.monthly ?? 0;
+    const r = statutoryBonus(rows, percent, Math.max(BONUS.calculationCeiling, minWage));
     if (r.eligible) lines.push({ employeeId: e.id, amount: r.amount, description: `Statutory bonus FY ${fy} @ ${percent}%`, wageBase: r.wageBase });
     else if (rows.length) skipped.push({ employeeId: e.id, reason: r.reason });
   }
-  return { lines, skipped, months: months.length, ceiling: BONUS.calculationCeiling };
+  return { lines, skipped, months: months.length, ceiling: BONUS.calculationCeiling, dueBy: bonusDueDate(fy) };
 }
 
 /** Same account receiving the same amount twice in one file is almost always a mistake. */

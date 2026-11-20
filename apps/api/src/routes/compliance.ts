@@ -1,6 +1,6 @@
 import { Hono, type Context } from "hono";
 import { and, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
-import { attendanceRecords, employees, payrollItems, payrollRuns, statutoryChallans, tenants, type Database } from "@hrms/db";
+import { attendanceRecords, branches, employees, payrollItems, payrollRuns, statutoryChallans, tenants, type Database } from "@hrms/db";
 import {
   challanSchema,
   daysUntil,
@@ -17,6 +17,11 @@ import {
   todayLocal,
   type Statute,
   taxForms,
+  indiaYearlyDates,
+  headcountObligations,
+  WORKER_WAGE_LIMIT,
+  packFor,
+  hasPackFor,
 } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
@@ -29,6 +34,7 @@ import { ALLOWED_TYPES, getFile, MAX_UPLOAD_BYTES, putFile, safeName } from "../
 import { getTemplate, monthBounds, resolveStructure, structuresAsOf } from "../services/payroll";
 import { monthLabel } from "../lib/months";
 import { liveRules, rulesFor } from "../services/statutory";
+import { listEntities } from "../services/entities";
 
 export const complianceRoutes = new Hono<AppEnv>();
 const tid = (c: Context<AppEnv>) => c.get("tenant").tenantId;
@@ -144,9 +150,12 @@ complianceRoutes.get("/overview", requirePerm("compliance", "view"), async (c) =
     ...tdsReturnDueDates(fy)
       .filter((q) => q.due >= today)
       .map((q) => ({ date: q.due, title: q.quarter === "certificate" ? `${taxForms(fy).certificate} to employees · ${q.period}` : `Salary TDS return (${taxForms(fy).quarterly}) ${q.quarter} · ${q.period}`, amount: null, daysLeft: daysUntil(q.due, today), kind: "return" as const })),
+    // the Labour Codes' yearly dates, and registrations coming up for renewal
+    ...indiaYearlyDates(today, addDays(today, 120)).map((d) => ({ date: d.date, title: d.title, amount: null, daysLeft: daysUntil(d.date, today), kind: "return" as const })),
+    ...(await registrationRenewals(db, tid(c), today, addDays(today, 90))).map((r) => ({ date: r.date, title: r.title, amount: null, daysLeft: daysUntil(r.date, today), kind: "return" as const })),
   ]
     .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 10);
+    .slice(0, 14);
 
   // Also tracked: gratuity, overtime, EDLI
   const tenantId = tid(c);
@@ -421,4 +430,54 @@ complianceRoutes.get("/rules", requirePerm("compliance", "view"), async (c) => {
     { rule: "TDS on salary", value: "Average rate on projected income · new regime default", scope: "All", source: "Section 192, Income-tax Act" },
   );
   return c.json({ statutory: t?.statutory ?? {}, rules });
+});
+
+
+const addDays = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
+
+/** Entity registrations with a renewal date in the window (and ones already overdue). */
+async function registrationRenewals(db: Database, tenantId: string, today: string, until: string) {
+  const ents = await listEntities(db, tenantId);
+  const out: { date: string; title: string }[] = [];
+  for (const e of ents) {
+    const labels = new Map((hasPackFor(e.country) ? packFor(e.country).entityRegistrations : []).map((f) => [f.key, f.label]));
+    for (const [key, d] of Object.entries(e.registrationDates ?? {})) {
+      if (!d?.renewsOn || d.renewsOn > until) continue;
+      out.push({ date: d.renewsOn, title: `${d.renewsOn < today ? "Overdue: renew" : "Renew"} ${labels.get(key) ?? key} · ${e.name}` });
+    }
+  }
+  return out;
+}
+
+/**
+ * Headcount thresholds per establishment (legal entity and state): employees and workers now, and
+ * the obligations each count switches on (India HR compliance report, section 2).
+ */
+complianceRoutes.get("/thresholds", requirePerm("compliance", "view"), async (c) => {
+  const db = c.get("db");
+  const ents = (await listEntities(db, tid(c))).filter((e) => e.country === "IN");
+  const defaultId = ents.find((e) => e.isDefault)?.id;
+  const rows = await db
+    .select({ id: employees.id, entityId: employees.entityId, ctc: employees.annualCtc, state: branches.state, managerId: employees.managerId })
+    .from(employees)
+    .leftJoin(branches, eq(branches.id, employees.branchId))
+    .where(and(eq(employees.tenantId, tid(c)), sql`${employees.status} not in ('exited','inactive','onboarding')`));
+  const managers = new Set(rows.map((r) => r.managerId).filter(Boolean));
+  const groups = new Map<string, { entityId: string; state: string; employees: number; workers: number }>();
+  for (const r of rows) {
+    const entityId = r.entityId ?? defaultId;
+    if (!entityId || !ents.some((e) => e.id === entityId)) continue;
+    const key = `${entityId}|${r.state ?? ""}`;
+    const g = groups.get(key) ?? { entityId, state: r.state ?? "", employees: 0, workers: 0 };
+    g.employees++;
+    // people who manage others and earn over ₹18,000 a month aren't "workers"
+    if (!(managers.has(r.id) && Number(r.ctc) / 12 > WORKER_WAGE_LIMIT)) g.workers++;
+    groups.set(key, g);
+  }
+  const name = new Map(ents.map((e) => [e.id, e.name]));
+  return c.json(
+    [...groups.values()]
+      .sort((a, b) => b.employees - a.employees)
+      .map((g) => ({ ...g, entityName: name.get(g.entityId), obligations: headcountObligations(g).filter((o) => o.status !== "not_yet") })),
+  );
 });

@@ -2,10 +2,19 @@ import { defaultEntity } from "./entities";
 import { ApiError, badRequest, notFound } from "../lib/errors";
 import { countLeaveDays } from "@hrms/shared";
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
-import { employees, holidays, leaveBalances, leaveRequests, leaveTypes, tenants, type Database } from "@hrms/db";
+import { attendanceRecords, employees, holidays, leaveBalances, leaveRequests, leaveTypes, tenants, type Database } from "@hrms/db";
 import { accruedLeave, availableBalance, todayLocal } from "@hrms/shared";
 
 type Tx = Database;
+
+/** Days worked in a calendar year, from attendance: present, late and work from home count as one, half days as half. */
+export async function daysWorkedIn(db: Tx, tenantId: string, employeeId: string, year: number) {
+  const [r] = await db
+    .select({ n: sql<number>`coalesce(sum(case when ${attendanceRecords.status} in ('present','late','wfh') then 1 when ${attendanceRecords.status} = 'half_day' then 0.5 else 0 end),0)::float` })
+    .from(attendanceRecords)
+    .where(and(eq(attendanceRecords.tenantId, tenantId), eq(attendanceRecords.employeeId, employeeId), gte(attendanceRecords.date, `${year}-01-01`), lte(attendanceRecords.date, `${year}-12-31`)));
+  return Number(r?.n ?? 0);
+}
 
 /**
  * Make sure balance rows exist for an employee/year and refresh the accrued
@@ -20,8 +29,10 @@ export async function ensureBalances(db: Tx, tenantId: string, employeeId: strin
     .where(and(eq(leaveBalances.tenantId, tenantId), eq(leaveBalances.employeeId, employeeId), eq(leaveBalances.year, year)));
   const byType = new Map(existing.map((b) => [b.leaveTypeId, b]));
 
+  // OSH Code leave counts the days worked last year
+  const worked = types.some((t) => t.accrual === "worked_days") ? await daysWorkedIn(db, tenantId, employeeId, year - 1) : 0;
   for (const t of types) {
-    const accrued = accruedLeave({ annualQuota: Number(t.annualQuota), accrual: t.accrual as "yearly" | "monthly" | "none" }, year, asOf, emp?.doj);
+    const accrued = accruedLeave({ annualQuota: Number(t.annualQuota), accrual: t.accrual as "yearly" | "monthly" | "none" | "worked_days" }, year, asOf, emp?.doj, worked);
     const cur = byType.get(t.id);
     if (!cur) {
       const [row] = await db

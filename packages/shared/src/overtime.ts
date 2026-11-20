@@ -1,6 +1,6 @@
 /**
- * Overtime pay. Under the Factories Act (and most state Shops and Establishments Acts)
- * overtime is paid at twice the ordinary rate of wages. The ordinary rate is worked out
+ * Overtime pay. Under the OSH Code (and most state Shops and Establishments Acts) overtime
+ * needs the worker's consent and is paid at twice the ordinary rate of wages. The ordinary rate is worked out
  * per hour from the monthly wage, over 26 working days of 8 hours by default.
  */
 export interface OvertimeSettings {
@@ -10,11 +10,21 @@ export interface OvertimeSettings {
   multiplier: number;
   daysPerMonth: number;
   hoursPerDay: number;
-  /** Hours above this in a month get a warning (the Factories Act allows 50 a quarter, 125 under some state rules). */
+  /** Hours above this in a month get a warning. */
   monthlyLimitHours: number;
+  /** The OSH Code's central cap: 144 hours a quarter (states set their own, e.g. Rajasthan 144, older rules 50 or 125). */
+  quarterlyLimitHours: number;
 }
 
-export const DEFAULT_OVERTIME: OvertimeSettings = { enabled: true, basis: "gross", multiplier: 2, daysPerMonth: 26, hoursPerDay: 8, monthlyLimitHours: 50 };
+export const DEFAULT_OVERTIME: OvertimeSettings = { enabled: true, basis: "gross", multiplier: 2, daysPerMonth: 26, hoursPerDay: 8, monthlyLimitHours: 50, quarterlyLimitHours: 144 };
+
+/** The calendar quarter (Jan to Mar, Apr to Jun, ...) a month falls in, as its first and last months. */
+export function quarterOf(month: string) {
+  const y = Number(month.slice(0, 4));
+  const q = Math.floor((Number(month.slice(5, 7)) - 1) / 3);
+  const m = (n: number) => `${y}-${String(n).padStart(2, "0")}`;
+  return { from: m(q * 3 + 1), to: m(q * 3 + 3) };
+}
 
 export function overtimeRate(monthly: { basic: number; gross: number }, s: OvertimeSettings = DEFAULT_OVERTIME) {
   const base = s.basis === "basic" ? monthly.basic : monthly.gross;

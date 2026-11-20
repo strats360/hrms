@@ -26,10 +26,21 @@ export const indiaPack: CountryPack = {
     { key: "pan", label: "PAN" },
     { key: "tan", label: "TAN" },
     { key: "cin", label: "CIN or LLPIN" },
+    { key: "epfCode", label: "EPF establishment code" },
+    { key: "esiCode", label: "ESI employer code" },
+    { key: "shopsRegistration", label: "Shops and Establishments registration" },
+    { key: "labourCodeRegistration", label: "Labour Code (OSH) registration" },
+    { key: "ptRegistration", label: "Professional tax registration" },
+    { key: "lwfRegistration", label: "Labour welfare fund registration" },
+    { key: "contractLabourLicence", label: "Contract labour licence (50+ contract workers)" },
   ],
   ruleCategories: ["pf", "esi", "pt", "lwf", "tax", "minwage"],
 };
 
 import { z } from "zod";
-/** India payroll details kept per employee: a person with disability has a higher ESI limit (₹25,000). */
-export const indiaPayrollProfileSchema = z.object({ disability: z.boolean().default(false) });
+/** India payroll details kept per employee: disability (higher ESI limit, PT exemption) and overtime consent. */
+export const indiaPayrollProfileSchema = z.object({
+  disability: z.boolean().default(false),
+  /** Written consent to work overtime (OSH Code). */
+  overtimeConsent: z.boolean().default(false),
+});

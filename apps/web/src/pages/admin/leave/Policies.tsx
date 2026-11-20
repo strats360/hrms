@@ -20,6 +20,7 @@ const fmt = (n: number) => (Number.isInteger(Number(n)) ? String(Number(n)) : Nu
 function describe(t: LeaveType) {
   const parts: string[] = [];
   if (t.accrual === "monthly") parts.push(`Accrues ${fmt(Number(t.annualQuota) / 12)} a month`);
+  else if (t.accrual === "worked_days") parts.push("1 day for every 20 days worked last year, once 180 were worked (OSH Code)");
   else if (t.accrual === "yearly") parts.push("Credited at the start of the year, pro-rated for joiners");
   else parts.push("Granted case by case");
   parts.push(Number(t.carryForwardMax) > 0 ? `carry forward up to ${fmt(t.carryForwardMax)}` : "no carry forward");
@@ -143,6 +144,7 @@ function LeaveTypeDialog({ id, initial, onClose }: { id?: string; initial: Form;
           <Select value={f.accrual} onChange={(e) => setF((s) => ({ ...s, accrual: e.target.value as Form["accrual"] }))}>
             <option value="yearly">Credited at start of year</option>
             <option value="monthly">Accrues every month</option>
+            <option value="worked_days">1 day per 20 worked last year (OSH Code)</option>
             <option value="none">No automatic credit</option>
           </Select>
         </Field>

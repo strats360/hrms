@@ -14,11 +14,12 @@
  *   On a resignation the shortfall is recovered at gross / 30 a day, unless waived.
  *   On a termination the employer can pay the shortfall in lieu of notice.
  */
-export const EXIT_TYPES = ["resignation", "termination", "retirement", "contract_end", "death", "absconding"] as const;
+export const EXIT_TYPES = ["resignation", "termination", "retrenchment", "retirement", "contract_end", "death", "absconding"] as const;
 export type ExitType = (typeof EXIT_TYPES)[number];
 export const EXIT_TYPE_LABELS: Record<ExitType, string> = {
   resignation: "Resignation",
   termination: "Termination",
+  retrenchment: "Retrenchment",
   retirement: "Retirement",
   contract_end: "End of contract",
   death: "Death",
@@ -109,6 +110,8 @@ export interface FnfResult {
   service: { days: number; years: number; completedYears: number };
   notice: { required: number; served: number; shortfall: number };
   gratuityEligible: boolean;
+  /** What the employer owes elsewhere because of this exit, not paid to the employee (India: the re-skilling fund). */
+  employerDues?: { label: string; amount: number; due: string }[];
 }
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -151,12 +154,25 @@ export function computeSettlement(i: FnfInput): FnfResult {
     if (amount > 0) lines.push({ key: "gratuity", label: "Gratuity", kind: "earning", amount, note: `15/26 × wages × ${years} year${years === 1 ? "" : "s"}${i.fixedTerm ? " (fixed term, pro rata)" : ""}${raw > GRATUITY_CAP ? " (capped at ₹20 lakh)" : ""}` });
   }
 
+  // retrenchment (Industrial Relations Code): 15 days' average pay for each completed year, for a
+  // worker with a year or more of service, and 15 days' wages into the re-skilling fund within 10 days
+  let employerDues: FnfResult["employerDues"];
+  if (i.type === "retrenchment" && service.days >= 365) {
+    const years = service.completedYears;
+    const comp = r2((15 / 26) * wages * years);
+    lines.push({ key: "retrenchment", label: "Retrenchment compensation", kind: "earning", amount: comp, note: `15/26 × wages × ${years} year${years === 1 ? "" : "s"}` });
+    // tax free up to ₹5 lakh
+    taxable += Math.max(0, comp - 500000);
+    const due = new Date(Date.parse(`${i.lastWorkingDay}T00:00:00Z`) + 10 * 86400000).toISOString().slice(0, 10);
+    employerDues = [{ label: "Worker re-skilling fund (15 days' wages)", amount: r2((15 / 26) * wages), due }];
+  }
+
   // notice
   const served = i.type === "death" ? i.noticeDays : Math.min(i.noticeDays, daysBetweenInclusive(i.resignationDate, i.lastWorkingDay));
   const shortfall = Math.max(0, i.noticeDays - served);
   const perDay = i.monthlyGross / 30;
   if (shortfall > 0 && !i.noticeWaived) {
-    if (i.type === "termination" && i.payInLieu) {
+    if ((i.type === "termination" || i.type === "retrenchment") && i.payInLieu) {
       const amount = r2(perDay * shortfall);
       lines.push({ key: "notice_pay", label: "Notice pay in lieu", kind: "earning", amount, note: `${shortfall} day${shortfall === 1 ? "" : "s"} × gross / 30` });
       taxable += amount;
@@ -178,7 +194,7 @@ export function computeSettlement(i: FnfInput): FnfResult {
 
   const earnings = r2(lines.filter((l) => l.kind === "earning").reduce((s, l) => s + l.amount, 0));
   const deductions = r2(lines.filter((l) => l.kind === "deduction").reduce((s, l) => s + l.amount, 0));
-  return { lines, earnings, deductions, net: r2(earnings - deductions), taxable: r2(taxable), service, notice: { required: i.noticeDays, served, shortfall }, gratuityEligible };
+  return { lines, earnings, deductions, net: r2(earnings - deductions), taxable: r2(taxable), service, notice: { required: i.noticeDays, served, shortfall }, gratuityEligible, ...(employerDues ? { employerDues } : {}) };
 }
 
 /** Default notice period: shorter while on probation. */

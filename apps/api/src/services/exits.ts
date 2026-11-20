@@ -52,7 +52,8 @@ export async function settlementFor(db: Database, exit: Exit, emp: Employee) {
     return { leaveTypeId: b.leaveTypeId, name: b.name, days: override === undefined ? available : Math.min(override, available), available };
   });
   const result = packFor(entity.country).settlement({
-    type: exit.type as ExitType,
+    // retrenchment is an Indian Labour Code idea; elsewhere it settles like a termination
+    type: (exit.type === "retrenchment" && !india ? "termination" : exit.type) as ExitType,
     profile: { nationality: emp.nationality, region: entity.state },
     dateOfJoining: emp.dateOfJoining,
     resignationDate: exit.resignationDate,
@@ -94,6 +95,8 @@ export async function settlementFor(db: Database, exit: Exit, emp: Employee) {
   if (owed?.n) warnings.push(`${owed.n} payment${owed.n === 1 ? " is" : "s are"} pending, failed or held (${money(owed.s)}). Clear ${owed.n === 1 ? "it" : "them"} under Payments.`);
   if (india && !result.gratuityEligible && result.service.days >= 4 * 365 + 240) warnings.push("Close to gratuity eligibility (5 years). Some courts count 4 years and 240 days as five: check the service dates with your advisor.");
   if (india && result.gratuityEligible) warnings.push(`Gratuity must be paid within 30 days of becoming payable, so by ${addDaysIso(exit.lastWorkingDay, 30)}.`);
+  for (const d of result.employerDues ?? []) warnings.push(`${d.label}: pay ${money(d.amount)} by ${d.due}. It's paid to the fund, not to the employee.`);
+  if (india && exit.type === "retrenchment" && result.service.days < 365) warnings.push("Retrenchment compensation needs a year of continuous service.");
   if (india) warnings.push(`Wages due must be paid within 2 working days of the last day, so by ${addWorkingDays(exit.lastWorkingDay, 2)}.`);
   if (india && result.taxable > 0 && !(inputs.tds ?? 0)) warnings.push(`${money(result.taxable)} of the settlement is taxable. Enter the TDS from the employee's tax computation.`);
 

@@ -75,6 +75,17 @@ describe("compliance", () => {
     const rules = await krupa.get("/admin/compliance/rules");
     expect(rules.body.rules.some((r: any) => r.scope === "Gujarat" && r.rule.startsWith("Professional Tax"))).toBe(true);
   });
+
+  it("shows the obligations each establishment's headcount switches on", async () => {
+    const r = await krupa.get("/admin/compliance/thresholds");
+    expect(r.status).toBe(200);
+    const main = r.body[0];
+    expect(main.employees).toBeGreaterThan(100);
+    expect(main.workers).toBeLessThanOrEqual(main.employees);
+    expect(main.obligations.map((o: any) => o.obligation)).toEqual(expect.arrayContaining(["EPF registration and contributions", "Creche facility"]));
+    const cal = (await krupa.get("/admin/compliance/overview")).body.calendar.map((x: any) => x.title);
+    expect(cal.some((t: string) => /Statutory bonus|POSH annual report|Unified annual return|Minimum wage revision/.test(t))).toBe(true);
+  });
 });
 
 function nextMonth(m: string) {

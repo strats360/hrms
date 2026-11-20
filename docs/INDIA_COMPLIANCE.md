@@ -21,9 +21,18 @@ To confirm with a consultant: whether ESI contributions move to Code wages too (
 - **Labour welfare fund** ✅ for all 16 states in the report: half-yearly in June and December, monthly (Haryana as 0.2% up to ₹35 with the employer paying double, Punjab, Chandigarh, Kerala), and yearly in December (Andhra Pradesh, Karnataka, Tamil Nadu, Telangana). Rules can exclude staff above a wage limit. Kerala uses the shops rate (IT and ITES pay ₹100 + ₹100).
 - **Minimum wages** by state, zone, industry and skill, revised every 1 April and 1 October, never below the central floor wage: next.
 
-## Phase C: new features
+## Phase C: new features ✅
 
-Statutory bonus; OSH Code leave (1 day per 20 worked after 180 days, carry forward up to 30); overtime consent, twice the rate and the 144 hour quarterly cap; retrenchment compensation and the re-skilling fund; appointment letter mandatory fields and issue log; registration dates and documents; headcount thresholds per establishment; more compliance calendar dates.
+| Change | What Saralix does now |
+| --- | --- |
+| Statutory bonus | Already paid through payment batches; now on Code wages, counted at ₹7,000 a month or the branch state's minimum wage if higher, with the 30 November due date. |
+| OSH Code leave | A leave type can accrue "1 day per 20 days worked last year", credited once 180 days were worked, from attendance (present, late and work from home count, half days as half). Set its carry forward to 30. |
+| Overtime | Still twice the rate. The overtime screen flags anyone over 144 hours this quarter (the central cap, changeable in settings) and anyone without written consent, a new tick box on the employee. |
+| Retrenchment | A new exit type: 15 days' wages for each completed year (a year's service needed; tax free up to ₹5 lakh), notice pay in lieu, and the re-skilling fund (15 days' wages within 10 days) shown as an employer due. Outside India it settles as a termination. |
+| Appointment letter | The built in template now carries the OSH Code's fields: date of birth, Aadhaar (last 4, with consent), type of employment, skill category, wages and social security cover. Saved letters go to the employee's documents and the audit log. |
+| Registrations | Indian entities list EPF, ESI, Shops and Establishments, Labour Code, PT, LWF and contract labour registrations, each with a renewal date. Renewals due in 90 days (and overdue ones) show on the compliance calendar. |
+| Headcount thresholds | The compliance overview shows, for each entity and state, employees and workers (managers earning over ₹18,000 left out) and the obligations they switch on, including the ones within 20% of a threshold. |
+| Calendar | Adds the POSH annual report (31 Jan), unified annual return, minimum wage revisions and ESI periods (1 Apr, 1 Oct) and statutory bonus (30 Nov). |
 
 ## Phase D: new modules
 

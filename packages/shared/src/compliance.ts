@@ -127,3 +127,59 @@ export function ptSlabSummary(state: string, rows: { gross: number; pt: number }
   }
   return slabs;
 }
+
+/**
+ * Obligations that switch on at a headcount (India HR compliance report, section 2). "employees"
+ * counts everyone; "workers" leaves out managers and supervisors earning over ₹18,000 a month,
+ * as the IR and OSH Codes do. Count per establishment; once EPF or ESI covers you, it stays.
+ */
+export const HEADCOUNT_THRESHOLDS: { at: number; count: "employees" | "workers"; obligation: string; law: string }[] = [
+  { at: 10, count: "employees", obligation: "ESI registration (staff on wages up to ₹21,000)", law: "Social Security Code" },
+  { at: 10, count: "employees", obligation: "Gratuity", law: "Social Security Code" },
+  { at: 10, count: "employees", obligation: "Maternity benefit", law: "Social Security Code" },
+  { at: 10, count: "employees", obligation: "POSH Internal Committee, policy and annual report", law: "POSH Act 2013" },
+  { at: 10, count: "workers", obligation: "Labour Code registration, appointment letters, registers, annual return", law: "OSH Code" },
+  { at: 20, count: "employees", obligation: "EPF registration and contributions", law: "Social Security Code" },
+  { at: 20, count: "employees", obligation: "Statutory bonus", law: "Code on Wages" },
+  { at: 20, count: "workers", obligation: "Grievance Redressal Committee", law: "IR Code" },
+  { at: 20, count: "employees", obligation: "Report vacancies to career centres", law: "Social Security Code" },
+  { at: 20, count: "employees", obligation: "Register an equal opportunity policy and appoint a liaison officer", law: "RPwD Act 2016" },
+  { at: 30, count: "employees", obligation: "Engage apprentices (2.5% to 15% of the workforce)", law: "Apprentices Act 1961" },
+  { at: 50, count: "employees", obligation: "Creche facility", law: "Social Security Code" },
+  { at: 100, count: "workers", obligation: "Canteen, and a Works Committee if the government orders it", law: "OSH Code, IR Code" },
+  { at: 100, count: "employees", obligation: "HIV/AIDS complaints officer", law: "HIV/AIDS Act 2017" },
+  { at: 250, count: "workers", obligation: "Welfare officer (factories, mines, plantations)", law: "OSH Code" },
+  { at: 300, count: "workers", obligation: "Certified Standing Orders; permission for lay-off, retrenchment or closure (factories, mines, plantations)", law: "IR Code" },
+  { at: 500, count: "workers", obligation: "Safety Committee", law: "OSH Code" },
+];
+
+/** Which thresholds an establishment has crossed, and which it's close to (within 20%). */
+export function headcountObligations(counts: { employees: number; workers: number }) {
+  return HEADCOUNT_THRESHOLDS.map((t) => {
+    const n = counts[t.count];
+    return { ...t, current: n, status: n >= t.at ? ("applies" as const) : n >= Math.ceil(t.at * 0.8) ? ("near" as const) : ("not_yet" as const) };
+  });
+}
+
+/** Supervisors and managers earning over this aren't "workers" under the IR and OSH Codes. */
+export const WORKER_WAGE_LIMIT = 18000;
+
+/**
+ * Yearly dates on the Indian compliance calendar that don't come from a payroll month: POSH annual
+ * report, the unified annual return, statutory bonus, minimum wage revisions
+ * and ESI contribution periods. Returns those between `from` and `to`.
+ */
+export function indiaYearlyDates(from: string, to: string) {
+  const out: { date: string; title: string }[] = [];
+  const y0 = Number(from.slice(0, 4));
+  for (const y of [y0 - 1, y0, y0 + 1]) {
+    out.push(
+      { date: `${y}-01-31`, title: `POSH annual report for ${y - 1} to the District Officer` },
+      { date: `${y}-02-28`, title: `Unified annual return under the Labour Codes for ${y - 1} (check your state's date)` },
+      { date: `${y}-04-01`, title: "Minimum wage revision (VDA): load the new rates. ESI contribution period starts" },
+      { date: `${y}-10-01`, title: "Minimum wage revision (VDA): load the new rates. ESI contribution period starts" },
+      { date: `${y}-11-30`, title: `Statutory bonus for ${y - 1}-${String(y % 100).padStart(2, "0")} due` },
+    );
+  }
+  return out.filter((d) => d.date >= from && d.date <= to).sort((a, b) => a.date.localeCompare(b.date));
+}

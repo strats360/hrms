@@ -25,6 +25,7 @@ interface Entity {
   state: string | null;
   address: string | null;
   registrations: Record<string, string | null>;
+  registrationDates?: Record<string, { issuedOn?: string | null; renewsOn?: string | null }>;
   isDefault: boolean;
   payFrequency: PayFrequency;
   payAnchor: string | null;
@@ -54,7 +55,7 @@ export default function Entities() {
   };
   const save = useMutation({
     mutationFn: async (d: Draft) => {
-      const parsed = legalEntitySchema.safeParse({ ...d, registrations: d.registrations ?? {} });
+      const parsed = legalEntitySchema.safeParse({ ...d, registrations: d.registrations ?? {}, registrationDates: d.registrationDates ?? {} });
       if (!parsed.success) throw new Error(parsed.error.issues[0]?.message ?? "Check the form");
       return d.id ? api.patch(`/admin/org/entities/${d.id}`, parsed.data) : api.post("/admin/org/entities", parsed.data);
     },
@@ -252,8 +253,19 @@ export default function Entities() {
               <Input value={edit.currency ?? info.currency} readOnly />
             </Field>
             {fields.map((f) => (
-              <Field key={f.key} label={f.label}>
-                <Input value={edit.registrations?.[f.key] ?? ""} onChange={(e) => setEdit({ ...edit, registrations: { ...edit.registrations, [f.key]: e.target.value.toUpperCase() || null } })} />
+              <Field key={f.key} label={f.label} hint={edit.registrations?.[f.key] ? "Renewal date, if it has one" : undefined}>
+                <div className="flex gap-2">
+                  <Input className="min-w-0 flex-1" value={edit.registrations?.[f.key] ?? ""} onChange={(e) => setEdit({ ...edit, registrations: { ...edit.registrations, [f.key]: e.target.value.toUpperCase() || null } })} />
+                  {edit.registrations?.[f.key] ? (
+                    <Input
+                      type="date"
+                      className="!w-[150px]"
+                      aria-label={`${f.label} renews on`}
+                      value={edit.registrationDates?.[f.key]?.renewsOn ?? ""}
+                      onChange={(e) => setEdit({ ...edit, registrationDates: { ...edit.registrationDates, [f.key]: { ...edit.registrationDates?.[f.key], renewsOn: e.target.value || null } } })}
+                    />
+                  ) : null}
+                </div>
               </Field>
             ))}
             <Field label="Registered address" span>

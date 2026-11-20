@@ -1,7 +1,7 @@
-import { and, between, eq, inArray, sql } from "drizzle-orm";
+import { and, between, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { attendanceRecords, employees, leaveBalances, leaveEncashments, leaveTypes, payrollAdjustments, payrollItems, payrollRuns, tenants, type Database } from "@hrms/db";
-import { accruedLeave, DEFAULT_OVERTIME, encashmentPerDay, overtimePay, todayLocal, type OvertimeSettings } from "@hrms/shared";
-import { balanceSummary, ensureBalances } from "./leave";
+import { accruedLeave, DEFAULT_OVERTIME, encashmentPerDay, overtimePay, quarterOf, todayLocal, type OvertimeSettings } from "@hrms/shared";
+import { balanceSummary, daysWorkedIn, ensureBalances } from "./leave";
 import { getTemplate, resolveStructure, structuresAsOf } from "./payroll";
 
 type Run = typeof payrollRuns.$inferSelect;
@@ -36,6 +36,19 @@ export async function overtimeForRun(db: Database, run: Run) {
     : [];
   const byEmp = new Map(worked.map((w) => [w.e, w]));
   const current = await db.select().from(payrollAdjustments).where(and(eq(payrollAdjustments.runId, run.id), eq(payrollAdjustments.source, "overtime")));
+  // overtime already paid in other runs this quarter, for the quarterly cap; and who has consented to overtime
+  const q = quarterOf(run.month);
+  const earlier = ids.length
+    ? await db
+        .select({ e: payrollAdjustments.employeeId, h: sql<number>`coalesce(sum((${payrollAdjustments.sourceRef})::numeric),0)::float` })
+        .from(payrollAdjustments)
+        .innerJoin(payrollRuns, eq(payrollRuns.id, payrollAdjustments.runId))
+        .where(and(eq(payrollAdjustments.tenantId, run.tenantId), eq(payrollAdjustments.source, "overtime"), inArray(payrollAdjustments.employeeId, ids), gte(payrollRuns.month, q.from), lte(payrollRuns.month, q.to), sql`${payrollRuns.id} <> ${run.id}`))
+        .groupBy(payrollAdjustments.employeeId)
+    : [];
+  const quarterBefore = new Map(earlier.map((r) => [r.e, Number(r.h)]));
+  const consentRows = ids.length ? await db.select({ id: employees.id, p: employees.countryProfile }).from(employees).where(inArray(employees.id, ids)) : [];
+  const consent = new Map(consentRows.map((r) => [r.id, !!(r.p as { overtimeConsent?: boolean } | null)?.overtimeConsent]));
   const pay = await monthlyPay(db, run.tenantId, ids, run.periodEnd);
   const rows = inRun
     .map((r) => {
@@ -43,7 +56,8 @@ export async function overtimeForRun(db: Database, run: Run) {
       const hours = Math.round(((w?.m ?? 0) / 60) * 100) / 100;
       const p = overtimePay(hours, pay.get(r.e) ?? { basic: 0, gross: 0 }, settings);
       const cur = current.find((a) => a.employeeId === r.e);
-      return { employeeId: r.e, employeeCode: r.code, name: r.name, days: w?.days ?? 0, hours, ratePerHour: p.ratePerHour, amount: p.amount, overLimit: p.overLimit, paid: cur ? { hours: Number(cur.sourceRef ?? 0), amount: Number(cur.amount) } : null };
+      const quarterHours = Math.round(((quarterBefore.get(r.e) ?? 0) + hours) * 100) / 100;
+      return { employeeId: r.e, employeeCode: r.code, name: r.name, days: w?.days ?? 0, hours, ratePerHour: p.ratePerHour, amount: p.amount, overLimit: p.overLimit, quarterHours, overQuarter: quarterHours > settings.quarterlyLimitHours, consent: consent.get(r.e) ?? false, paid: cur ? { hours: Number(cur.sourceRef ?? 0), amount: Number(cur.amount) } : null };
     })
     .filter((r) => r.hours > 0 || r.paid)
     .sort((a, b) => b.hours - a.hours);
@@ -171,7 +185,7 @@ export async function closeLeaveYear(db: Database, tenantId: string, year: numbe
     for (const t of types) {
       const b = balances.get(t.id);
       if (!b || !t.isPaid) continue;
-      const accrued = opts.dryRun ? accruedLeave({ annualQuota: Number(t.annualQuota), accrual: t.accrual as "yearly" | "monthly" | "none" }, year, end, e.doj) : Number(b.accrued);
+      const accrued = opts.dryRun ? accruedLeave({ annualQuota: Number(t.annualQuota), accrual: t.accrual as "yearly" | "monthly" | "none" | "worked_days" }, year, end, e.doj, t.accrual === "worked_days" ? await daysWorkedIn(db, tenantId, e.id, year - 1) : 0) : Number(b.accrued);
       const left = Math.max(0, Number(b.opening) + accrued + Number(b.adjusted) - Number(b.used));
       const carry = Math.min(left, Number(t.carryForwardMax));
       const lapse = Math.round((left - carry) * 10) / 10;

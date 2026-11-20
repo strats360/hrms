@@ -90,13 +90,49 @@ export default function ComplianceOverviewPage() {
             <Row label={`Gratuity provision (5+ years · ${d.tracked.gratuityEligible} employees)`} value={`${fmtMoneyCompact(d.tracked.gratuityProvision)} accrued`} />
             <Row label="EDLI cover" value={<Tag tone="ok">Active · {d.tracked.edliMembers} members</Tag>} />
             <Row label={`Overtime logged (${monthLabel(d.latestMonth)})`} value={`${d.tracked.overtimeHours} h`} />
-            <Row label="Statutory bonus and minimum wages" value={<Tag tone="neutral">Planned</Tag>} />
+            <Row label="Statutory bonus" value={<Link to="/payments?generate=bonus">Pay through Payments</Link>} />
           </div>
-          <div className="text-muted text-[12px]">Gratuity is 15/26 of the current basic for each completed year of service, capped at ₹20 lakh. It's an estimate for provisioning, not a payout.</div>
+          <div className="text-muted text-[12px]">Gratuity is 15/26 of current Code wages for each completed year of service, capped at ₹20 lakh. It's an estimate for provisioning, not a payout.</div>
         </Card>
       </div>
+      <Thresholds />
       <RecordPaymentDialog obligation={paying} onClose={() => setPaying(null)} />
     </>
+  );
+}
+
+interface Threshold {
+  entityId: string;
+  entityName?: string;
+  state: string;
+  employees: number;
+  workers: number;
+  obligations: { at: number; count: "employees" | "workers"; obligation: string; law: string; current: number; status: "applies" | "near" }[];
+}
+
+/** What each establishment's headcount switches on under the Labour Codes, and what's close. */
+function Thresholds() {
+  const q = useQuery({ queryKey: ["compliance", "thresholds"], queryFn: () => api.get<Threshold[]>("/admin/compliance/thresholds") });
+  if (!q.data?.length) return null;
+  return (
+    <Card className="!gap-3">
+      <CardHeader title="Headcount thresholds" sub="By establishment (legal entity and state). Workers leave out managers earning over ₹18,000 a month." />
+      {q.data.map((g) => (
+        <div key={`${g.entityId}|${g.state}`} className="flex flex-col gap-1.5">
+          <div className="font-semibold">
+            {g.entityName} · {g.state || "No branch state"} <span className="text-muted font-normal">· {g.employees} employees, {g.workers} workers</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {g.obligations.map((o) => (
+              <Tag key={o.obligation} tone={o.status === "applies" ? "accent" : "warn"} title={`${o.law} · from ${o.at} ${o.count}`}>
+                {o.status === "near" ? `Soon (${o.current}/${o.at}): ` : ""}
+                {o.obligation}
+              </Tag>
+            ))}
+          </div>
+        </div>
+      ))}
+    </Card>
   );
 }
 

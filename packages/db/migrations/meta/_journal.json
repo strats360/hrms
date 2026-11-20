@@ -309,6 +309,13 @@
       "when": 1795175113192,
       "tag": "0043_pay_frequency",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1795187105028,
+      "tag": "0044_registration_dates",
+      "breakpoints": true
     }
   ]
 }

@@ -219,12 +219,17 @@ export function parseBankResponse(text: string): { rows: BankResponseRow[]; erro
   return { rows, errors };
 }
 
-/** Payment of Bonus Act, 1965: wage limit for eligibility and calculation ceiling (per month). */
+/**
+ * Statutory bonus under the Code on Wages (it replaced the Payment of Bonus Act): wage limit for
+ * eligibility and calculation ceiling per month. The ceiling is ₹7,000 or the minimum wage,
+ * whichever is higher. Due within 8 months of the year's end (30 November for April to March).
+ * Confirm the eligibility limit your state has notified under the Code.
+ */
 export const BONUS = { eligibilityWage: 21000, calculationCeiling: 7000, minPercent: 8.33, maxPercent: 20, minDays: 30 };
 
 /**
  * Statutory bonus for one employee for a financial year.
- * months: wages (basic + DA) actually earned in each month worked.
+ * months: Code wages (basic, DA and the 50% add back) actually earned in each month worked.
  * Eligible if they worked at least 30 days and their wages never went above ₹21,000.
  * Bonus = percent x min(wage, ceiling) summed over the months, with the minimum of ₹100.
  */
@@ -237,3 +242,6 @@ export function statutoryBonus(months: { wage: number; paidDays: number }[], per
   const amount = Math.max(100, Math.round((wageBase * percent) / 100));
   return { eligible: true as const, reason: null, amount, wageBase };
 }
+
+/** The bonus due date for an April to March year "2025-26": 30 November after it ends. */
+export const bonusDueDate = (fy: string) => `${Number(fy.slice(0, 4)) + 1}-11-30`;

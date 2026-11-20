@@ -39,7 +39,7 @@ describe("country packs", () => {
   });
 
   it("India pack lists the entity registrations and rule categories", () => {
-    expect(packFor("IN").entityRegistrations.map((f) => f.key)).toEqual(["gstin", "pan", "tan", "cin"]);
+    expect(packFor("IN").entityRegistrations.map((f) => f.key)).toEqual(["gstin", "pan", "tan", "cin", "epfCode", "esiCode", "shopsRegistration", "labourCodeRegistration", "ptRegistration", "lwfRegistration", "contractLabourLicence"]);
     expect(packFor("IN").ruleCategories).toContain("pf");
     expect(packFor("IN").payroll.amountInWords(105)).toBe("One hundred five rupees only");
   });
