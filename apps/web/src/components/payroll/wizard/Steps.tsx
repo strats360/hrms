@@ -669,6 +669,21 @@ export function StepPayout({ run }: { run: PayrollRun }) {
           )}
         </Card>
         <Card className="!gap-2" style={{ background: "var(--tint-1)" }}>
+          <div className="card-title">Accounting journal</div>
+          <div className="text-muted text-[13px]">Salary and employer costs as expenses, and PF, ESI, PT, TDS and net pay as amounts owed. Held salaries stay out until they're paid. Rename accounts under Settings to match your books.</div>
+          <div className="mt-auto flex flex-wrap gap-2">
+            <Button disabled={!can("payroll", "export")} loading={exporting} onClick={() => void exportFile(`/admin/payroll/runs/${run.id}/journal.csv?format=zoho`, `journal-${run.month}-zoho.csv`, "Journal for Zoho Books downloaded")} title="Import under Accountant, Manual Journals, Import Journals">
+              <Download size={15} /> Zoho Books
+            </Button>
+            <Button disabled={!can("payroll", "export")} loading={exporting} onClick={() => void exportFile(`/admin/payroll/runs/${run.id}/journal.xml`, `journal-${run.month}-tally.xml`, "Journal for Tally downloaded")} title="Import in Tally Prime: Gateway of Tally, Import, Transactions. Create the ledgers first.">
+              <Download size={15} /> Tally
+            </Button>
+            <Button disabled={!can("payroll", "export")} loading={exporting} onClick={() => void exportFile(`/admin/payroll/runs/${run.id}/journal.csv`, `journal-${run.month}.csv`, "Journal downloaded")}>
+              <Download size={15} /> CSV
+            </Button>
+          </div>
+        </Card>
+        <Card className="!gap-2" style={{ background: "var(--tint-1)" }}>
           <div className="card-title">Mark paid</div>
           <div className="text-muted text-[13px]">After the bank confirms the transfer, mark the payroll paid to close the cycle.</div>
           {run.status === "paid" ? (

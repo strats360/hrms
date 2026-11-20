@@ -1,6 +1,7 @@
 import { formulaError } from "./formula";
 import { customFieldDefsSchema } from "./custom-fields";
 import { fbpSettingsSchema } from "./fbp";
+import { journalSettingsSchema } from "./journal";
 import { PAY_FREQUENCIES } from "./pay-periods";
 import { z } from "zod";
 import { NOTIFICATION_KEYS } from "./notifications";
@@ -223,6 +224,7 @@ export const tenantPayrollSettingsSchema = z.object({
   punchPolicy: z.object({ location: z.enum(["off", "flag", "block"]), ip: z.enum(["off", "flag", "block"]), wfhExempt: z.boolean(), selfie: z.enum(["off", "optional", "required"]).optional(), selfieRetentionDays: z.number().int().min(7).max(365).optional() }).optional(),
   customFields: customFieldDefsSchema.optional(),
   fbp: fbpSettingsSchema.optional(),
+  journal: journalSettingsSchema.optional(),
   overtime: z
     .object({
       enabled: z.boolean(),

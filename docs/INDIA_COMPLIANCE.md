@@ -49,6 +49,7 @@ POSH; Grievance Redressal Committee; maternity eligibility and benefits; contrac
 | Formula allowances | ✅ An allowance in a salary template can be a formula over gross, basic and HRA, like `min(basic * 0.1, 1600)`. Checked when the template is saved. |
 | Custom employee fields | ✅ Settings, Custom employee fields: text, number, date, yes or no, or a list. On the employee form, profile and export, and on the employee's own profile when HR allows it. |
 | Flexible benefit plan | ✅ Payroll, Flexible benefits. HR sets the heads and yearly caps (starting points: fuel, phone, meals, gifts, books, LTA; check them with a tax advisor). Employees pick amounts on their Tax page, within their special allowance; heads that don't save tax in the new regime aren't offered there. Approved plans hold a twelfth of each head back from special allowance every month. Employees claim it through an expense category linked to the head, up to what has built up. In the year's last pay, or the last pay before someone leaves, whatever is unclaimed is paid as taxable salary. TDS is projected as if the plan is claimed in full, and catches up on what wasn't. |
-| Accounting journals, public API and webhooks, Zoho Books | Next |
+| Accounting journals | ✅ Each run has a balanced journal (salary and employer costs as expenses; PF, ESI, PT, LWF, TDS, NPS, loans and net pay as amounts owed) to download for Zoho Books, Tally Prime (XML voucher) or as plain CSV. Account names and a split by department are under Settings, Accounting. Held salaries stay out. |
+| Public API and webhooks, Zoho Books push | Next |
 | WhatsApp payslips | Needs a WhatsApp Business provider account |
 | Native mobile apps, live bank API | Need a decision on stores and the bank partner |

@@ -38,3 +38,4 @@ export * from "./packs";
 export * from "./identities";
 export * from "./custom-fields";
 export * from "./fbp";
+export * from "./journal";
