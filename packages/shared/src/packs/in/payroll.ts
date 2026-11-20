@@ -1,5 +1,5 @@
 import { codeWages, fyOfMonth, labourWelfareFund, professionalTax, remainingFyMonths, type PayLine } from "../../payroll";
-import { computeTaxStatement } from "../../tax";
+import { carPerquisite, computeTaxStatement } from "../../tax";
 import type { StatutoryContext, StatutoryResult } from "../types";
 
 /**
@@ -37,6 +37,13 @@ export function indiaStatutory(ctx: StatutoryContext): StatutoryResult {
   const employeeEsi = esiOn ? Math.ceil(esiWage * R.esi.employeeRate) : 0;
   const employerEsi = esiOn ? Math.ceil(esiWage * R.esi.employerRate) : 0;
 
+  // voluntary PF, employer NPS and the car perquisite, from the employee's India profile
+  const prof = (input.countryProfile ?? {}) as { vpfPercent?: number; npsEmployerPercent?: number; car?: "none" | "small" | "large"; driver?: boolean };
+  const vpf = input.pfApplicable && prof.vpfPercent ? r((wagesEarned * prof.vpfPercent) / 100) : 0;
+  const nps = prof.npsEmployerPercent ? r((wagesEarned * prof.npsEmployerPercent) / 100) : 0;
+  const npsFull = prof.npsEmployerPercent ? r((wagesFull * prof.npsEmployerPercent) / 100) : 0;
+  const perqMonth = carPerquisite(fyOfMonth(input.month), prof.car ?? "none", !!prof.driver);
+
   // PT and LWF
   let pt = 0;
   if (input.ptApplicable) {
@@ -67,7 +74,11 @@ export function indiaStatutory(ctx: StatutoryContext): StatutoryResult {
       basic: (projectedAnnualGross * input.structure.components.basic) / sg,
       hra: (projectedAnnualGross * input.structure.components.hra) / sg,
     },
-    employeePf: annualised ? fullMonthPf * 11 + employeePf : ytd.employeePf + employeePf + fullMonthPf * (monthsLeft - 1),
+    employeePf: (annualised ? fullMonthPf * 11 + employeePf : ytd.employeePf + employeePf + fullMonthPf * (monthsLeft - 1)) + vpf * 12,
+    employerNps: npsFull * 12,
+    npsWages: wagesFull * 12,
+    // past months' perquisites are already in the year to date taxable salary
+    perquisites: perqMonth * (annualised ? 12 : monthsLeft),
     professionalTax: annualised ? fullMonthPt * 11 + pt : ytd.professionalTax + pt + fullMonthPt * (monthsLeft - 1),
     declaration: input.taxProfile?.declaration,
     verified: input.taxProfile?.verified,
@@ -82,6 +93,7 @@ export function indiaStatutory(ctx: StatutoryContext): StatutoryResult {
 
   const deductions: PayLine[] = [
     { code: "pf", label: "Provident fund (employee)", amount: employeePf },
+    { code: "vpf", label: `Voluntary PF (${prof.vpfPercent ?? 0}%)`, amount: vpf },
     { code: "esi", label: "ESI (employee)", amount: employeeEsi },
     { code: "pt", label: "Professional tax", amount: pt },
     { code: "lwf", label: "Labour welfare fund", amount: lwf.employee },
@@ -93,7 +105,9 @@ export function indiaStatutory(ctx: StatutoryContext): StatutoryResult {
     { code: "edli", label: "EDLI", amount: edli },
     { code: "pf_admin", label: "PF admin charges", amount: pfAdmin },
     { code: "esi_er", label: "ESI (employer)", amount: employerEsi },
+    { code: "nps_er", label: `NPS (employer ${prof.npsEmployerPercent ?? 0}%)`, amount: nps },
     { code: "lwf_er", label: "LWF (employer)", amount: lwf.employer },
   ];
-  return { deductions, employer, tds, tax: { ...tax, projectedAnnualGross, monthsLeft, annualised }, warnings, wages: wagesEarned };
+  if (perqMonth) warnings.push(`Car perquisite of ${perqMonth.toLocaleString("en-IN")} a month is taxed through TDS`);
+  return { deductions, employer, tds, tax: { ...tax, projectedAnnualGross, monthsLeft, annualised }, warnings, wages: wagesEarned, perquisites: perqMonth };
 }

@@ -43,4 +43,11 @@ export const indiaPayrollProfileSchema = z.object({
   disability: z.boolean().default(false),
   /** Written consent to work overtime (OSH Code). */
   overtimeConsent: z.boolean().default(false),
+  /** Voluntary PF on top of the 12%, as a % of PF wages (counts for 80C in the old regime). */
+  vpfPercent: z.coerce.number().min(0).max(88).default(0),
+  /** The employer's NPS contribution, as a % of basic plus DA (80CCD(2)). */
+  npsEmployerPercent: z.coerce.number().min(0).max(20).default(0),
+  /** A company car used partly for personal travel: small is up to 1.6 litres or electric. */
+  car: z.enum(["none", "small", "large"]).default("none"),
+  driver: z.boolean().default(false),
 });

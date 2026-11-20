@@ -89,6 +89,26 @@ export interface StatementInput {
   verified?: Verified | null;
   /** Statutory rules (tax slabs) to use; defaults to the built-in tables. */
   rules?: StatutoryRules;
+  /** The employer's NPS contribution for the year: taxed as salary, then deducted under 80CCD(2) up to a share of wages. */
+  employerNps?: number;
+  /** Basic plus DA for the year, the base for the 80CCD(2) cap. */
+  npsWages?: number;
+  /** Non-cash perquisites for the year (car, driver), taxed as salary. */
+  perquisites?: number;
+}
+
+/** 80CCD(2): employer NPS is deductible up to 14% of basic plus DA in the new regime, 10% in the old. */
+export const EMPLOYER_NPS_CAP = { new: 0.14, old: 0.1 };
+
+/**
+ * Vehicle perquisite a month for a car the employer owns or hires and maintains, used partly for
+ * personal travel. From tax year 2026-27: ₹5,000 (engine up to 1.6 litres, or electric), ₹7,000
+ * above, plus ₹3,000 for a driver. Before: ₹1,800, ₹2,400 and ₹900.
+ */
+export function carPerquisite(fy: string, car: "none" | "small" | "large", driver: boolean) {
+  const v = fy >= "2026-27" ? { small: 5000, large: 7000, driver: 3000 } : { small: 1800, large: 2400, driver: 900 };
+  if (car === "none") return 0;
+  return v[car] + (driver ? v.driver : 0);
 }
 
 export interface StatementLine {
@@ -133,7 +153,7 @@ export function computeTaxStatement(input: StatementInput): TaxStatement {
   const prevGross = eff("previousEmployer");
   const prevRatio = declared.previousEmployer > 0 ? prevGross / declared.previousEmployer : 1;
   const prev = d.previousEmployer ?? {};
-  const grossSalary = Math.round(input.salary.gross + prevGross);
+  const grossSalary = Math.round(input.salary.gross + prevGross + (input.employerNps ?? 0) + (input.perquisites ?? 0));
 
   // HRA exemption, s.10(13A): least of HRA received, rent - 10% of basic, 50%/40% of basic
   const exemptions: StatementLine[] = [];
@@ -153,6 +173,12 @@ export function computeTaxStatement(input: StatementInput): TaxStatement {
   const grossTotalIncome = Math.max(0, incomeFromSalary + houseProperty + otherIncome);
 
   const deductions: StatementLine[] = [];
+  // employer NPS, in both regimes
+  if (input.employerNps) {
+    const cap = EMPLOYER_NPS_CAP[old ? "old" : "new"] * (input.npsWages ?? input.salary.basic);
+    const amount = Math.round(Math.min(input.employerNps, cap));
+    if (amount) deductions.push({ key: "80CCD2", label: "80CCD(2) employer NPS", amount, note: `Up to ${old ? 10 : 14}% of basic plus DA` });
+  }
   if (old) {
     const c80 = Math.min(CAPS.sec80C, Math.round(input.employeePf + (prev.pf ?? 0) * prevRatio + eff("80C")));
     if (c80) deductions.push({ key: "80C", label: "80C (PF, PPF, ELSS, LIC, tuition, home loan principal)", amount: c80, note: "Capped at ₹1,50,000" });

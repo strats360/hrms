@@ -78,4 +78,6 @@ export interface StatutoryResult {
   warnings: string[];
   /** India: the Code wages earned this month, the base for PF (kept for the ECR file). */
   wages?: number;
+  /** Non-cash perquisites this month (car, driver): taxable, but not paid out. */
+  perquisites?: number;
 }

@@ -146,8 +146,9 @@ export default function EmployeeForm() {
   const [ukInitial, setUkInitial] = useState<UkForm>(EMPTY_UK);
   const [us, setUs] = useState<UsForm>(EMPTY_US);
   const [usInitial, setUsInitial] = useState<UsForm>(EMPTY_US);
-  const [india, setIndia] = useState({ disability: false, overtimeConsent: false });
-  const [indiaInitial, setIndiaInitial] = useState({ disability: false, overtimeConsent: false });
+  const IN_EMPTY = { disability: false, overtimeConsent: false, vpfPercent: 0, npsEmployerPercent: 0, car: "none" as "none" | "small" | "large", driver: false };
+  const [india, setIndia] = useState(IN_EMPTY);
+  const [indiaInitial, setIndiaInitial] = useState(IN_EMPTY);
   const [ca, setCa] = useState<CaForm>(EMPTY_CA);
   const [caInitial, setCaInitial] = useState<CaForm>(EMPTY_CA);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -164,8 +165,8 @@ export default function EmployeeForm() {
       const w = usFromProfile(detail.data.countryProfile);
       setUs(w);
       setUsInitial(w);
-      const ip = (detail.data.countryProfile ?? {}) as { disability?: boolean; overtimeConsent?: boolean };
-      const iv = { disability: !!ip.disability, overtimeConsent: !!ip.overtimeConsent };
+      const ip = (detail.data.countryProfile ?? {}) as Partial<typeof IN_EMPTY>;
+      const iv = { ...IN_EMPTY, ...ip, disability: !!ip.disability, overtimeConsent: !!ip.overtimeConsent };
       setIndia(iv);
       setIndiaInitial(iv);
       const t = caFromProfile(detail.data.countryProfile);
@@ -466,6 +467,24 @@ export default function EmployeeForm() {
                 <Checkbox checked={form.ptApplicable} onChange={(v) => set("ptApplicable", v)} label="Professional Tax" />
                 <Checkbox checked={india.disability} onChange={(v) => setIndia((x) => ({ ...x, disability: v }))} label="Person with disability (ESI limit ₹25,000, PT exempt)" />
                 <Checkbox checked={india.overtimeConsent} onChange={(v) => setIndia((x) => ({ ...x, overtimeConsent: v }))} label="Has given written consent to overtime" />
+              </div>
+            </Field>
+            <Field label="Voluntary PF (% of PF wages)" hint="On top of the 12%">
+              <Input type="number" min={0} max={88} value={india.vpfPercent || ""} onChange={(e) => setIndia((x) => ({ ...x, vpfPercent: Number(e.target.value) || 0 }))} placeholder="0" />
+            </Field>
+            <Field label="Employer NPS (% of basic plus DA)" hint="Deductible under 80CCD(2): up to 14% new regime, 10% old">
+              <Input type="number" min={0} max={20} value={india.npsEmployerPercent || ""} onChange={(e) => setIndia((x) => ({ ...x, npsEmployerPercent: Number(e.target.value) || 0 }))} placeholder="0" />
+            </Field>
+            <Field label="Company car (perquisite)">
+              <Select value={india.car} onChange={(e) => setIndia((x) => ({ ...x, car: e.target.value as typeof IN_EMPTY.car }))}>
+                <option value="none">None</option>
+                <option value="small">Up to 1.6 litres or electric</option>
+                <option value="large">Above 1.6 litres</option>
+              </Select>
+            </Field>
+            <Field label="Car extras">
+              <div className="flex flex-wrap gap-5 pt-1">
+                <Checkbox checked={india.driver} disabled={india.car === "none"} onChange={(v) => setIndia((x) => ({ ...x, driver: v }))} label="With a driver" />
               </div>
             </Field>
           </Section>

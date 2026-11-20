@@ -365,7 +365,8 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
       employerCost: slip.employerCost,
       tds: slip.tds,
       reimbursement: slip.reimbursement,
-      taxableGross: slip.gross - nonTaxable,
+      // non-cash perquisites (car) are taxable salary too
+      taxableGross: slip.gross - nonTaxable + (slip.perquisites ?? 0),
       employeePf: slip.deductions.find((d) => d.code === "pf")?.amount ?? 0,
       professionalTax: slip.deductions.find((d) => d.code === "pt")?.amount ?? 0,
       tax: slip.tax as unknown as Record<string, unknown>,

@@ -587,6 +587,8 @@ export interface PayslipResult {
   warnings: string[];
   /** India: Code wages earned, the PF base. */
   wages?: number;
+  /** Non-cash perquisites this month: taxable salary, not paid out. */
+  perquisites?: number;
 }
 
 function scaleComponents(c: MonthlyComponents, k: number): MonthlyComponents {
@@ -679,6 +681,7 @@ export function computePayslip(input: PayslipInput): PayslipResult {
     nonTaxable: nonTaxableAdj,
     warnings,
     ...(stat.wages !== undefined ? { wages: stat.wages } : {}),
+    ...(stat.perquisites ? { perquisites: stat.perquisites } : {}),
   };
 }
 
