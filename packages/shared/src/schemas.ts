@@ -1,4 +1,5 @@
 import { formulaError } from "./formula";
+import { customFieldDefsSchema } from "./custom-fields";
 import { PAY_FREQUENCIES } from "./pay-periods";
 import { z } from "zod";
 import { NOTIFICATION_KEYS } from "./notifications";
@@ -127,6 +128,8 @@ export const employeeStatutorySchema = z.object({
   taxRegime: z.enum(TAX_REGIMES).default("new"),
   /** Country specific payroll details (the UK's tax code and NI category); checked against the entity's country. */
   countryProfile: z.record(z.string(), z.unknown()).nullable().optional(),
+  /** The company's own fields (Settings, Custom fields); checked against that list. */
+  customFields: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
 });
 
 export const employeeCreateSchema = employeePersonalSchema
@@ -217,6 +220,7 @@ export const tenantPayrollSettingsSchema = z.object({
   essPhotoEdit: z.boolean().optional(),
   compOff: z.object({ expiryDays: z.number().int().min(7).max(365), claimWithinDays: z.number().int().min(1).max(90) }).optional(),
   punchPolicy: z.object({ location: z.enum(["off", "flag", "block"]), ip: z.enum(["off", "flag", "block"]), wfhExempt: z.boolean(), selfie: z.enum(["off", "optional", "required"]).optional(), selfieRetentionDays: z.number().int().min(7).max(365).optional() }).optional(),
+  customFields: customFieldDefsSchema.optional(),
   overtime: z
     .object({
       enabled: z.boolean(),

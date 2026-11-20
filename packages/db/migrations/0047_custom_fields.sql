@@ -1,0 +1,1 @@
+ALTER TABLE "employees" ADD COLUMN "custom_fields" jsonb DEFAULT '{}'::jsonb NOT NULL;

@@ -34,6 +34,8 @@ export const employees = pgTable(
     nationality: text("nationality"),
     /** Payroll details a country pack reads, such as the UK tax code, NI category and student loans. */
     countryProfile: jsonb("country_profile").$type<Record<string, unknown> | null>(),
+    /** Values for the company's own fields (tenant settings customFields), keyed by field key. */
+    customFields: jsonb("custom_fields").$type<Record<string, string | number | boolean | null>>().notNull().default({}),
     maritalStatus: text("marital_status"),
     bloodGroup: text("blood_group"),
     currentAddress: text("current_address"),

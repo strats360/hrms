@@ -42,6 +42,7 @@ import {
   uanSchema,
   TAX_REGIMES,
   GENDERS,
+  customValueText,
 } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
@@ -373,7 +374,9 @@ essRoutes.get("/profile", async (c) => {
   const p = await loadMe(c);
   const docs = await c.get("db").select().from(employeeDocuments).where(and(eq(employeeDocuments.tenantId, me(c).tid), eq(employeeDocuments.employeeId, me(c).eid))).orderBy(asc(employeeDocuments.createdAt));
   const [t] = await c.get("db").select({ settings: tenants.settings }).from(tenants).where(eq(tenants.id, me(c).tid));
-  return c.json({ ...p, documents: docs, canEditPhoto: essPhotoAllowed(t?.settings) });
+  const shown = (t?.settings?.customFields ?? []).filter((d) => d.showToEmployee);
+  const customFields = shown.map((d) => ({ label: d.label, value: customValueText(d, p.customFields?.[d.key]) })).filter((x) => x.value);
+  return c.json({ ...p, customFields, documents: docs, canEditPhoto: essPhotoAllowed(t?.settings) });
 });
 
 essRoutes.patch("/profile", v("json", essProfileUpdateSchema), async (c) => {

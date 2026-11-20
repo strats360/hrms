@@ -33,6 +33,7 @@ import {
   usPayrollProfileSchema,
   caPayrollProfileSchema,
   indiaPayrollProfileSchema,
+  customValueText,
 } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
@@ -44,7 +45,7 @@ import { ALLOWED_TYPES, deleteFile, MAX_UPLOAD_BYTES, putFile, safeName } from "
 import { canSeePrivate } from "../services/scope";
 import { entityOf } from "../services/entities";
 import { identitiesView } from "../services/identities";
-import { bankFields, linkExistingLogin, nextEmployeeCode, sendOnboardingInvite } from "../services/employees";
+import { bankFields, customFieldDefs, customValuesFor, linkExistingLogin, nextEmployeeCode, sendOnboardingInvite } from "../services/employees";
 import { toCsv, parseCsv } from "../lib/csv";
 
 export const employeeRoutes = new Hono<AppEnv>();
@@ -139,7 +140,7 @@ employeeRoutes.get("/stats", requirePerm("employees", "view"), async (c) => {
 employeeRoutes.get("/export.csv", requirePerm("employees", "export"), async (c) => {
   const db = c.get("db");
   const rows = await db
-    .select({ ...listColumns, pan: employees.pan, uan: employees.uan, bankName: employees.bankName, ifsc: employees.ifsc, accountLast4: employees.accountLast4, dob: employees.dateOfBirth, gender: employees.gender })
+    .select({ ...listColumns, customFields: employees.customFields, pan: employees.pan, uan: employees.uan, bankName: employees.bankName, ifsc: employees.ifsc, accountLast4: employees.accountLast4, dob: employees.dateOfBirth, gender: employees.gender })
     .from(employees)
     .leftJoin(departments, eq(departments.id, employees.departmentId))
     .leftJoin(designations, eq(designations.id, employees.designationId))
@@ -147,9 +148,10 @@ employeeRoutes.get("/export.csv", requirePerm("employees", "export"), async (c) 
     .leftJoin(mgr, eq(mgr.id, employees.managerId))
     .where(eq(employees.tenantId, c.get("tenant").tenantId))
     .orderBy(asc(employees.employeeCode));
+  const custom = await customFieldDefs(db, c.get("tenant").tenantId);
   const csv = toCsv(
-    ["Employee ID", "Name", "Work email", "Phone", "Department", "Designation", "Branch", "Manager", "Status", "Type", "Date of joining", "Date of birth", "Gender", "Annual CTC", "PAN", "UAN", "Bank", "IFSC", "Account (last 4)"],
-    rows.map((r) => [r.employeeCode, r.fullName, r.workEmail, r.phone, r.department, r.designation, r.branch, r.manager, EMPLOYEE_STATUS_LABELS[r.status as EmployeeStatus] ?? r.status, EMPLOYMENT_TYPE_LABELS[r.employmentType as keyof typeof EMPLOYMENT_TYPE_LABELS] ?? r.employmentType, r.dateOfJoining, r.dob, r.gender, r.annualCtc, r.pan, r.uan, r.bankName, r.ifsc, r.accountLast4]),
+    ["Employee ID", "Name", "Work email", "Phone", "Department", "Designation", "Branch", "Manager", "Status", "Type", "Date of joining", "Date of birth", "Gender", "Annual CTC", "PAN", "UAN", "Bank", "IFSC", "Account (last 4)", ...custom.map((d) => d.label)],
+    rows.map((r) => [r.employeeCode, r.fullName, r.workEmail, r.phone, r.department, r.designation, r.branch, r.manager, EMPLOYEE_STATUS_LABELS[r.status as EmployeeStatus] ?? r.status, EMPLOYMENT_TYPE_LABELS[r.employmentType as keyof typeof EMPLOYMENT_TYPE_LABELS] ?? r.employmentType, r.dateOfJoining, r.dob, r.gender, r.annualCtc, r.pan, r.uan, r.bankName, r.ifsc, r.accountLast4, ...custom.map((d) => customValueText(d, r.customFields?.[d.key]))]),
   );
   await audit(c, { action: "employee.export", entity: "employee", summary: `Exported ${rows.length} employees` });
   return c.body(csv, 200, { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": 'attachment; filename="employee-master.csv"' });
@@ -159,7 +161,7 @@ employeeRoutes.get("/export.csv", requirePerm("employees", "export"), async (c) 
 const PRIVATE_BLANK = {
   personalEmail: null, dateOfBirth: null, maritalStatus: null, bloodGroup: null, currentAddress: null, permanentAddress: null,
   emergencyContactName: null, emergencyContactRelation: null, emergencyContactPhone: null,
-  accountHolderName: null, bankName: null, accountLast4: null, ifsc: null, pan: null, aadhaarLast4: null, uan: null, esicIpNumber: null, countryProfile: null,
+  accountHolderName: null, bankName: null, accountLast4: null, ifsc: null, pan: null, aadhaarLast4: null, uan: null, esicIpNumber: null, countryProfile: null, customFields: {},
 };
 
 employeeRoutes.get("/:id", requirePerm("employees", "view"), async (c) => {
@@ -210,6 +212,7 @@ employeeRoutes.get("/:id", requirePerm("employees", "view"), async (c) => {
     login: membership ? { membershipId: membership.id, twoFactorEnabled: membership.twoFactor } : null,
     invite: invite ? { status: invite.status, progress: invite.progress, sentAt: invite.sentAt, expiresAt: invite.expiresAt, submittedAt: invite.submittedAt } : null,
     documents: docs,
+    customFieldDefs: full ? await customFieldDefs(db, t.tenantId) : [],
   });
 });
 
@@ -247,6 +250,7 @@ employeeRoutes.post("/", requirePerm("employees", "edit"), v("json", employeeCre
   await assertRefs(c, tid, body);
   const { sendInvite, accountNumber, ...rest } = body;
   rest.countryProfile = await countryProfileFor(c, tid, body.entityId, body.countryProfile);
+  rest.customFields = await customValuesFor(db, tid, body.customFields ?? {});
   const code = body.employeeCode || (await nextEmployeeCode(db, tid));
   const fullName = [body.firstName, body.lastName].filter(Boolean).join(" ");
   const status = sendInvite ? "onboarding" : body.status;
@@ -277,6 +281,7 @@ employeeRoutes.patch("/:id", requirePerm("employees", "edit"), vPatch(employeeUp
   await assertRefs(c, tid, body, id);
   const { accountNumber, ...rest } = body;
   if (rest.countryProfile !== undefined) rest.countryProfile = await countryProfileFor(c, tid, body.entityId !== undefined ? body.entityId : cur.entityId, rest.countryProfile);
+  if (rest.customFields !== undefined) rest.customFields = await customValuesFor(db, tid, rest.customFields, cur.customFields);
   const patch: Partial<typeof employees.$inferInsert> = { ...(rest as Partial<typeof employees.$inferInsert>), ...(await bankFields(accountNumber, c.env.ENCRYPTION_KEY)) };
   if (body.firstName !== undefined || body.lastName !== undefined) {
     patch.fullName = [body.firstName ?? cur.firstName, body.lastName !== undefined ? body.lastName : cur.lastName].filter(Boolean).join(" ");

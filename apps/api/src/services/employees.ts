@@ -1,9 +1,10 @@
 import { and, eq, sql } from "drizzle-orm";
 import type { Context } from "hono";
 import { employees, memberships, onboardingInvites, tenants, user, departments, designations, type Database } from "@hrms/db";
-import { encryptField, fmtDate, randomToken, sha256Hex } from "@hrms/shared";
+import { cleanCustomValues, encryptField, fmtDate, randomToken, sha256Hex, type CustomFieldDef, type CustomFieldValues } from "@hrms/shared";
 import type { AppEnv } from "../env";
 import { layout } from "../lib/email";
+import { badRequest } from "../lib/errors";
 
 export async function nextEmployeeCode(db: Database, tenantId: string) {
   const [t] = await db.select({ settings: tenants.settings }).from(tenants).where(eq(tenants.id, tenantId));
@@ -15,6 +16,22 @@ export async function nextEmployeeCode(db: Database, tenantId: string) {
     .from(employees)
     .where(eq(employees.tenantId, tenantId));
   return `${prefix}-${String((r?.n ?? 0) + 1).padStart(4, "0")}`;
+}
+
+/** The company's custom field list (Settings, Custom fields). */
+export async function customFieldDefs(db: Database, tenantId: string): Promise<CustomFieldDef[]> {
+  const [t] = await db.select({ settings: tenants.settings }).from(tenants).where(eq(tenants.id, tenantId));
+  return t?.settings?.customFields ?? [];
+}
+
+/** Checks custom field values against the company's list; on an update the new values go over the old ones. */
+export async function customValuesFor(db: Database, tenantId: string, values: Record<string, unknown>, current?: CustomFieldValues): Promise<CustomFieldValues> {
+  const defs = await customFieldDefs(db, tenantId);
+  try {
+    return cleanCustomValues(defs, { ...(current ?? {}), ...values });
+  } catch (e) {
+    throw badRequest((e as Error).message);
+  }
 }
 
 /** Split bank account into encrypted value + last 4 for display. */

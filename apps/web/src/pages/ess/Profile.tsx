@@ -18,6 +18,8 @@ import { MyAssets } from "@/components/ess/MyAssets";
 
 interface EssProfile {
   id: string;
+  /** The company's own fields HR chose to show you. */
+  customFields?: { label: string; value: string }[];
   employeeCode: string;
   fullName: string;
   workEmail: string;
@@ -102,6 +104,7 @@ export default function EssProfilePage() {
           <KV label="Reporting manager">{p.manager}</KV>
           <KV label="Branch">{p.branch}</KV>
           <KV label="Employment type">{EMPLOYMENT_TYPE_LABELS[p.employmentType as keyof typeof EMPLOYMENT_TYPE_LABELS] ?? p.employmentType}</KV>
+          {(p.customFields ?? []).map((x) => <KV key={x.label} label={x.label}>{x.value}</KV>)}
         </div>
       </Card>
 

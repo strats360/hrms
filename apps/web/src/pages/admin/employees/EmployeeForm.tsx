@@ -1,6 +1,7 @@
-import { countryName, ISO_COUNTRIES, caPayrollProfileSchema, indiaPayrollProfileSchema, ukPayrollProfileSchema, usPayrollProfileSchema, WAGE_CATEGORIES, WAGE_CATEGORY_LABELS } from "@hrms/shared";
+import { cleanCustomValues, type CustomFieldValues, countryName, ISO_COUNTRIES, caPayrollProfileSchema, indiaPayrollProfileSchema, ukPayrollProfileSchema, usPayrollProfileSchema, WAGE_CATEGORIES, WAGE_CATEGORY_LABELS } from "@hrms/shared";
 import { EMPTY_UK, UkPayrollFields, ukFromProfile, ukToProfile, type UkForm } from "@/components/employees/UkPayroll";
 import { EMPTY_US, UsPayrollFields, usFromProfile, usToProfile, type UsForm } from "@/components/employees/UsPayroll";
+import { CustomFieldInputs } from "@/components/employees/CustomFieldInputs";
 import { CaPayrollFields, caFromProfile, caToProfile, EMPTY_CA, type CaForm } from "@/components/employees/CaPayroll";
 
 const NATIONALITY_OPTIONS = ISO_COUNTRIES.map((code) => ({ code, name: countryName(code)! })).sort((a, b) => a.name.localeCompare(b.name));
@@ -151,6 +152,8 @@ export default function EmployeeForm() {
   const [indiaInitial, setIndiaInitial] = useState(IN_EMPTY);
   const [ca, setCa] = useState<CaForm>(EMPTY_CA);
   const [caInitial, setCaInitial] = useState<CaForm>(EMPTY_CA);
+  const [custom, setCustom] = useState<CustomFieldValues>({});
+  const [customInitial, setCustomInitial] = useState<CustomFieldValues>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -172,6 +175,8 @@ export default function EmployeeForm() {
       const t = caFromProfile(detail.data.countryProfile);
       setCa(t);
       setCaInitial(t);
+      setCustom(detail.data.customFields ?? {});
+      setCustomInitial(detail.data.customFields ?? {});
     }
   }, [detail.data]);
 
@@ -243,13 +248,24 @@ export default function EmployeeForm() {
       document.getElementById(country === "GB" ? "f-taxCode" : country === "US" ? "f-filingStatus" : "f-federalClaim")?.focus();
       return;
     }
+    const defs = lookups.data?.customFields ?? [];
+    const customChanged = defs.length > 0 && (!isEdit || JSON.stringify(custom) !== JSON.stringify(customInitial));
+    let customValues: CustomFieldValues | null = null;
+    if (customChanged) {
+      try {
+        customValues = cleanCustomValues(defs, custom);
+      } catch (e) {
+        setServerError((e as Error).message);
+        return;
+      }
+    }
     if (isEdit) {
       const changed = (Object.keys(form) as (keyof Form)[]).filter((k) => k !== "sendInvite" && k !== "employeeCode" && form[k] !== initial[k]);
       if (form.accountNumber.trim() === "") {
         const i = changed.indexOf("accountNumber");
         if (i >= 0) changed.splice(i, 1);
       }
-      if (!changed.length && !ukChanged) {
+      if (!changed.length && !ukChanged && !customChanged) {
         toast("Nothing to save");
         return;
       }
@@ -272,6 +288,7 @@ export default function EmployeeForm() {
     }
     setErrors({});
     if (ukProfile?.success) payload.countryProfile = ukProfile.data;
+    if (customValues) payload.customFields = customValues;
     save.mutate(payload);
   };
 
@@ -488,6 +505,12 @@ export default function EmployeeForm() {
               </div>
             </Field>
           </Section>
+          ) : null}
+
+          {L?.customFields?.length ? (
+            <Section title="More details" sub="Your company's own fields. Change the list under Settings, Custom employee fields.">
+              <CustomFieldInputs defs={L.customFields} value={custom} onChange={setCustom} />
+            </Section>
           ) : null}
 
           {!isEdit ? (

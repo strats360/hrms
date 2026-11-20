@@ -1,3 +1,4 @@
+import type { CustomFieldDef, CustomFieldValues } from "@hrms/shared";
 /** API response shapes used across pages. */
 export interface Lookups {
   branches: { id: string; name: string; state: string; city: string | null; isHeadOffice: boolean }[];
@@ -7,6 +8,8 @@ export interface Lookups {
   employees: { id: string; name: string; code: string }[];
   /** Legal entities; most companies have one. */
   entities?: { id: string; code: string; name: string; country: string; isDefault: boolean; payFrequency?: string }[];
+  /** The company's own employee fields (Settings, Custom fields). */
+  customFields?: CustomFieldDef[];
 }
 
 export interface EmployeeRow {
@@ -53,6 +56,8 @@ export interface EmployeeDetail {
   gender: string | null;
   nationality: string | null;
   countryProfile?: Record<string, unknown> | null;
+  customFields?: CustomFieldValues;
+  customFieldDefs?: CustomFieldDef[];
   maritalStatus: string | null;
   bloodGroup: string | null;
   currentAddress: string | null;

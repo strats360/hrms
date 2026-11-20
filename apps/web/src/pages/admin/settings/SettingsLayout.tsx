@@ -12,6 +12,7 @@ const ITEMS = [
   { to: "/settings/approvals", label: "Approval chains" },
   { to: "/settings/notifications", label: "Notifications" },
   { to: "/settings/letters", label: "Letter templates" },
+  { to: "/settings/custom-fields", label: "Custom employee fields" },
   { to: "/settings/access", label: "Admin users & access", perm: "users" as const },
   { to: "/settings/billing", label: "Billing & invoices", perm: "billing" as const },
   { to: "/settings/audit", label: "Audit log" },

@@ -330,6 +330,13 @@
       "when": 1795188342343,
       "tag": "0046_contractors",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1795188902218,
+      "tag": "0047_custom_fields",
+      "breakpoints": true
     }
   ]
 }

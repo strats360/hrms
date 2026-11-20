@@ -216,6 +216,7 @@ const router = createBrowserRouter([
               { path: "approvals", element: L(() => import("@/pages/admin/settings/Approvals")) },
               { path: "notifications", element: L(() => import("@/pages/admin/settings/Notifications")) },
               { path: "letters", element: L(() => import("@/pages/admin/settings/Letters")) },
+              { path: "custom-fields", element: L(() => import("@/pages/admin/settings/CustomFields")) },
               { path: "access", element: L(() => import("@/pages/admin/settings/Access")) },
               { path: "audit", element: L(() => import("@/pages/admin/settings/Audit")) },
               { path: "billing", element: L(() => import("@/pages/admin/settings/Billing")) },

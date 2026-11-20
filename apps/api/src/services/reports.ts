@@ -331,7 +331,7 @@ export const REPORTS: ReportDef[] = [
     async run({ db, tenantId, f }) {
       const conds = await employeeScope(db, tenantId, { ...f, status: "active" });
       const today = todayLocal();
-      const emps = await db.select({ e: employees, state: branches.state }).from(employees).leftJoin(branches, eq(branches.id, employees.branchId)).where(and(...conds));
+      const emps = await db.select({ e: employees, state: branches.state }).from(employees).leftJoin(branches, eq(branches.id, employees.branchId)).where(and(...conds)).orderBy(asc(employees.employeeCode));
       const [t] = await db.select({ state: tenants.state, settings: tenants.settings }).from(tenants).where(eq(tenants.id, tenantId));
       const basis = (t?.settings as { minWageBasis?: "basic" | "gross" } | null)?.minWageBasis ?? "basic";
       const R = await rulesFor(db, today.slice(0, 7));

@@ -20,6 +20,7 @@ import {
   shiftSchema,
   tenantPayrollSettingsSchema,
   tenantProfileSchema,
+  can,
 } from "@hrms/shared";
 import type { z } from "zod";
 import type { AppEnv } from "../env";
@@ -28,6 +29,7 @@ import { v, vPatch } from "../lib/validate";
 import { badRequest, notFound, conflict } from "../lib/errors";
 import { listEntities, nextEntityCode, syncDefaultEntity, tenantPatchFor } from "../services/entities";
 import { audit } from "../lib/audit";
+import { customFieldDefs } from "../services/employees";
 
 export const orgRoutes = new Hono<AppEnv>();
 
@@ -97,7 +99,8 @@ orgRoutes.get("/lookups", async (c) => {
     listEntities(db, tid),
   ]);
   const entities = ents.map((e) => ({ id: e.id, code: e.code, name: e.name, country: e.country, isDefault: e.isDefault, payFrequency: e.payFrequency }));
-  return c.json({ branches: b, departments: d, designations: g, shifts: s, employees: m, entities });
+  const customFields = can(c.get("tenant").permissions, "employees", "edit") ? await customFieldDefs(db, tid) : [];
+  return c.json({ branches: b, departments: d, designations: g, shifts: s, employees: m, entities, customFields });
 });
 
 // ---------- legal entities ----------

@@ -36,3 +36,4 @@ export * from "./contractor-tds";
 export * from "./pay-periods";
 export * from "./packs";
 export * from "./identities";
+export * from "./custom-fields";

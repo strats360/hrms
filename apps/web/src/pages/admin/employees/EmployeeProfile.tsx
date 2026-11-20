@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ChevronLeft, Database, Download, LogOut, Eye, FileText, Pencil, Trash2, Upload } from "lucide-react";
-import {
+import { customValueText,
   DOCUMENT_TYPE_LABELS,
   countryName,
   DOCUMENT_TYPES,
@@ -267,6 +267,7 @@ export default function EmployeeProfile() {
               <KV label="Confirmation date">{e.confirmationDate ? fmtDate(e.confirmationDate) : `${e.probationMonths} months from joining`}</KV>
               <KV label="Shift">{e.shift ?? "Company default"}</KV>
               <KV label="Resignation / last working day">{e.resignationDate || e.lastWorkingDay ? `${fmtDate(e.resignationDate)} / ${fmtDate(e.lastWorkingDay)}` : "—"}</KV>
+              {(e.customFieldDefs ?? []).map((d) => <KV key={d.key} label={d.label}>{customValueText(d, e.customFields?.[d.key]) || "—"}</KV>)}
             </div>
           ) : null}
 
