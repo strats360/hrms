@@ -6,7 +6,7 @@ import { Tag } from "@/components/ui/tag";
 const INFO: Record<string, [string, string, string[]]> = {
   payroll: ["Payroll", "Monthly payroll runs with salary structures, LOP from approved attendance, payslips and bank files.", ["Salary structure templates (Basic, HRA, allowances, employer contributions)", "7-step payroll wizard: inputs, attendance and LOP, calculate, review, approve and lock, payslips, bank file", "Payslip PDFs and the salary register"]],
   compliance: ["Statutory compliance", "EPF, EPS, EDLI, ESI, PT, LWF, gratuity, bonus and minimum wages, with challans and due dates.", ["Employee-wise and employer-wise contributions", "ECR, ESI and PT returns", "Challan tracking with due-date alerts"]],
-  tds: ["TDS & income tax", "Declarations, regime choice, projections, monthly TDS and Form 16.", ["Old and new regime computation", "Investment proofs", "24Q and Form 16"]],
+  tds: ["TDS & income tax", "Declarations, regime choice, projections, monthly TDS and salary certificates.", ["Old and new regime computation", "Investment proofs", "Quarterly returns and certificates"]],
   reimbursements: ["Reimbursements", "Claims with receipts, GST details, manager and finance approval, and payouts.", ["Claim submission from self-service", "Two-level approval", "Payout through payment batches"]],
   payments: ["Payments", "Salary, reimbursement and bonus payment batches with bank file formats and reconciliation.", ["Bank-specific CSV/Excel formats", "Duplicate payment checks", "Failed transfer handling"]],
   reports: ["Reports", "Filterable registers with CSV and Excel export.", ["Employee master, attendance and leave registers are already exportable from their pages", "Payroll, compliance and cost reports arrive with payroll"]],

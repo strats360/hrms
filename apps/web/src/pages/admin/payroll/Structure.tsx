@@ -143,7 +143,7 @@ export default function StructurePage() {
   const rows: [string, string, number, string][] = s
     ? [
         ["Basic", `${draft.basicPctOfGross}% of gross`, s.components.basic, "Fully taxable · PF wage"],
-        ["House rent allowance", `${draft.hraPctOfBasic}% of basic`, s.components.hra, "Partly exempt in old regime (s.10(13A))"],
+        ["House rent allowance", `${draft.hraPctOfBasic}% of basic`, s.components.hra, "Partly exempt in the old regime"],
         ["Conveyance allowance", "Fixed", s.components.conveyance, "Taxable"],
         ["Medical allowance", "Fixed", s.components.medical, "Taxable"],
         ...(s.components.extras ?? []).map((x): [string, string, number, string] => {

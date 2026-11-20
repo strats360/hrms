@@ -63,3 +63,4 @@ export { caPayrollProfileSchema, type CaPayrollProfile } from "./ca/profile";
 export { PROVINCES } from "./ca/rules";
 export { ontarioHolidays } from "./ca/holidays";
 export { ontarioNoticeWeeks } from "./ca/settlement";
+export { indiaPayrollProfileSchema } from "./in";

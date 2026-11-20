@@ -11,7 +11,7 @@ export interface FlagRule {
 
 /** Features the product checks. Each one gates API routes and hides the UI. */
 export const FEATURES = {
-  "module.tds": "TDS declarations and Form 16",
+  "module.tds": "TDS declarations and certificates",
   "module.reimbursements": "Reimbursements and expense claims",
   "module.payments": "Payment batches, bank files and reconciliation",
   "module.reports": "Reports",

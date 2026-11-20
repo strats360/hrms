@@ -75,6 +75,8 @@ export const payrollRuns = pgTable(
 );
 
 export interface ItemSnapshot {
+  /** India: Code wages earned this month (the PF base), for the ECR file. */
+  codeWages?: number;
   name: string;
   code: string;
   department: string | null;

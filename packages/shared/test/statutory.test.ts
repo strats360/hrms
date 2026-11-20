@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { builtInValue, describeRule, resolveRules, statutoryRuleSchema, type RuleVersion } from "../src/statutory";
+import { builtInValue, describeRule, resolveRules, resolveRulesForPeriod, statutoryRuleSchema, type RuleVersion } from "../src/statutory";
 import { computePayslip, DEFAULT_RULES, professionalTax, structureFromCtc, taxOnIncome } from "../src/payroll";
 
 const v = (key: string, category: string, scope: string, value: Record<string, unknown>, effectiveFrom: string, status = "live"): RuleVersion => ({ key, category, scope, value, effectiveFrom, status });
@@ -13,16 +13,24 @@ describe("statutory master", () => {
   });
 
   it("applies only live versions effective on the date", () => {
-    const raise = { ...builtInValue("pf")!, wageCeiling: 25000 };
-    const versions = [v("pf", "pf", "All India", raise, "2027-01-01"), v("esi", "esi", "All India", { employeeRate: 0.01, employerRate: 0.04, grossThreshold: 30000 }, "2026-01-01", "draft")];
-    expect(resolveRules(versions, "2026-12-01").pf.wageCeiling).toBe(15000);
-    expect(resolveRules(versions, "2027-01-01").pf.wageCeiling).toBe(25000);
-    expect(resolveRules(versions, "2027-01-01").esi.grossThreshold).toBe(21000); // draft ignored
-    expect(DEFAULT_RULES.pf.wageCeiling).toBe(15000); // defaults untouched
+    const old = { ...builtInValue("pf")!, wageCeiling: 15000 };
+    const versions = [v("pf", "pf", "All India", old, "2014-09-01"), v("pf", "pf", "All India", builtInValue("pf")!, "2026-09-17"), v("esi", "esi", "All India", { employeeRate: 0.01, employerRate: 0.04, grossThreshold: 30000 }, "2026-01-01", "draft")];
+    expect(resolveRules(versions, "2026-08-01").pf.wageCeiling).toBe(15000);
+    expect(resolveRules(versions, "2026-10-01").pf.wageCeiling).toBe(25000);
+    expect(resolveRules(versions, "2026-10-01").esi.grossThreshold).toBe(21000); // draft ignored
+    expect(DEFAULT_RULES.pf.wageCeiling).toBe(25000); // built in: the current ceiling
+  });
+
+  it("splits a PF ceiling that changes mid month by days", () => {
+    const versions = [v("pf", "pf", "All India", { ...builtInValue("pf")!, wageCeiling: 15000 }, "2014-09-01"), v("pf", "pf", "All India", builtInValue("pf")!, "2026-09-17")];
+    // September 2026: 16 days at 15,000 and 14 at 25,000
+    expect(resolveRulesForPeriod(versions, "2026-09-01", "2026-09-30").pf.wageCeiling).toBe(Math.round((15000 * 16 + 25000 * 14) / 30));
+    expect(resolveRulesForPeriod(versions, "2026-08-01", "2026-08-31").pf.wageCeiling).toBe(15000);
+    expect(resolveRulesForPeriod(versions, "2026-10-01", "2026-10-31").pf.wageCeiling).toBe(25000);
   });
 
   it("feeds the payroll engine", () => {
-    const R = resolveRules([v("pt:Karnataka", "pt", "Karnataka", { slabs: [{ upTo: 30000, amount: 0 }, { upTo: null, amount: 250 }] }, "2026-04-01"), v("pf", "pf", "All India", { ...builtInValue("pf")!, wageCeiling: 25000 }, "2026-04-01")], "2026-11-01");
+    const R = resolveRules([v("pt:Karnataka", "pt", "Karnataka", { slabs: [{ upTo: 30000, amount: 0 }, { upTo: null, amount: 250 }] }, "2026-04-01"), v("pf", "pf", "All India", { ...builtInValue("pf")!, wageCeiling: 15000 }, "2026-04-01")], "2026-11-01");
     expect(professionalTax("Karnataka", 28000, 11, null).amount).toBe(200);
     expect(professionalTax("Karnataka", 28000, 11, null, R).amount).toBe(0);
     expect(professionalTax("Karnataka", 40000, 11, null, R).amount).toBe(250);
@@ -30,8 +38,8 @@ describe("statutory master", () => {
     const base = { month: "2026-11", structure, daysInMonth: 30, paidDays: 30, pfApplicable: true, esiApplicable: false, ptApplicable: false, state: null, regime: "new" as const };
     const withRules = computePayslip({ ...base, rules: R });
     const builtIn = computePayslip(base);
-    expect(builtIn.deductions.find((d) => d.code === "pf")!.amount).toBe(1800);
-    expect(withRules.deductions.find((d) => d.code === "pf")!.amount).toBe(Math.round(Math.min(structure.components.basic, 25000) * 0.12));
+    expect(builtIn.deductions.find((d) => d.code === "pf")!.amount).toBe(Math.round(Math.min(structure.components.basic, 25000) * 0.12));
+    expect(withRules.deductions.find((d) => d.code === "pf")!.amount).toBe(1800); // a stored ₹15,000 ceiling wins
   });
 
   it("uses new tax slabs for a financial year", () => {

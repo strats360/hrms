@@ -32,6 +32,7 @@ import {
   ukPayrollProfileSchema,
   usPayrollProfileSchema,
   caPayrollProfileSchema,
+  indiaPayrollProfileSchema,
 } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
@@ -232,7 +233,7 @@ async function assertRefs(c: Context<AppEnv>, tid: string, body: Record<string, 
 async function countryProfileFor(c: Context<AppEnv>, tid: string, entityId: string | null | undefined, profile: Record<string, unknown> | null | undefined) {
   if (profile === undefined || profile === null) return profile;
   const ent = await entityOf(c.get("db"), tid, entityId);
-  const schema = ent.country === "GB" ? ukPayrollProfileSchema : ent.country === "US" ? usPayrollProfileSchema : ent.country === "CA" ? caPayrollProfileSchema : null;
+  const schema = ent.country === "IN" ? indiaPayrollProfileSchema : ent.country === "GB" ? ukPayrollProfileSchema : ent.country === "US" ? usPayrollProfileSchema : ent.country === "CA" ? caPayrollProfileSchema : null;
   if (!schema) return profile;
   const parsed = schema.safeParse(profile);
   if (!parsed.success) throw badRequest(parsed.error.issues[0]?.message ?? "Check the payroll details");

@@ -17,7 +17,7 @@ const amount = z.coerce.number().min(0).max(1e9);
 const upTo = z.union([z.null(), z.coerce.number().min(0)]);
 
 export const pfValue = z.object({ employeeRate: rate, employerRate: rate, epsRate: rate, edliRate: rate, adminRate: rate, wageCeiling: amount });
-export const esiValue = z.object({ employeeRate: rate, employerRate: rate, grossThreshold: amount });
+export const esiValue = z.object({ employeeRate: rate, employerRate: rate, grossThreshold: amount, disabledThreshold: amount.optional() });
 const slabs = z.array(z.object({ upTo, amount })).min(1).max(20);
 export const ptValue = z.object({ none: z.boolean().default(false), slabs: slabs.optional(), femaleSlabs: slabs.nullable().optional(), februaryTop: amount.nullable().optional() }).refine((v) => v.none || (v.slabs && v.slabs.at(-1)!.upTo === null), "The last slab must be open-ended (leave its 'up to' empty)");
 export const lwfValue = z.object({ months: z.array(z.coerce.number().int().min(1).max(12)).min(1).max(12), employee: amount, employer: amount, minGross: amount.nullable().optional() });
@@ -115,6 +115,27 @@ export function resolveRules(versions: RuleVersion[], asOf: string): StatutoryRu
     if (!cur || v.effectiveFrom > cur.effectiveFrom) latest.set(v.key, v);
   }
   for (const v of latest.values()) applyRule(R, v.category as RuleCategory, v.scope, v.value);
+  return R;
+}
+
+/**
+ * Rules for a pay period. When the PF wage ceiling changes partway through it (₹15,000 to ₹25,000
+ * on 17 Sep 2026), the ceiling is split by days: September 2026 pays 16 days at the old ceiling and
+ * 14 at the new one. Everything else follows the rules in force on the first day.
+ */
+export function resolveRulesForPeriod(versions: RuleVersion[], start: string, end: string): StatutoryRules {
+  const R = resolveRules(versions, start);
+  const atEnd = resolveRules(versions, end);
+  if (atEnd.pf.wageCeiling === R.pf.wageCeiling) return R;
+  const change = versions
+    .filter((v) => v.status === "live" && v.category === "pf" && v.effectiveFrom > start && v.effectiveFrom <= end)
+    .map((v) => v.effectiveFrom)
+    .sort()[0];
+  if (!change) return R;
+  const day = (d: string) => Date.parse(`${d}T00:00:00Z`) / 86400000;
+  const total = day(end) - day(start) + 1;
+  const before = day(change) - day(start);
+  R.pf = { ...atEnd.pf, wageCeiling: Math.round((R.pf.wageCeiling * before + atEnd.pf.wageCeiling * (total - before)) / total) };
   return R;
 }
 

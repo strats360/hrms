@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { statutoryRules, type Database } from "@hrms/db";
-import { resolveRules, type RuleVersion, type StatutoryRules } from "@hrms/shared";
+import { daysInMonth, resolveRules, resolveRulesForPeriod, type RuleVersion, type StatutoryRules } from "@hrms/shared";
 
 /** Live rule versions per country, cached per isolate. Publishing clears the cache. */
 let cache: { at: number; rows: (RuleVersion & { country: string })[] } | null = null;
@@ -18,5 +18,7 @@ export async function liveRules(db: Database, country = "IN"): Promise<RuleVersi
 
 /** A country's rules in force for a payroll month ("YYYY-MM"): versions effective on or before the 1st. */
 export async function rulesFor(db: Database, month: string, country = "IN"): Promise<StatutoryRules> {
-  return resolveRules(await liveRules(db, country), `${month}-01`);
+  // a ceiling that changes mid month (EPF, 17 Sep 2026) is split by days
+  const end = `${month}-${String(daysInMonth(Number(month.slice(0, 4)), Number(month.slice(5, 7)))).padStart(2, "0")}`;
+  return resolveRulesForPeriod(await liveRules(db, country), `${month}-01`, end);
 }

@@ -1,4 +1,4 @@
-import { fmtDate, type TaxStatement } from "@hrms/shared";
+import { fmtDate, taxForms, type TaxStatement } from "@hrms/shared";
 import { A4, colors, MARGIN, PdfWriter, rs } from "../lib/pdf";
 import { monthName } from "./payslip-pdf";
 
@@ -22,10 +22,11 @@ const W = R - L;
 
 /** Form No. 16: Part A from our records, and Part B, the salary and tax computation. */
 export async function form16Pdf(f: Form16Data) {
-  const w = await PdfWriter.create({ title: `Form 16 FY ${f.fy} · ${f.employee.name}`, author: f.employer.name ?? undefined });
+  const forms = taxForms(f.fy);
+  const w = await PdfWriter.create({ title: `${forms.certificate} FY ${f.fy} · ${f.employee.name}`, author: f.employer.name ?? undefined });
   let y = w.y;
 
-  w.text(L, y, "FORM NO. 16 · CERTIFICATE UNDER SECTION 203 OF THE INCOME-TAX ACT, 1961", { size: 8, bold: true, color: colors.accent });
+  w.text(L, y, `${forms.certificate.toUpperCase()} · ${forms.certificateUnder.toUpperCase()}`, { size: 8, bold: true, color: colors.accent });
   w.text(R - 160, y, f.provisional ? "PROVISIONAL" : "FINAL", { size: 8, bold: true, color: f.provisional ? colors.bad : colors.okFg, align: "right", width: 160 });
   y += 14;
   w.text(L, y, "Tax deducted at source on salary", { size: 16, bold: true });

@@ -30,7 +30,7 @@ describe("Loans and advances", () => {
   it("lets an employee ask for an advance within the company's limits", async () => {
     const mine = (await priya.get("/ess/loans")).body;
     expect(mine.policy).toMatchObject({ requests: true, advanceMaxMonths: 3 });
-    expect(mine.policy.advanceMax).toBe(118200); // 100% of monthly gross
+    expect(mine.policy.advanceMax).toBe(117000); // 100% of monthly gross
     const big = await priya.post("/ess/loans", { type: "advance", amount: 200000, months: 2, reason: "Medical" });
     expect(big.status).toBe(400);
     expect(big.body.error.message).toMatch(/up to 100% of your monthly gross/);

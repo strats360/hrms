@@ -57,7 +57,7 @@ export default function TdsLayout() {
           { to: `/tds${q}`, label: "Employee TDS", end: true },
           { to: `/tds/compute${q}`, label: "Tax computation" },
           { to: `/tds/declarations${q}`, label: "Declarations" },
-          { to: `/tds/form16${q}`, label: "Form 16 & 24Q" },
+          { to: `/tds/form16${q}`, label: "Certificates & returns" },
         ]}
       />
       <Outlet />

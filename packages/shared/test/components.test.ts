@@ -40,7 +40,8 @@ describe("custom salary components", () => {
     expect(slip.nonTaxable).toBe(1000);
     const esi = slip.deductions.find((d) => d.code === "esi")!.amount;
     expect(esi).toBe(Math.ceil((slip.gross - 1000) * 0.0075));
-    expect(slip.deductions.find((d) => d.code === "pf")!.amount).toBe(540); // 12% of the earned basic only
+    // 12% of earned Code wages: basic is under half the gross, so wages are half of 18,200 (9,100), times 15/30
+    expect(slip.deductions.find((d) => d.code === "pf")!.amount).toBe(546);
   });
 
   it("picks the employee's template, falling back to the default", () => {

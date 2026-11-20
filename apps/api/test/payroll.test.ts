@@ -28,7 +28,7 @@ describe("payroll permissions", () => {
 describe("salary structures", () => {
   it("previews a structure from CTC", async () => {
     const r = await krupa.post("/admin/payroll/template/preview", { annualCtc: 1440000 });
-    expect(r.body.gross).toBe(118200);
+    expect(r.body.gross).toBe(117000); // employer PF on the ₹25,000 ceiling
   });
   it("blocks revisions inside a locked month", async () => {
     const r = await krupa.post(`/admin/payroll/structures/${priyaId}`, { effectiveFrom: "2026-06-01", annualCtc: 1500000 });

@@ -3,12 +3,13 @@
  * the last month's salary (which the regular payroll run pays, prorated to the last
  * working day).
  *
- * - Gratuity (Payment of Gratuity Act): after 4 years 240 days of continuous service,
- *   or on death or disablement at any length of service. 15/26 x last monthly basic x
- *   completed years, where a part year of more than 6 months counts as a full year.
- *   Capped at ₹20 lakh, which is also the income-tax exemption.
- * - Leave encashment: encashable leave days x basic / 26. Exempt up to ₹25 lakh for
- *   non-government employees (section 10(10AA)).
+ * - Gratuity (Code on Social Security 2020): after 5 years of continuous service, or on
+ *   death or disablement at any length of service; fixed term employees get it pro rata
+ *   after 1 year. 15/26 x last monthly Code wages x completed years, where a part year of
+ *   more than 6 months counts as a full year. Capped at ₹20 lakh, which is also the
+ *   income tax exemption. Due within 30 days.
+ * - Leave encashment: encashable leave days x Code wages / 26. Exempt up to ₹25 lakh for
+ *   non-government employees.
  * - Notice: calendar days between resignation and last working day count as served.
  *   On a resignation the shortfall is recovered at gross / 30 a day, unless waived.
  *   On a termination the employer can pay the shortfall in lieu of notice.
@@ -44,8 +45,10 @@ export const DEFAULT_CLEARANCE = [
 
 export const GRATUITY_CAP = 2_000_000;
 export const ENCASHMENT_EXEMPTION = 2_500_000;
-/** 4 years and 240 days. */
-export const GRATUITY_MIN_DAYS = 4 * 365 + 240;
+/** Five years of continuous service (Code on Social Security, section 53). */
+export const GRATUITY_MIN_DAYS = 5 * 365;
+/** Fixed term employees qualify after a year, pro rata. */
+export const GRATUITY_FIXED_TERM_MIN_DAYS = 365;
 
 export interface ManualLine {
   label: string;
@@ -68,6 +71,10 @@ export interface FnfInput {
   lastWorkingDay: string;
   monthlyBasic: number;
   monthlyGross: number;
+  /** India: monthly Code wages (basic plus wage allowances, at least half the gross); gratuity and encashment use it. */
+  monthlyWages?: number;
+  /** India: a fixed term employee, who gets gratuity pro rata after one year. */
+  fixedTerm?: boolean;
   noticeDays: number;
   noticeWaived: boolean;
   /** Termination: pay the notice shortfall instead of asking the employee to serve it. */
@@ -121,25 +128,27 @@ export function serviceLength(doj: string, lwd: string) {
 
 export function computeSettlement(i: FnfInput): FnfResult {
   const service = serviceLength(i.dateOfJoining, i.lastWorkingDay);
+  const wages = i.monthlyWages ?? i.monthlyBasic;
   const lines: FnfLine[] = [];
   let taxable = 0;
 
   // leave encashment
   for (const l of i.leave) {
     if (l.days <= 0) continue;
-    const amount = r2((i.monthlyBasic / 26) * l.days);
-    lines.push({ key: `encash:${l.leaveTypeId}`, label: `${l.name} encashment`, kind: "earning", amount, note: `${l.days} day${l.days === 1 ? "" : "s"} × basic / 26` });
+    const amount = r2((wages / 26) * l.days);
+    lines.push({ key: `encash:${l.leaveTypeId}`, label: `${l.name} encashment`, kind: "earning", amount, note: `${l.days} day${l.days === 1 ? "" : "s"} × wages / 26` });
   }
   const encashment = lines.reduce((s, l) => s + l.amount, 0);
   taxable += Math.max(0, encashment - ENCASHMENT_EXEMPTION);
 
   // gratuity
-  const gratuityEligible = i.type === "death" || service.days >= GRATUITY_MIN_DAYS;
+  const gratuityEligible = i.type === "death" || service.days >= (i.fixedTerm ? GRATUITY_FIXED_TERM_MIN_DAYS : GRATUITY_MIN_DAYS);
   if (gratuityEligible && i.type !== "absconding") {
-    const years = Math.max(1, service.completedYears);
-    const raw = (15 / 26) * i.monthlyBasic * years;
+    // fixed term: pro rata for the exact service; otherwise completed years, a part year over 6 months counting as one
+    const years = i.fixedTerm ? Math.round(service.years * 100) / 100 : Math.max(1, service.completedYears);
+    const raw = (15 / 26) * wages * years;
     const amount = r2(Math.min(GRATUITY_CAP, raw));
-    if (amount > 0) lines.push({ key: "gratuity", label: "Gratuity", kind: "earning", amount, note: `15/26 × basic × ${years} year${years === 1 ? "" : "s"}${raw > GRATUITY_CAP ? " (capped at ₹20 lakh)" : ""}` });
+    if (amount > 0) lines.push({ key: "gratuity", label: "Gratuity", kind: "earning", amount, note: `15/26 × wages × ${years} year${years === 1 ? "" : "s"}${i.fixedTerm ? " (fixed term, pro rata)" : ""}${raw > GRATUITY_CAP ? " (capped at ₹20 lakh)" : ""}` });
   }
 
   // notice

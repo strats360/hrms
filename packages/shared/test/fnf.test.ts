@@ -35,10 +35,15 @@ describe("full and final settlement", () => {
     expect(computeSettlement({ ...base, lastWorkingDay: "2026-10-20", noticeWaived: true }).lines.some((l) => l.key === "notice_recovery")).toBe(false);
   });
 
-  it("needs 4 years 240 days for gratuity, except on death", () => {
+  it("needs 5 years for gratuity (1 for fixed term), except on death", () => {
     const early = { ...base, dateOfJoining: "2022-06-01" }; // 4y 5m
     expect(computeSettlement(early).gratuityEligible).toBe(false);
-    expect(computeSettlement({ ...base, dateOfJoining: "2022-02-01" }).gratuityEligible).toBe(true); // 4y 9m
+    expect(computeSettlement({ ...base, dateOfJoining: "2022-02-01" }).gratuityEligible).toBe(false); // 4y 9m: short of five
+    expect(computeSettlement({ ...base, dateOfJoining: "2021-10-01" }).gratuityEligible).toBe(true); // 5y 1m
+    const ft = computeSettlement({ ...base, dateOfJoining: "2025-04-01", fixedTerm: true, monthlyWages: 26000 }); // 1y 7m, pro rata
+    expect(ft.gratuityEligible).toBe(true);
+    expect(ft.lines.find((l) => l.key === "gratuity")!.amount).toBeCloseTo((15 / 26) * 26000 * ft.service.years, 0);
+    expect(computeSettlement({ ...base, dateOfJoining: "2026-01-01", fixedTerm: true }).gratuityEligible).toBe(false);
     const death = computeSettlement({ ...early, type: "death", dateOfJoining: "2025-01-01" });
     expect(death.gratuityEligible).toBe(true);
     expect(death.notice.shortfall).toBe(0);

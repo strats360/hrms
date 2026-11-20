@@ -26,10 +26,11 @@ describe("due dates", () => {
 
 describe("ECR", () => {
   it("formats an ECR 2.0 line", () => {
-    const w = pfWages(59100);
-    expect(w).toEqual({ epf: 15000, eps: 15000, edli: 15000 });
-    expect(ecrLine({ uan: "100887654321", name: "Priya Vaghela", grossWages: 118200, epfWages: w.epf, epsWages: w.eps, edliWages: w.edli, epfEe: 1800, eps: 1250, epfEr: 550, ncpDays: 0 })).toBe(
-      "100887654321#~#PRIYA VAGHELA#~#118200#~#15000#~#15000#~#15000#~#1800#~#1250#~#550#~#0#~#0",
+    const w = pfWages(58500);
+    expect(w).toEqual({ epf: 25000, eps: 25000, edli: 25000 }); // the ₹25,000 ceiling from 17 Sep 2026
+    expect(pfWages(58500, false, 15000)).toEqual({ epf: 15000, eps: 15000, edli: 15000 });
+    expect(ecrLine({ uan: "100887654321", name: "Priya Vaghela", grossWages: 117000, epfWages: w.epf, epsWages: w.eps, edliWages: w.edli, epfEe: 3000, eps: 2083, epfEr: 917, ncpDays: 0 })).toBe(
+      "100887654321#~#PRIYA VAGHELA#~#117000#~#25000#~#25000#~#25000#~#3000#~#2083#~#917#~#0#~#0",
     );
   });
 });

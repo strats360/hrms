@@ -1,11 +1,11 @@
-import { fmtDate, fmtMoney } from "@hrms/shared";
+import { taxForms, fmtDate, fmtMoney } from "@hrms/shared";
 import type { Form16Data } from "@/lib/types";
 import { Tag } from "@/components/ui/tag";
 import { TaxStatementView } from "./TaxStatementView";
 import { monthLabel } from "@/components/payroll/Payslip";
 
 /**
- * Form 16 (certificate u/s 203). Part A summary from our records plus Part B
+ * The salary TDS certificate (Form 16, Form 130 from tax year 2026-27). Part A summary from our records plus Part B
  * (the salary statement). Wrap in #payslip-print to print / save as PDF.
  */
 export function Form16View({ f }: { f: Form16Data }) {
@@ -15,10 +15,10 @@ export function Form16View({ f }: { f: Form16Data }) {
     <div className="flex flex-col gap-4 text-[13.5px]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="card-kicker">Form No. 16 · certificate under section 203</div>
+          <div className="card-kicker">{taxForms(f.fy).certificate} · {taxForms(f.fy).certificateUnder}</div>
           <div className="text-[20px] font-medium">Tax deducted at source on salary</div>
           <div className="text-muted text-[12.5px]">
-            Financial year {f.fy} · Assessment year {f.assessmentYear}
+            {f.fy >= "2026-27" ? `Tax year ${f.fy}` : `Financial year ${f.fy} · Assessment year ${f.assessmentYear}`}
             {f.period.from ? ` · ${monthLabel(f.period.from)} to ${monthLabel(f.period.to!)}` : ""}
           </div>
         </div>

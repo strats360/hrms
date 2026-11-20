@@ -17,6 +17,7 @@ import {
   type TaxDeclarationData,
   type TaxSection,
   type Verified,
+  taxForms,
 } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
@@ -336,7 +337,7 @@ tdsRoutes.put(
       .values({ tenantId: tid(c), fy, quarter, ...b, createdBy: c.get("session")!.userId })
       .onConflictDoUpdate({ target: [tdsReturns.tenantId, tdsReturns.fy, tdsReturns.quarter], set: b })
       .returning();
-    await audit(c, { action: "tds.return_filed", entity: "tds_return", entityId: row!.id, summary: `Recorded 24Q ${quarter} FY ${fy} filed on ${fmtDate(b.filedOn)}` });
+    await audit(c, { action: "tds.return_filed", entity: "tds_return", entityId: row!.id, summary: `Recorded ${taxForms(fy).quarterly} ${quarter} FY ${fy} filed on ${fmtDate(b.filedOn)}` });
     return c.json(row);
   },
 );
@@ -361,8 +362,8 @@ tdsRoutes.get("/returns/:fy/:quarter/annexure.csv", requirePerm("tds", "export")
       return [r.month, r.item.snapshot.code, r.item.snapshot.pan ?? "PANNOTAVBL", r.item.snapshot.name, "192", r.payDate ?? "", Number(r.item.taxableGross), Number(r.item.tds), r.payDate ?? "", ch?.reference ?? "", ch?.paidOn ?? "", r.item.snapshot.regime === "old" ? "No" : "Yes"];
     }),
   );
-  await audit(c, { action: "tds.annexure", entity: "tds_return", summary: `Exported 24Q ${quarter} annexure for FY ${fy}` });
-  return c.body(csv, 200, { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="24Q-${fy}-${quarter}.csv"` });
+  await audit(c, { action: "tds.annexure", entity: "tds_return", summary: `Exported ${taxForms(fy).quarterly} ${quarter} annexure for FY ${fy}` });
+  return c.body(csv, 200, { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="${taxForms(fy).quarterly.replace("Form ", "form")}-${fy}-${quarter}.csv"` });
 });
 
 tdsRoutes.get("/form16", requirePerm("tds", "view"), v("query", fyQuery), async (c) => {
@@ -400,13 +401,13 @@ tdsRoutes.get("/form16.zip", requirePerm("tds", "export"), v("query", fyQuery), 
     const data = await form16(db, tid(c), id, fy);
     if (data?.period.from) files[form16FileName(data)] = await form16Pdf(data as unknown as Form16Data);
   }
-  await audit(c, { action: "tds.form16_download", entity: "tds", summary: `Downloaded Form 16 for ${Object.keys(files).length} employees, FY ${fy}` });
+  await audit(c, { action: "tds.form16_download", entity: "tds", summary: `Downloaded ${taxForms(fy).certificate} for ${Object.keys(files).length} employees, FY ${fy}` });
   return c.body(zipSync(files, { level: 0 }) as unknown as ArrayBuffer, 200, { "Content-Type": "application/zip", "Content-Disposition": `attachment; filename="form16-${fy}.zip"`, "Cache-Control": "private, no-store" });
 });
 
 tdsRoutes.get("/form16/:employeeId/pdf", requirePerm("tds", "view"), v("query", fyQuery), async (c) => {
   const data = await form16(c.get("db"), tid(c), c.req.param("employeeId"), c.req.valid("query").fy ?? currentFy());
-  if (!data?.period.from) throw notFound("Form 16");
+  if (!data?.period.from) throw notFound("Salary TDS certificate");
   return c.body((await form16Pdf(data as unknown as Form16Data)) as unknown as ArrayBuffer, 200, { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${form16FileName(data)}"`, "Cache-Control": "private, no-store" });
 });
 
@@ -517,7 +518,7 @@ essTaxRoutes.get("/form16/pdf", v("query", fyQuery), async (c) => {
   const start = Number(currentFy().slice(0, 4)) - 1;
   const fy = c.req.valid("query").fy ?? `${start}-${String((start + 1) % 100).padStart(2, "0")}`;
   const data = await form16(c.get("db"), t, eid, fy);
-  if (!data?.period.from) throw notFound("Form 16");
+  if (!data?.period.from) throw notFound("Salary TDS certificate");
   return c.body((await form16Pdf(data as unknown as Form16Data)) as unknown as ArrayBuffer, 200, { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${form16FileName(data)}"`, "Cache-Control": "private, no-store" });
 });
 

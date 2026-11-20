@@ -1,5 +1,5 @@
 /**
- * Income-tax computation statement for salary (the basis of Form 16 Part B and
+ * Income tax computation statement for salary (the basis of Form 16 or Form 130 Part B and
  * monthly TDS). Caps follow the Income-tax Act for FY 2025-26/2026-27; confirm
  * with a CA when the Finance Act changes.
  */
@@ -141,7 +141,7 @@ export function computeTaxStatement(input: StatementInput): TaxStatement {
     const rent = eff("hra");
     const pct = d.rent.metro ? 0.5 : 0.4;
     const exempt = Math.max(0, Math.round(Math.min(input.salary.hra, rent - 0.1 * input.salary.basic, pct * input.salary.basic)));
-    if (exempt > 0) exemptions.push({ key: "hra", label: "HRA exemption u/s 10(13A)", amount: exempt, note: `Least of HRA ${Math.round(input.salary.hra)}, rent less 10% of basic, ${pct * 100}% of basic` });
+    if (exempt > 0) exemptions.push({ key: "hra", label: "HRA exemption", amount: exempt, note: `Least of HRA ${Math.round(input.salary.hra)}, rent less 10% of basic, ${pct * 100}% of basic` });
   }
   const exemptTotal = exemptions.reduce((s, e) => s + e.amount, 0);
   const standardDeduction = Math.min(table.standardDeduction, grossSalary - exemptTotal);
@@ -200,4 +200,22 @@ export function compareRegimes(input: Omit<StatementInput, "regime">) {
   const neu = computeTaxStatement({ ...input, regime: "new" });
   const old = computeTaxStatement({ ...input, regime: "old" });
   return { new: neu, old, better: (old.tax.total < neu.tax.total ? "old" : "new") as Regime, saving: Math.abs(old.tax.total - neu.tax.total) };
+}
+
+/**
+ * Form and section names for a tax year. The Income Tax Act 2025 replaced the 1961 Act from
+ * 1 April 2026: salary TDS moved from section 192 to 392, Form 16 became Form 130, Form 24Q
+ * became Form 138, Form 12BB became Form 124, and Form 122 is new (regime choice and previous
+ * employer income). FY 2025-26 and earlier keep the old names.
+ */
+export function taxForms(fy: string) {
+  if (fy >= "2026-27")
+    return { act: "Income Tax Act 2025", actShort: "the 2025 Act", tdsSection: "section 392", certificate: "Form 130", quarterly: "Form 138", declaration: "Form 124", regimeForm: "Form 122", year: "tax year", certificateUnder: "Certificate of tax deducted from salary under the Income Tax Act 2025" };
+  return { act: "Income Tax Act 1961", actShort: "the 1961 Act", tdsSection: "section 192", certificate: "Form 16", quarterly: "Form 24Q", declaration: "Form 12BB", regimeForm: null, year: "financial year", certificateUnder: "Certificate under section 203 of the Income-tax Act, 1961" };
+}
+
+/** Cities where HRA exemption is 50% of basic (old regime). Four more were added from tax year 2026-27. */
+export function hraMetroCities(fy: string) {
+  const base = ["Delhi", "Mumbai", "Kolkata", "Chennai"];
+  return fy >= "2026-27" ? [...base, "Bengaluru", "Hyderabad", "Pune", "Ahmedabad"] : base;
 }

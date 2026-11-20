@@ -1,7 +1,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { loansToRecover, settleLoansInFnf } from "./loans";
 import { employeeExits, employees, leaveBalances, leaveTypes, payments, payrollItems, payrollRuns, reimbursementClaims, tenants, type Database } from "@hrms/db";
-import { fmtMoney, packFor, DEFAULT_CLEARANCE, type ExitType, type FnfResult, type ManualLine, toLocalDate } from "@hrms/shared";
+import { codeWages, fmtMoney, packFor, DEFAULT_CLEARANCE, type ExitType, type FnfResult, type ManualLine, toLocalDate } from "@hrms/shared";
 import { balanceSummary } from "./leave";
 import { entityOf } from "./entities";
 import { getTemplate, resolveStructure, structuresAsOf } from "./payroll";
@@ -59,6 +59,8 @@ export async function settlementFor(db: Database, exit: Exit, emp: Employee) {
     lastWorkingDay: exit.lastWorkingDay,
     monthlyBasic: s.components.basic,
     monthlyGross: s.gross,
+    monthlyWages: codeWages(s.components),
+    fixedTerm: emp.employmentType === "fixed_term",
     noticeDays: exit.noticeDays,
     noticeWaived: exit.noticeWaived,
     payInLieu: exit.payInLieu,
@@ -90,7 +92,9 @@ export async function settlementFor(db: Database, exit: Exit, emp: Employee) {
   else if (finalRun.status !== "approved" && finalRun.status !== "paid") warnings.push(`The ${monthLabel(month)} payroll isn't approved yet. Lock it before approving the settlement.`);
   if (claims?.n) warnings.push(`${claims.n} reimbursement claim${claims.n === 1 ? " is" : "s are"} still open (${money(claims.s)}). Pay or reject ${claims.n === 1 ? "it" : "them"} through reimbursements.`);
   if (owed?.n) warnings.push(`${owed.n} payment${owed.n === 1 ? " is" : "s are"} pending, failed or held (${money(owed.s)}). Clear ${owed.n === 1 ? "it" : "them"} under Payments.`);
-  if (india && !result.gratuityEligible && result.service.days >= 4 * 365) warnings.push("Close to gratuity eligibility (4 years 240 days). Check the service dates.");
+  if (india && !result.gratuityEligible && result.service.days >= 4 * 365 + 240) warnings.push("Close to gratuity eligibility (5 years). Some courts count 4 years and 240 days as five: check the service dates with your advisor.");
+  if (india && result.gratuityEligible) warnings.push(`Gratuity must be paid within 30 days of becoming payable, so by ${addDaysIso(exit.lastWorkingDay, 30)}.`);
+  if (india) warnings.push(`Wages due must be paid within 2 working days of the last day, so by ${addWorkingDays(exit.lastWorkingDay, 2)}.`);
   if (india && result.taxable > 0 && !(inputs.tds ?? 0)) warnings.push(`${money(result.taxable)} of the settlement is taxable. Enter the TDS from the employee's tax computation.`);
 
   return {
@@ -138,4 +142,16 @@ export async function exitPaymentEffects(db: Database, paid: { id: string; utr: 
     }
   }
   if (cancelled.length) await db.update(employeeExits).set({ paymentId: null }).where(and(inArray(employeeExits.paymentId, cancelled), eq(employeeExits.status, "approved")));
+}
+
+const addDaysIso = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
+/** Working days after a date, skipping Saturdays and Sundays. */
+function addWorkingDays(d: string, n: number) {
+  let x = d;
+  while (n > 0) {
+    x = addDaysIso(x, 1);
+    const wd = new Date(`${x}T00:00:00Z`).getUTCDay();
+    if (wd !== 0 && wd !== 6) n--;
+  }
+  return x;
 }

@@ -22,23 +22,23 @@
         "state": "Gujarat"
       },
       "expect": {
-        "gross": 98200,
-        "totalDeductions": 2000,
-        "net": 96200,
+        "gross": 97000,
+        "totalDeductions": 3200,
+        "net": 93800,
         "tds": 0,
-        "employerCost": 1950,
+        "employerCost": 3250,
         "lines": {
-          "earn.basic": 49100,
-          "earn.hra": 19640,
+          "earn.basic": 48500,
+          "earn.hra": 19400,
           "earn.conveyance": 1600,
           "earn.medical": 1250,
-          "earn.special": 26610,
-          "ded.pf": 1800,
+          "earn.special": 26250,
+          "ded.pf": 3000,
           "ded.pt": 200,
-          "emp.epf_er": 550,
-          "emp.eps": 1250,
-          "emp.edli": 75,
-          "emp.pf_admin": 75
+          "emp.epf_er": 917,
+          "emp.eps": 2083,
+          "emp.edli": 125,
+          "emp.pf_admin": 125
         }
       }
     },
@@ -58,23 +58,23 @@
         "state": "Gujarat"
       },
       "expect": {
-        "gross": 88380,
-        "totalDeductions": 2000,
-        "net": 86380,
+        "gross": 87300,
+        "totalDeductions": 3200,
+        "net": 84100,
         "tds": 0,
-        "employerCost": 1950,
+        "employerCost": 3250,
         "lines": {
-          "earn.basic": 44190,
-          "earn.hra": 17676,
+          "earn.basic": 43650,
+          "earn.hra": 17460,
           "earn.conveyance": 1440,
           "earn.medical": 1125,
-          "earn.special": 23949,
-          "ded.pf": 1800,
+          "earn.special": 23625,
+          "ded.pf": 3000,
           "ded.pt": 200,
-          "emp.epf_er": 550,
-          "emp.eps": 1250,
-          "emp.edli": 75,
-          "emp.pf_admin": 75
+          "emp.epf_er": 917,
+          "emp.eps": 2083,
+          "emp.edli": 125,
+          "emp.pf_admin": 125
         }
       }
     },
@@ -131,23 +131,23 @@
         "state": "Maharashtra"
       },
       "expect": {
-        "gross": 48200,
-        "totalDeductions": 2100,
-        "net": 46100,
+        "gross": 47170,
+        "totalDeductions": 3130,
+        "net": 44040,
         "tds": 0,
-        "employerCost": 1950,
+        "employerCost": 3066,
         "lines": {
-          "earn.basic": 24100,
-          "earn.hra": 9640,
+          "earn.basic": 23585,
+          "earn.hra": 9434,
           "earn.conveyance": 1600,
           "earn.medical": 1250,
-          "earn.special": 11610,
-          "ded.pf": 1800,
+          "earn.special": 11301,
+          "ded.pf": 2830,
           "ded.pt": 300,
-          "emp.epf_er": 550,
-          "emp.eps": 1250,
-          "emp.edli": 75,
-          "emp.pf_admin": 75
+          "emp.epf_er": 865,
+          "emp.eps": 1965,
+          "emp.edli": 118,
+          "emp.pf_admin": 118
         }
       }
     },
@@ -167,24 +167,24 @@
         "state": "Gujarat"
       },
       "expect": {
-        "gross": 48200,
-        "totalDeductions": 2006,
-        "net": 46194,
+        "gross": 47170,
+        "totalDeductions": 3036,
+        "net": 44134,
         "tds": 0,
-        "employerCost": 1962,
+        "employerCost": 3078,
         "lines": {
-          "earn.basic": 24100,
-          "earn.hra": 9640,
+          "earn.basic": 23585,
+          "earn.hra": 9434,
           "earn.conveyance": 1600,
           "earn.medical": 1250,
-          "earn.special": 11610,
-          "ded.pf": 1800,
+          "earn.special": 11301,
+          "ded.pf": 2830,
           "ded.pt": 200,
           "ded.lwf": 6,
-          "emp.epf_er": 550,
-          "emp.eps": 1250,
-          "emp.edli": 75,
-          "emp.pf_admin": 75,
+          "emp.epf_er": 865,
+          "emp.eps": 1965,
+          "emp.edli": 118,
+          "emp.pf_admin": 118,
           "emp.lwf_er": 12
         }
       }
@@ -218,24 +218,24 @@
         }
       },
       "expect": {
-        "gross": 148200,
-        "totalDeductions": 20588,
-        "net": 127612,
-        "tds": 18588,
-        "employerCost": 1950,
+        "gross": 147000,
+        "totalDeductions": 21395,
+        "net": 125605,
+        "tds": 18195,
+        "employerCost": 3250,
         "lines": {
-          "earn.basic": 74100,
-          "earn.hra": 29640,
+          "earn.basic": 73500,
+          "earn.hra": 29400,
           "earn.conveyance": 1600,
           "earn.medical": 1250,
-          "earn.special": 41610,
-          "ded.pf": 1800,
+          "earn.special": 41250,
+          "ded.pf": 3000,
           "ded.pt": 200,
-          "ded.tds": 18588,
-          "emp.epf_er": 550,
-          "emp.eps": 1250,
-          "emp.edli": 75,
-          "emp.pf_admin": 75
+          "ded.tds": 18195,
+          "emp.epf_er": 917,
+          "emp.eps": 2083,
+          "emp.edli": 125,
+          "emp.pf_admin": 125
         }
       }
     },
@@ -255,24 +255,24 @@
         "state": "Karnataka"
       },
       "expect": {
-        "gross": 623200,
-        "totalDeductions": 173697,
-        "net": 449503,
-        "tds": 171697,
-        "employerCost": 1950,
+        "gross": 622000,
+        "totalDeductions": 174485,
+        "net": 447515,
+        "tds": 171285,
+        "employerCost": 3250,
         "lines": {
-          "earn.basic": 311600,
-          "earn.hra": 124640,
+          "earn.basic": 311000,
+          "earn.hra": 124400,
           "earn.conveyance": 1600,
           "earn.medical": 1250,
-          "earn.special": 184110,
-          "ded.pf": 1800,
+          "earn.special": 183750,
+          "ded.pf": 3000,
           "ded.pt": 200,
-          "ded.tds": 171697,
-          "emp.epf_er": 550,
-          "emp.eps": 1250,
-          "emp.edli": 75,
-          "emp.pf_admin": 75
+          "ded.tds": 171285,
+          "emp.epf_er": 917,
+          "emp.eps": 2083,
+          "emp.edli": 125,
+          "emp.pf_admin": 125
         }
       }
     },
@@ -298,24 +298,24 @@
         }
       },
       "expect": {
-        "gross": 198200,
-        "totalDeductions": 36832,
-        "net": 161368,
-        "tds": 34832,
-        "employerCost": 1950,
+        "gross": 197000,
+        "totalDeductions": 37720,
+        "net": 159280,
+        "tds": 34520,
+        "employerCost": 3250,
         "lines": {
-          "earn.basic": 99100,
-          "earn.hra": 39640,
+          "earn.basic": 98500,
+          "earn.hra": 39400,
           "earn.conveyance": 1600,
           "earn.medical": 1250,
-          "earn.special": 56610,
-          "ded.pf": 1800,
+          "earn.special": 56250,
+          "ded.pf": 3000,
           "ded.pt": 200,
-          "ded.tds": 34832,
-          "emp.epf_er": 550,
-          "emp.eps": 1250,
-          "emp.edli": 75,
-          "emp.pf_admin": 75
+          "ded.tds": 34520,
+          "emp.epf_er": 917,
+          "emp.eps": 2083,
+          "emp.edli": 125,
+          "emp.pf_admin": 125
         }
       }
     },
@@ -335,18 +335,20 @@
         "state": "West Bengal"
       },
       "expect": {
-        "gross": 40000,
-        "totalDeductions": 150,
-        "net": 39850,
+        "gross": 38740,
+        "totalDeductions": 441,
+        "net": 38299,
         "tds": 0,
-        "employerCost": 0,
+        "employerCost": 1260,
         "lines": {
-          "earn.basic": 20000,
-          "earn.hra": 8000,
+          "earn.basic": 19370,
+          "earn.hra": 7748,
           "earn.conveyance": 1600,
           "earn.medical": 1250,
-          "earn.special": 9150,
-          "ded.pt": 150
+          "earn.special": 8772,
+          "ded.esi": 291,
+          "ded.pt": 150,
+          "emp.esi_er": 1260
         }
       }
     },
@@ -413,22 +415,22 @@
         "state": "Delhi"
       },
       "expect": {
-        "gross": 73200,
-        "totalDeductions": 1800,
-        "net": 71400,
+        "gross": 72000,
+        "totalDeductions": 3000,
+        "net": 69000,
         "tds": 0,
-        "employerCost": 1950,
+        "employerCost": 3250,
         "lines": {
-          "earn.basic": 36600,
-          "earn.hra": 14640,
+          "earn.basic": 36000,
+          "earn.hra": 14400,
           "earn.conveyance": 1600,
           "earn.medical": 1250,
-          "earn.special": 19110,
-          "ded.pf": 1800,
-          "emp.epf_er": 550,
-          "emp.eps": 1250,
-          "emp.edli": 75,
-          "emp.pf_admin": 75
+          "earn.special": 18750,
+          "ded.pf": 3000,
+          "emp.epf_er": 917,
+          "emp.eps": 2083,
+          "emp.edli": 125,
+          "emp.pf_admin": 125
         }
       }
     }

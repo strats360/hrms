@@ -70,4 +70,6 @@ export interface StatutoryResult {
   tds: number;
   tax: PayslipResult["tax"];
   warnings: string[];
+  /** India: the Code wages earned this month, the base for PF (kept for the ECR file). */
+  wages?: number;
 }

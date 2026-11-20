@@ -15,7 +15,7 @@ describe("Statutory master", () => {
     expect(r.status).toBe(200);
     const pf = r.body.rows.find((x: any) => x.key === "pf");
     expect(pf.inForce).toBe(true);
-    expect(pf.summary).toContain("₹15,000");
+    expect(pf.summary).toContain("₹25,000"); // in force since 17 Sep 2026
     expect(r.body.pending).toBe(2);
     expect(r.body.rows.find((x: any) => x.key === "pt:Karnataka").status).toBe("draft");
     expect((await kunal.get("/platform/statutory")).status).toBe(403);
@@ -53,5 +53,44 @@ describe("Statutory master", () => {
     expect((await platform.del(`/platform/statutory/${d.body.id}`)).status).toBe(200);
     const pf = (await platform.get("/platform/statutory")).body.rows.find((x: any) => x.key === "pf");
     expect((await platform.del(`/platform/statutory/${pf.id}`)).status).toBe(400);
+  });
+});
+
+describe("Indian rules from the Labour Codes", () => {
+  it("splits the EPF ceiling by days in September 2026", async () => {
+    const { createDb } = await import("@hrms/db");
+    const { rulesFor } = await import("../src/services/statutory");
+    const { env } = await import("./helpers");
+    const db = createDb(env.DATABASE_URL!, { max: 1 });
+    try {
+      expect((await rulesFor(db, "2026-08")).pf.wageCeiling).toBe(15000);
+      expect((await rulesFor(db, "2026-09")).pf.wageCeiling).toBe(Math.round((15000 * 16 + 25000 * 14) / 30));
+      expect((await rulesFor(db, "2026-10")).pf.wageCeiling).toBe(25000);
+    } finally {
+      await db.$client.end();
+    }
+  });
+
+  it("keeps ESI going to the end of the contribution period once someone was covered", async () => {
+    const { createDb } = await import("@hrms/db");
+    const { esiCoveredThisPeriod } = await import("../src/services/payroll");
+    const { env } = await import("./helpers");
+    const postgres = (await import("postgres")).default;
+    const sql = postgres(env.DATABASE_URL!, { max: 1, onnotice: () => {} });
+    const db = createDb(env.DATABASE_URL!, { max: 1 });
+    const [{ e, t, ent }] = (await sql`select e.id as e, e.tenant_id as t, l.id as ent from employees e join legal_entities l on l.tenant_id = e.tenant_id and l.is_default where e.work_email = 'priya.vaghela@strats360.com'`) as any;
+    const [{ id: runId }] = (await sql`insert into payroll_runs (id, tenant_id, entity_id, month, period_start, period_end, status) values (gen_random_uuid()::text, ${t}, ${ent}, '2019-05', '2019-05-01', '2019-05-31', 'approved') returning id`) as any;
+    try {
+      await sql`insert into payroll_items (id, tenant_id, run_id, employee_id, snapshot, days_in_month, paid_days, lop_days, earnings, deductions, employer, gross, total_deductions, net, employer_cost, tds, taxable_gross, employee_pf, professional_tax)
+        values (gen_random_uuid()::text, ${t}, ${runId}, ${e}, ${sql.json({ name: "Priya", code: "STL-0042" } as any)}, 31, 31, 0, ${sql.json([])}, ${sql.json([{ code: "esi", label: "ESI", amount: 150 }])}, ${sql.json([])}, 20000, 150, 19850, 0, 0, 20000, 0, 0)`;
+      // June and September are in the same period (April to September); October starts a new one
+      expect((await esiCoveredThisPeriod(db, t, "2019-06", [e])).has(e)).toBe(true);
+      expect((await esiCoveredThisPeriod(db, t, "2019-09", [e])).has(e)).toBe(true);
+      expect((await esiCoveredThisPeriod(db, t, "2019-10", [e])).size).toBe(0);
+    } finally {
+      await sql`delete from payroll_runs where id = ${runId}`;
+      await sql.end();
+      await db.$client.end();
+    }
   });
 });

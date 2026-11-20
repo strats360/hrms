@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Download, FileText, Repeat } from "lucide-react";
-import { fmtMoney } from "@hrms/shared";
+import { taxForms, fmtMoney } from "@hrms/shared";
 import { api, download, errorMessage, qs } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { EmployeeTax, Form16Data } from "@/lib/types";
@@ -156,7 +156,7 @@ function EmployeeComputation({ id, fy }: { id: string; fy: string }) {
             <FileText size={15} /> Tax computation statement
           </Button>
           <Button className="justify-start" onClick={() => setDoc("form16")}>
-            <FileText size={15} /> Form 16{fy === currentFy() ? " (provisional)" : ""}
+            <FileText size={15} /> {taxForms(fy).certificate}{fy === currentFy() ? " (provisional)" : ""}
           </Button>
         </Card>
       </div>
@@ -206,7 +206,7 @@ export function Form16Dialog({ employeeId, fy, onClose }: { employeeId: string |
     <Dialog
       open={!!employeeId}
       onOpenChange={(o) => !o && onClose()}
-      title="Form 16"
+      title={taxForms(fy).certificate}
       description={q.data?.provisional ? "Provisional: based on payroll locked so far. The final certificate is issued after March payroll and the Q4 return." : undefined}
       width={820}
       footer={

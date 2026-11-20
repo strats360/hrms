@@ -9,10 +9,11 @@ export const EMPLOYEE_STATUS_LABELS: Record<EmployeeStatus, string> = {
   exited: "Exited",
 };
 
-export const EMPLOYMENT_TYPES = ["full_time", "part_time", "contract", "intern", "consultant"] as const;
+export const EMPLOYMENT_TYPES = ["full_time", "part_time", "fixed_term", "contract", "intern", "consultant"] as const;
 export const EMPLOYMENT_TYPE_LABELS: Record<(typeof EMPLOYMENT_TYPES)[number], string> = {
   full_time: "Full-time",
   part_time: "Part-time",
+  fixed_term: "Fixed term",
   contract: "Contract",
   intern: "Intern",
   consultant: "Consultant",

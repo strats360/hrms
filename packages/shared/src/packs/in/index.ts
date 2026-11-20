@@ -29,3 +29,7 @@ export const indiaPack: CountryPack = {
   ],
   ruleCategories: ["pf", "esi", "pt", "lwf", "tax", "minwage"],
 };
+
+import { z } from "zod";
+/** India payroll details kept per employee: a person with disability has a higher ESI limit (₹25,000). */
+export const indiaPayrollProfileSchema = z.object({ disability: z.boolean().default(false) });

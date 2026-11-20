@@ -1,18 +1,23 @@
-import { fyOfMonth, labourWelfareFund, professionalTax, remainingFyMonths, type PayLine } from "../../payroll";
+import { codeWages, fyOfMonth, labourWelfareFund, professionalTax, remainingFyMonths, type PayLine } from "../../payroll";
 import { computeTaxStatement } from "../../tax";
 import type { StatutoryContext, StatutoryResult } from "../types";
 
 /**
  * India: EPF (with EPS, EDLI and admin charges), ESI, Professional Tax, Labour Welfare Fund and
- * TDS under section 192, projected over the financial year.
- * Moved here unchanged from the payroll engine; the payroll tests pin the figures.
+ * TDS on salary (section 392 of the Income Tax Act 2025, section 192 before), projected over the year.
+ * PF and ESI eligibility are on Code wages: basic plus wage allowances, at least half the gross.
  */
 export function indiaStatutory(ctx: StatutoryContext): StatutoryResult {
   const { input, template: t, rules: R, month1, gross, basicEarned, round: r } = ctx;
   const warnings: string[] = [];
 
+  // Code wages for the full month and for the days paid
+  const wagesFull = codeWages(input.structure.components);
+  const wagesEarned = r(wagesFull * ctx.factor);
+  void basicEarned;
+
   // PF
-  const pfWage = input.pfApplicable ? (t.pfOnFullBasic ? basicEarned : Math.min(basicEarned, R.pf.wageCeiling)) : 0;
+  const pfWage = input.pfApplicable ? (t.pfOnFullBasic ? wagesEarned : Math.min(wagesEarned, R.pf.wageCeiling)) : 0;
   const pfCappedWage = Math.min(pfWage, R.pf.wageCeiling);
   const employeePf = r(pfWage * R.pf.employeeRate);
   const employerPfTotal = r(pfWage * R.pf.employerRate);
@@ -21,8 +26,13 @@ export function indiaStatutory(ctx: StatutoryContext): StatutoryResult {
   const edli = r(pfCappedWage * R.pf.edliRate);
   const pfAdmin = r(pfWage * R.pf.adminRate);
 
-  // ESI: eligibility is decided on the full-month structure gross
-  const esiOn = input.esiApplicable && input.structure.gross <= R.esi.grossThreshold;
+  // ESI: eligibility on the full month's Code wages; ₹25,000 for persons with disability. Once
+  // covered in a contribution period (April to September, October to March), it continues to the end.
+  const disabled = !!(input.countryProfile as { disability?: boolean } | null | undefined)?.disability;
+  const esiLimit = disabled ? (R.esi.disabledThreshold ?? 25000) : R.esi.grossThreshold;
+  const withinLimit = wagesFull <= esiLimit;
+  const esiOn = input.esiApplicable && (withinLimit || !!input.esiContinue);
+  if (input.esiApplicable && !withinLimit && input.esiContinue) warnings.push("Wages are over the ESI limit, but ESI continues until the contribution period ends");
   const esiWage = gross - ctx.nonContributoryEarnings;
   const employeeEsi = esiOn ? Math.ceil(esiWage * R.esi.employeeRate) : 0;
   const employerEsi = esiOn ? Math.ceil(esiWage * R.esi.employerRate) : 0;
@@ -40,7 +50,7 @@ export function indiaStatutory(ctx: StatutoryContext): StatutoryResult {
   const monthsLeft = remainingFyMonths(input.month);
   const ytd = input.ytd ?? { taxableGross: 0, tds: 0, employeePf: 0, professionalTax: 0 };
   const fullMonthGross = input.structure.gross - ctx.fullMonthNonTaxable;
-  const fullMonthPf = input.pfApplicable ? r(Math.min(input.structure.components.basic, t.pfOnFullBasic ? Infinity : R.pf.wageCeiling) * R.pf.employeeRate) : 0;
+  const fullMonthPf = input.pfApplicable ? r(Math.min(wagesFull, t.pfOnFullBasic ? Infinity : R.pf.wageCeiling) * R.pf.employeeRate) : 0;
   const fullMonthPt = input.ptApplicable ? professionalTax(input.state, input.structure.gross, 1, input.gender, R).amount : 0;
   const annualised = input.ytd === undefined;
   const pastMonths = 12 - monthsLeft;
@@ -85,5 +95,5 @@ export function indiaStatutory(ctx: StatutoryContext): StatutoryResult {
     { code: "esi_er", label: "ESI (employer)", amount: employerEsi },
     { code: "lwf_er", label: "LWF (employer)", amount: lwf.employer },
   ];
-  return { deductions, employer, tds, tax: { ...tax, projectedAnnualGross, monthsLeft, annualised }, warnings };
+  return { deductions, employer, tds, tax: { ...tax, projectedAnnualGross, monthsLeft, annualised }, warnings, wages: wagesEarned };
 }

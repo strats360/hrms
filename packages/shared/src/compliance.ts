@@ -59,7 +59,7 @@ export function dueDate(statute: Statute, month: string, state?: string | null):
   }
 }
 
-/** Quarterly TDS return (24Q) due dates for a financial year "2026-27". */
+/** Quarterly salary TDS return (Form 24Q, Form 138 from 2026-27) due dates for a year "2026-27". The last entry is the annual certificate. */
 export function tdsReturnDueDates(fy: string) {
   const y = Number(fy.slice(0, 4));
   return [
@@ -67,7 +67,7 @@ export function tdsReturnDueDates(fy: string) {
     { quarter: "Q2", period: `Jul–Sep ${y}`, due: `${y}-10-31` },
     { quarter: "Q3", period: `Oct–Dec ${y}`, due: `${y + 1}-01-31` },
     { quarter: "Q4", period: `Jan–Mar ${y + 1}`, due: `${y + 1}-05-31` },
-    { quarter: "Form 16", period: `FY ${fy}`, due: `${y + 1}-06-15` },
+    { quarter: "certificate", period: `FY ${fy}`, due: `${y + 1}-06-15` },
   ];
 }
 

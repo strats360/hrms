@@ -15,9 +15,9 @@ describe("structure from CTC", () => {
   it("splits ₹14.4 L CTC with capped employer PF", () => {
     const s = structureFromCtc(1440000);
     expect(s.monthlyCtc).toBe(120000);
-    expect(s.employer.pf).toBe(1800);
-    expect(s.gross).toBe(118200);
-    expect(s.components).toEqual({ basic: 59100, hra: 23640, conveyance: 1600, medical: 1250, special: 32610 });
+    expect(s.employer.pf).toBe(3000); // 12% of the ₹25,000 ceiling
+    expect(s.gross).toBe(117000);
+    expect(s.components).toEqual({ basic: 58500, hra: 23400, conveyance: 1600, medical: 1250, special: 32250 });
     expect(s.esiApplicable).toBe(false);
   });
   it("brings low CTC under ESI and still adds up exactly", () => {
@@ -35,8 +35,10 @@ describe("structure from CTC", () => {
   it("builds from custom components", () => {
     const s = structureFromComponents({ basic: 20000, hra: 8000, conveyance: 1600, medical: 1250, special: 9150 });
     expect(s.gross).toBe(40000);
-    expect(s.employer.pf).toBe(1800);
-    expect(s.monthlyCtc).toBe(41800);
+    expect(s.employer.pf).toBe(2400); // 12% of Code wages, 20,000
+    // Code wages are 20,000, under ₹21,000, so ESI covers a ₹40,000 gross
+    expect(s.esiApplicable).toBe(true);
+    expect(s.monthlyCtc).toBe(43700);
   });
 });
 
@@ -99,18 +101,19 @@ describe("monthly payslip", () => {
   it("full month: gross, PF, PT and net", () => {
     const s = structureFromCtc(1440000);
     const p = computePayslip({ ...base, structure: s, paidDays: 30 });
-    expect(p.gross).toBe(118200);
-    expect(p.deductions.find((d) => d.code === "pf")!.amount).toBe(1800);
+    expect(p.gross).toBe(117000);
+    expect(p.deductions.find((d) => d.code === "pf")!.amount).toBe(3000);
     expect(p.deductions.find((d) => d.code === "pt")!.amount).toBe(200);
-    expect(p.employer.find((e) => e.code === "eps")!.amount).toBe(1250);
-    expect(p.employer.find((e) => e.code === "epf_er")!.amount).toBe(550);
+    expect(p.employer.find((e) => e.code === "eps")!.amount).toBe(2083); // 8.33% of 25,000
+    expect(p.employer.find((e) => e.code === "epf_er")!.amount).toBe(917);
+    expect(p.employer.find((e) => e.code === "edli")!.amount).toBe(125);
     expect(p.net).toBe(p.gross - p.totalDeductions);
     expect(p.tds).toBeGreaterThan(0);
   });
   it("prorates for LOP", () => {
     const s = structureFromCtc(1440000);
     const p = computePayslip({ ...base, structure: s, paidDays: 28 });
-    expect(p.earnings.find((e) => e.code === "basic")!.amount).toBe(Math.round((59100 * 28) / 30));
+    expect(p.earnings.find((e) => e.code === "basic")!.amount).toBe(Math.round((58500 * 28) / 30));
   });
   it("ESI rounds up and uses earned gross", () => {
     const s = structureFromCtc(240000);

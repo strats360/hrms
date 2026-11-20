@@ -44,15 +44,19 @@ export interface ExtraComponentDef {
   taxable: boolean;
   /** Counts as ESI wages. */
   esiWage: boolean;
+  /** Counts as "wages" under the Labour Codes, like dearness or retaining allowance (most allowances don't). */
+  wages?: boolean;
 }
 
-/** One custom allowance on a structure. PF is always on basic only. */
+/** One custom allowance on a structure. PF is on Code wages (basic plus allowances marked as wages, at least half the gross). */
 export interface ExtraComponent {
   code: string;
   label: string;
   amount: number;
   taxable?: boolean;
   esiWage?: boolean;
+  /** Counts as Code wages (dearness or retaining allowance). */
+  wages?: boolean;
 }
 
 /** A named template (e.g. "Sales field staff", "Grade M2"). The company's default has no id. */
@@ -77,8 +81,10 @@ export const DEFAULT_SALARY_TEMPLATE: SalaryTemplate = {
 };
 
 export const STATUTORY = {
-  pf: { employeeRate: 0.12, employerRate: 0.12, epsRate: 0.0833, edliRate: 0.005, adminRate: 0.005, wageCeiling: 15000 },
-  esi: { employeeRate: 0.0075, employerRate: 0.0325, grossThreshold: 21000 },
+  // EPF wage ceiling ₹25,000 from 17 Sep 2026 (S.O. 5109(E)); it was ₹15,000 from 1 Sep 2014
+  pf: { employeeRate: 0.12, employerRate: 0.12, epsRate: 0.0833, edliRate: 0.005, adminRate: 0.005, wageCeiling: 25000 },
+  // ESI: ₹21,000 a month, ₹25,000 for persons with disability
+  esi: { employeeRate: 0.0075, employerRate: 0.0325, grossThreshold: 21000, disabledThreshold: 25000 },
 } as const;
 
 /** Professional Tax monthly slabs by state. [upToMonthlyGross, amount]; Infinity for the last slab. */
@@ -156,9 +162,21 @@ export interface Structure {
 
 const r = (n: number) => Math.round(n);
 
-function employerPf(basic: number, t: SalaryTemplate, pfApplicable: boolean, R: StatutoryRules = DEFAULT_RULES) {
+/**
+ * "Wages" under the Code on Wages and the Code on Social Security (in force from 21 Nov 2025):
+ * basic plus dearness and retaining allowance. When everything else (HRA, conveyance, special
+ * allowance and the rest) comes to more than half of the pay, the excess counts as wages too,
+ * so wages are never below half the gross. PF, ESI eligibility, gratuity and leave encashment
+ * are all worked out on this figure.
+ */
+export function codeWages(c: MonthlyComponents): number {
+  const own = c.basic + (c.extras ?? []).filter((x) => x.wages).reduce((s, x) => s + x.amount, 0);
+  return r(Math.max(own, componentsGross(c) / 2));
+}
+
+function employerPf(wages: number, t: SalaryTemplate, pfApplicable: boolean, R: StatutoryRules = DEFAULT_RULES) {
   if (!pfApplicable) return 0;
-  const wage = t.pfOnFullBasic ? basic : Math.min(basic, R.pf.wageCeiling);
+  const wage = t.pfOnFullBasic ? wages : Math.min(wages, R.pf.wageCeiling);
   return r(wage * R.pf.employerRate);
 }
 
@@ -176,7 +194,7 @@ export function componentsFromGross(gross: number, t: SalaryTemplate): MonthlyCo
   for (const x of t.extras ?? []) {
     const amount = Math.min(left, Math.max(0, r(x.mode === "pct_basic" ? (basic * x.value) / 100 : x.value)));
     left -= amount;
-    extras.push({ code: x.code, label: x.label, amount, taxable: x.taxable, esiWage: x.esiWage });
+    extras.push({ code: x.code, label: x.label, amount, taxable: x.taxable, esiWage: x.esiWage, ...(x.wages ? { wages: true } : {}) });
   }
   return { basic, hra, conveyance, medical, special: left, ...(extras.length ? { extras } : {}) };
 }
@@ -193,8 +211,7 @@ export function structureFromCtc(annualCtc: number, t: SalaryTemplate = DEFAULT_
   const solve = (withEsi: boolean) => {
     let gross = monthlyCtc;
     for (let i = 0; i < 50; i++) {
-      const basic = r((gross * t.basicPctOfGross) / 100);
-      const pf = employerPf(basic, t, pfOn, R);
+      const pf = employerPf(codeWages(componentsFromGross(gross, t)), t, pfOn, R);
       const esi = withEsi ? Math.ceil(gross * R.esi.employerRate) : 0;
       const next = monthlyCtc - pf - esi;
       if (Math.abs(next - gross) < 0.5) {
@@ -207,12 +224,13 @@ export function structureFromCtc(annualCtc: number, t: SalaryTemplate = DEFAULT_
   };
   let gross = solve(false);
   let esiApplicable = false;
-  if (esiOn && gross <= R.esi.grossThreshold) {
+  // ESI eligibility is on Code wages, so a gross of up to twice the threshold can still be covered
+  if (esiOn && codeWages(componentsFromGross(gross, t)) <= R.esi.grossThreshold) {
     gross = solve(true);
     esiApplicable = true;
   }
   const components = componentsFromGross(gross, t);
-  const pf = employerPf(components.basic, t, pfOn, R);
+  const pf = employerPf(codeWages(components), t, pfOn, R);
   const esi = esiApplicable ? monthlyCtc - gross - pf : 0; // absorbs rounding so CTC adds up exactly
   return { annualCtc, monthlyCtc, gross, components, employer: { pf, esi: Math.max(0, esi) }, esiApplicable };
 }
@@ -221,8 +239,8 @@ export function structureFromCtc(annualCtc: number, t: SalaryTemplate = DEFAULT_
 export function structureFromComponents(components: MonthlyComponents, t: SalaryTemplate = DEFAULT_SALARY_TEMPLATE, opts: { pfApplicable?: boolean; esiApplicable?: boolean; rules?: StatutoryRules } = {}): Structure {
   const R = opts.rules ?? DEFAULT_RULES;
   const gross = componentsGross(components);
-  const pf = employerPf(components.basic, t, opts.pfApplicable ?? true, R);
-  const esiApplicable = (opts.esiApplicable ?? true) && gross <= R.esi.grossThreshold;
+  const pf = employerPf(codeWages(components), t, opts.pfApplicable ?? true, R);
+  const esiApplicable = (opts.esiApplicable ?? true) && codeWages(components) <= R.esi.grossThreshold;
   const esi = esiApplicable ? Math.ceil(gross * R.esi.employerRate) : 0;
   const monthlyCtc = gross + pf + esi;
   return { annualCtc: monthlyCtc * 12, monthlyCtc, gross, components, employer: { pf, esi }, esiApplicable };
@@ -293,7 +311,7 @@ TAX_TABLES["2026-27"] = TAX_TABLES["2025-26"]!;
  */
 export interface StatutoryRules {
   pf: { employeeRate: number; employerRate: number; epsRate: number; edliRate: number; adminRate: number; wageCeiling: number };
-  esi: { employeeRate: number; employerRate: number; grossThreshold: number };
+  esi: { employeeRate: number; employerRate: number; grossThreshold: number; disabledThreshold?: number };
   pt: Record<string, PtRule>;
   noPt: string[];
   lwf: Record<string, LwfRule>;
@@ -463,6 +481,11 @@ export interface PayslipInput {
   gender?: string | null;
   regime: Regime;
   /**
+   * India: the employee was covered by ESI earlier in this contribution period (April to September
+   * or October to March), so ESI continues to the period's end even if their wages crossed the limit.
+   */
+  esiContinue?: boolean;
+  /**
    * Year-to-date figures from earlier payroll months of the same FY. Leave undefined when
    * there's no history (e.g. first month on this system): TDS is then annualised, assuming
    * earlier months were paid at the same rate.
@@ -489,6 +512,8 @@ export interface PayslipResult {
   /** Earnings this month that aren't taxable (non-taxable allowances and one-time pay). */
   nonTaxable: number;
   warnings: string[];
+  /** India: Code wages earned, the PF base. */
+  wages?: number;
 }
 
 export function computePayslip(input: PayslipInput): PayslipResult {
@@ -564,6 +589,7 @@ export function computePayslip(input: PayslipInput): PayslipResult {
     tax,
     nonTaxable: nonTaxableAdj,
     warnings,
+    ...(stat.wages !== undefined ? { wages: stat.wages } : {}),
   };
 }
 

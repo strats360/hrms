@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Download } from "lucide-react";
-import { fmtDate, fmtMoney, todayLocal } from "@hrms/shared";
+import { taxForms, fmtDate, fmtMoney, todayLocal } from "@hrms/shared";
 import { api, download, qs } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { Button } from "@/components/ui/button";
@@ -65,7 +65,7 @@ export default function Form16Page() {
 
   return (
     <>
-      <div className="card-title text-[17px]">24Q quarterly returns · FY {fy}</div>
+      <div className="card-title text-[17px]">{taxForms(fy).quarterly} quarterly returns · FY {fy}</div>
       {returns.isLoading ? (
         <Loading />
       ) : returns.error ? (
@@ -97,7 +97,7 @@ export default function Form16Page() {
                 {q.challansMissing.length ? <div className="text-[12px]" style={{ color: "var(--warn-fg)" }}>No TDS challan recorded for {q.challansMissing.map((m) => monthLabel(m)).join(", ")}</div> : null}
                 <div className="mt-1 flex flex-wrap gap-2">
                   {can("tds", "export") && q.lockedMonths > 0 ? (
-                    <Button size="sm" onClick={() => download(`/admin/tds/returns/${fy}/${q.quarter}/annexure.csv`, `24Q-${fy}-${q.quarter}.csv`).catch((e) => toast.error(e.message))}>
+                    <Button size="sm" onClick={() => download(`/admin/tds/returns/${fy}/${q.quarter}/annexure.csv`, `${taxForms(fy).quarterly.replace("Form ", "form")}-${fy}-${q.quarter}.csv`).catch((e) => toast.error(e.message))}>
                       <Download size={14} /> Annexure CSV
                     </Button>
                   ) : null}
@@ -114,7 +114,7 @@ export default function Form16Page() {
       )}
       <div className="text-muted text-[12.5px]">The annexure has one line per employee per month (PAN, amount paid, TDS, challan) to prepare the return in the NSDL return preparation utility.</div>
 
-      <div className="card-title mt-2 text-[17px]">Form 16 · FY {fy}</div>
+      <div className="card-title mt-2 text-[17px]">{taxForms(fy).certificate} · FY {fy}</div>
       {list.isLoading ? (
         <Loading />
       ) : list.error ? (
@@ -122,10 +122,10 @@ export default function Form16Page() {
       ) : (
         <>
           {list.data!.closed && list.data!.q4Filed ? (
-            <Notice tone="ok">The year is closed and Q4 is filed. Form 16 Part B is final; merge it with Part A downloaded from TRACES before issuing.</Notice>
+            <Notice tone="ok">The year is closed and Q4 is filed. {taxForms(fy).certificate} Part B is final; merge it with Part A downloaded from TRACES before issuing.</Notice>
           ) : (
             <Notice tone="warn">
-              Provisional: {list.data!.lockedMonths} of 12 months locked. Final Form 16 is available after March payroll is locked and Q4 is filed (due 31 May).
+              Provisional: {list.data!.lockedMonths} of 12 months locked. The final {taxForms(fy).certificate} is available after March payroll is locked and Q4 is filed (due 31 May).
             </Notice>
           )}
           <TableCard>
@@ -143,7 +143,7 @@ export default function Form16Page() {
                           .finally(() => setZipping(false));
                       }}
                     >
-                      <Download size={15} /> All Form 16 PDFs
+                      <Download size={15} /> All {taxForms(fy).certificate} PDFs
                     </Button>
                   ) : null
                 }
@@ -157,7 +157,7 @@ export default function Form16Page() {
               pageSize={15}
               storageKey="tds-form16"
               onRowClick={(e) => setPreview(e.id)}
-              rowActions={(e) => [{ label: "Preview Form 16", onSelect: () => setPreview(e.id) }]}
+              rowActions={(e) => [{ label: `Preview ${taxForms(fy).certificate}`, onSelect: () => setPreview(e.id) }]}
             />
           </TableCard>
         </>
@@ -183,7 +183,7 @@ function FilingDialog({ fy, q, onClose }: { fy: string; q: Quarter | null; onClo
     meta: { silent: true },
     mutationFn: () => api.put(`/admin/tds/returns/${fy}/${q!.quarter}`, { filedOn: form.filedOn, acknowledgement: form.acknowledgement.trim() || null, notes: form.notes.trim() || null }),
     onSuccess: () => {
-      toast.success(`24Q ${q!.quarter} marked as filed`);
+      toast.success(`${taxForms(fy).quarterly} ${q!.quarter} marked as filed`);
       qc.invalidateQueries({ queryKey: ["tds"] });
       onClose();
     },
@@ -193,7 +193,7 @@ function FilingDialog({ fy, q, onClose }: { fy: string; q: Quarter | null; onClo
     <Dialog
       open={!!q}
       onOpenChange={(o) => !o && onClose()}
-      title={q ? `24Q ${q.quarter} filing` : "24Q filing"}
+      title={q ? `${taxForms(fy).quarterly} ${q.quarter} filing` : `${taxForms(fy).quarterly} filing`}
       description={q ? `${span(q.months)} · due ${fmtDate(q.due)}` : undefined}
       footer={
         <>

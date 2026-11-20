@@ -55,9 +55,11 @@ describe("compliance", () => {
   it("produces employee-wise contributions and an ECR file", async () => {
     const r = await krupa.get("/admin/compliance/employee");
     const priyaRow = r.body.rows.find((x: any) => x.code === "STL-0042");
-    expect(priyaRow.pfWage).toBe(15000);
-    expect(priyaRow.epfEe).toBe(1800);
-    expect(priyaRow.eps + priyaRow.epfEr).toBe(1800);
+    // the latest locked month is after 17 Sep 2026, so the ₹25,000 ceiling applies
+    expect(priyaRow.pfWage).toBe(25000);
+    expect(priyaRow.epfEe).toBe(3000);
+    expect(priyaRow.eps + priyaRow.epfEr).toBe(3000);
+    expect(priyaRow.eps).toBe(2083);
     const ecr = await krupa.get(`/admin/compliance/files/ecr.txt?month=${r.body.month}`);
     expect(ecr.status).toBe(200);
     const lines = (ecr.body as string).trim().split("\n");

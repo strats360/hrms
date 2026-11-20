@@ -156,6 +156,31 @@ export async function yearToDate(db: Database, tenantId: string, month: string, 
   return { byEmployee: new Map(rows.map((r) => [r.employeeId, r])), hasHistory: (anyRun?.n ?? 0) > 0 };
 }
 
+/**
+ * India: employees who had ESI taken earlier in this contribution period (April to September or
+ * October to March). ESI continues for them to the end of the period even if their wages go up.
+ */
+export async function esiCoveredThisPeriod(db: Database, tenantId: string, month: string, ids: string[]) {
+  if (!ids.length) return new Set<string>();
+  const y = Number(month.slice(0, 4));
+  const m = Number(month.slice(5, 7));
+  const from = m >= 4 && m <= 9 ? `${y}-04` : m >= 10 ? `${y}-10` : `${y - 1}-10`;
+  const rows = await db
+    .selectDistinct({ e: payrollItems.employeeId })
+    .from(payrollItems)
+    .innerJoin(payrollRuns, eq(payrollRuns.id, payrollItems.runId))
+    .where(
+      and(
+        eq(payrollRuns.tenantId, tenantId),
+        gte(payrollRuns.month, from),
+        lt(payrollRuns.month, month),
+        inArray(payrollItems.employeeId, ids),
+        sql`exists (select 1 from jsonb_array_elements(${payrollItems.deductions}) d where d->>'code' = 'esi' and (d->>'amount')::numeric > 0)`,
+      ),
+    );
+  return new Set(rows.map((r) => r.e));
+}
+
 /** Unpaid-leave days per employee in the period: map employeeId -> Map(date -> 1 | 0.5). */
 async function unpaidLeaveDays(db: Database, tenantId: string, start: string, end: string) {
   const rows = await db
@@ -235,6 +260,7 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
   const rules = await rulesFor(db, run.month, ent.country);
   const insured = ent.country === "SA" ? await insuredSince(db, tenantId, ids) : new Map<string, string>();
   const india = ent.country === "IN";
+  const esiCovered = india ? await esiCoveredThisPeriod(db, tenantId, run.month, ids) : new Set<string>();
   const pack = packFor(ent.country);
   const statOn = (entity: { statutory: Record<string, { enabled?: boolean }> }, k: string) => entity.statutory?.[k]?.enabled ?? statutory[k as keyof typeof statutory]?.enabled ?? true;
 
@@ -264,6 +290,7 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
       structure,
       template: pack.payroll.salaryTemplate ?? templateFor(template, e.salaryTemplateId),
       countryProfile: e.countryProfile,
+      esiContinue: esiCovered.has(e.id),
       daysInMonth: days,
       paidDays,
       adjustments: adjustments
@@ -282,7 +309,7 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
     });
     const warnings = [...slip.warnings];
     if (!e.accountLast4 || (india && !e.ifsc)) warnings.push("No bank account on file");
-    if (india && !e.pan) warnings.push("PAN missing: TDS should be at least 20% (s.206AA)");
+    if (india && !e.pan) warnings.push("PAN missing: TDS should be at least 20%");
     if (e.lastWorkingDay && e.lastWorkingDay <= end) warnings.push("Leaving this month: settle full and final separately");
     if (e.dateOfJoining >= start) warnings.push("Joined this month: pay prorated from joining date");
     // minimum wage, on the full month's pay (LOP doesn't make a salary non-compliant)
@@ -308,6 +335,7 @@ export async function calculateRun(db: Database, tenantId: string, runId: string
       ifsc: e.ifsc,
       regime: e.taxRegime,
       annualCtc: structure.annualCtc,
+      ...(slip.wages !== undefined ? { codeWages: slip.wages } : {}),
     };
     rows.push({
       tenantId,

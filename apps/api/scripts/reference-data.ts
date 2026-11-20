@@ -5,6 +5,7 @@
  *
  *   DATABASE_URL=... pnpm --filter @hrms/api bootstrap
  */
+import { and, eq } from "drizzle-orm";
 import { createDb, featureFlags, plans, statutoryRules, type Database } from "@hrms/db";
 import { builtInValue } from "@hrms/shared";
 
@@ -22,7 +23,7 @@ export async function seedReferenceData(db: Database) {
   if (!anyRule) {
     const live = (category: string, scope: string, key: string, effectiveFrom: string, source: string) => ({ key, category, scope, value: builtInValue(category as "pf", scope)!, effectiveFrom, status: "live", source, publishedAt: new Date() });
     await db.insert(statutoryRules).values([
-      live("pf", "All India", "pf", "2014-09-01", "EPF Scheme 1952, wage ceiling ₹15,000 from 01 Sep 2014"),
+      { ...live("pf", "All India", "pf", "2014-09-01", "EPF Scheme 1952, wage ceiling ₹15,000 from 01 Sep 2014"), value: { ...builtInValue("pf")!, wageCeiling: 15000 } },
       live("esi", "All India", "esi", "2019-07-01", "ESI rates 0.75% / 3.25% from 01 Jul 2019, ceiling ₹21,000 from 01 Jan 2017"),
       live("pt", "Gujarat", "pt:Gujarat", "2022-04-01", "Gujarat Panchayats, Municipalities, Municipal Corporations and State Tax on Professions Act"),
       live("pt", "Maharashtra", "pt:Maharashtra", "2023-04-01", "Maharashtra State Tax on Professions Act"),
@@ -33,6 +34,15 @@ export async function seedReferenceData(db: Database) {
       { key: "minwage:Gujarat", category: "minwage", scope: "Gujarat", value: { monthly: 12870, zone: "Zone II", skill: "Skilled" }, effectiveFrom: "2026-10-01", status: "draft", source: "Gujarat minimum wage notification, Oct 2026" },
     ]);
   }
+  // rule versions added after launch: each goes in once, so existing sites pick it up too
+  const later = [
+    { key: "pf", category: "pf", scope: "All India", value: builtInValue("pf")!, effectiveFrom: "2026-09-17", status: "live", source: "EPF wage ceiling raised to ₹25,000 a month, notification S.O. 5109(E), from 17 Sep 2026", publishedAt: new Date() },
+  ];
+  for (const v of later) {
+    const [has] = await db.select({ id: statutoryRules.id }).from(statutoryRules).where(and(eq(statutoryRules.key, v.key), eq(statutoryRules.effectiveFrom, v.effectiveFrom)));
+    if (!has) await db.insert(statutoryRules).values(v);
+  }
+
   // plan gates from the design: Starter has no TDS, claims or bank files
   await db
     .insert(featureFlags)

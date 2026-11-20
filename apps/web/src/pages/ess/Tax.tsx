@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ChevronDown, Download, FileText, Lock, Trash2, Upload } from "lucide-react";
-import { CAPS, declaredBySection, fmtDate, fmtMoney, taxDeclarationDataSchema, TAX_SECTION_LABELS, todayLocal, type TaxSection } from "@hrms/shared";
+import { hraMetroCities, taxForms, CAPS, declaredBySection, fmtDate, fmtMoney, taxDeclarationDataSchema, TAX_SECTION_LABELS, todayLocal, type TaxSection } from "@hrms/shared";
 import { api, ApiError, download, errorMessage, qs } from "@/lib/api";
 import type { EmployeeTax, Form16Data, TaxDeclarationData, TaxProof, TaxStatement } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -236,7 +236,7 @@ export default function EssTax() {
       <Card className="!gap-4">
         <CardHeader title="Your declaration" sub={oldOnly ? "You've picked the new regime, so the faded sections below won't reduce your tax. Previous employer and other income count under both regimes." : "Enter what you've paid or plan to pay this financial year. Amounts above the legal limit are capped automatically."} />
         <fieldset disabled={!editable} className="m-0 flex min-w-0 flex-col gap-3 border-0 p-0">
-          <SectionCard title="House rent (HRA)" hint="Old regime only. Exemption is the least of HRA received, rent minus 10% of basic, and 50% (metro) or 40% of basic." dimmed={oldOnly}>
+          <SectionCard title="House rent (HRA)" hint="Old regime only. Exemption is the least of HRA received, rent minus 10% of basic, and 50% (in the cities below) or 40% of basic." dimmed={oldOnly}>
             <div className={grid2}>
               <Field label="Monthly rent">
                 <MoneyInput value={data.rent?.monthlyRent} onChange={(v) => update({ rent: { months: 12, metro: false, ...data.rent, monthlyRent: v } })} />
@@ -251,7 +251,7 @@ export default function EssTax() {
                 <Input value={data.rent?.landlordPan ?? ""} maxLength={10} onChange={(e) => update({ rent: { monthlyRent: 0, months: 12, metro: false, ...data.rent, landlordPan: e.target.value.toUpperCase() } })} />
               </Field>
             </div>
-            <Checkbox label="I live in a metro city (Delhi, Mumbai, Kolkata or Chennai)" checked={!!data.rent?.metro} onChange={(v) => update({ rent: { monthlyRent: 0, months: 12, ...data.rent, metro: v } })} disabled={!editable} />
+            <Checkbox label={`I live in ${hraMetroCities(fy).join(", ").replace(/, ([^,]*)$/, " or $1")}`} checked={!!data.rent?.metro} onChange={(v) => update({ rent: { monthlyRent: 0, months: 12, ...data.rent, metro: v } })} disabled={!editable} />
           </SectionCard>
 
           <SectionCard title="80C investments" hint={`Old regime only. Limit ${fmtMoney(CAPS.sec80C)} a year. Your PF contribution already counts towards the ₹1.5 lakh limit.`} dimmed={oldOnly}>
@@ -353,7 +353,7 @@ export default function EssTax() {
       {/* 5. computation */}
       <ComputationCard tax={t} />
 
-      {/* 6. Form 16 */}
+      {/* 6. Salary TDS certificate (Form 16, Form 130 from 2026-27) */}
       <Form16Card currentFy={currentFy} />
 
       <Dialog
@@ -552,10 +552,10 @@ function Form16Card({ currentFy }: { currentFy: string }) {
   return (
     <Card className="!gap-3">
       <CardHeader
-        title="Form 16"
+        title={taxForms(fy).certificate}
         sub="Your TDS certificate from the employer, for filing your income tax return."
         actions={
-          <Select className="!w-[160px]" value={fy} onChange={(e) => setFy(e.target.value)} aria-label="Form 16 year">
+          <Select className="!w-[160px]" value={fy} onChange={(e) => setFy(e.target.value)} aria-label="Certificate year">
             <option value={last}>FY {last}</option>
             <option value={currentFy}>FY {currentFy} (so far)</option>
           </Select>
@@ -574,16 +574,16 @@ function Form16Card({ currentFy }: { currentFy: string }) {
             <div className="text-muted text-[12.5px]">{f.provisional ? "Provisional: the year isn't over, so figures will change" : `Assessment year ${f.assessmentYear}`}</div>
           </div>
           <Button variant="primary" onClick={() => setOpen(true)}>
-            <FileText size={15} /> View Form 16
+            <FileText size={15} /> View {taxForms(fy).certificate}
           </Button>
         </div>
       ) : (
-        <div className="text-muted text-[13px]">Form 16 for FY {fy} will appear here after HR issues it (by 15 June {year}).</div>
+        <div className="text-muted text-[13px]">{taxForms(fy).certificate} for FY {fy} will appear here after HR issues it (by 15 June {year}).</div>
       )}
       <Dialog
         open={open && !!f}
         onOpenChange={setOpen}
-        title="Form 16"
+        title={taxForms(fy).certificate}
         width={820}
         footer={
           <>

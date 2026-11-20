@@ -1,4 +1,4 @@
-import { countryName, ISO_COUNTRIES, caPayrollProfileSchema, ukPayrollProfileSchema, usPayrollProfileSchema, WAGE_CATEGORIES, WAGE_CATEGORY_LABELS } from "@hrms/shared";
+import { countryName, ISO_COUNTRIES, caPayrollProfileSchema, indiaPayrollProfileSchema, ukPayrollProfileSchema, usPayrollProfileSchema, WAGE_CATEGORIES, WAGE_CATEGORY_LABELS } from "@hrms/shared";
 import { EMPTY_UK, UkPayrollFields, ukFromProfile, ukToProfile, type UkForm } from "@/components/employees/UkPayroll";
 import { EMPTY_US, UsPayrollFields, usFromProfile, usToProfile, type UsForm } from "@/components/employees/UsPayroll";
 import { CaPayrollFields, caFromProfile, caToProfile, EMPTY_CA, type CaForm } from "@/components/employees/CaPayroll";
@@ -146,6 +146,8 @@ export default function EmployeeForm() {
   const [ukInitial, setUkInitial] = useState<UkForm>(EMPTY_UK);
   const [us, setUs] = useState<UsForm>(EMPTY_US);
   const [usInitial, setUsInitial] = useState<UsForm>(EMPTY_US);
+  const [disability, setDisability] = useState(false);
+  const [disabilityInitial, setDisabilityInitial] = useState(false);
   const [ca, setCa] = useState<CaForm>(EMPTY_CA);
   const [caInitial, setCaInitial] = useState<CaForm>(EMPTY_CA);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -162,6 +164,9 @@ export default function EmployeeForm() {
       const w = usFromProfile(detail.data.countryProfile);
       setUs(w);
       setUsInitial(w);
+      const dis = !!(detail.data.countryProfile as { disability?: boolean } | null | undefined)?.disability;
+      setDisability(dis);
+      setDisabilityInitial(dis);
       const t = caFromProfile(detail.data.countryProfile);
       setCa(t);
       setCaInitial(t);
@@ -219,12 +224,14 @@ export default function EmployeeForm() {
     setServerError(null);
     let payload: Record<string, unknown>;
     // country payroll details: the UK's tax code and NI category, the US W-4
-    const forms = { GB: [uk, ukInitial], US: [us, usInitial], CA: [ca, caInitial] } as Record<string, [unknown, unknown]>;
+    const forms = { IN: [disability, disabilityInitial], GB: [uk, ukInitial], US: [us, usInitial], CA: [ca, caInitial] } as Record<string, [unknown, unknown]>;
     const pair = forms[country];
     const ukChanged = !!pair && (!isEdit || JSON.stringify(pair[0]) !== JSON.stringify(pair[1]));
     const ukProfile = !ukChanged
       ? null
-      : country === "GB"
+      : country === "IN"
+        ? indiaPayrollProfileSchema.safeParse({ disability })
+        : country === "GB"
         ? ukPayrollProfileSchema.safeParse(ukToProfile(uk))
         : country === "US"
           ? usPayrollProfileSchema.safeParse(usToProfile(us))
@@ -454,8 +461,9 @@ export default function EmployeeForm() {
             <Field label="Applicability" span>
               <div className="flex flex-wrap gap-5 pt-1">
                 <Checkbox checked={form.pfApplicable} onChange={(v) => set("pfApplicable", v)} label="PF" />
-                <Checkbox checked={form.esiApplicable} onChange={(v) => set("esiApplicable", v)} label="ESI (gross up to ₹21,000)" />
+                <Checkbox checked={form.esiApplicable} onChange={(v) => set("esiApplicable", v)} label="ESI (Code wages up to ₹21,000)" />
                 <Checkbox checked={form.ptApplicable} onChange={(v) => set("ptApplicable", v)} label="Professional Tax" />
+                <Checkbox checked={disability} onChange={setDisability} label="Person with disability (ESI limit ₹25,000)" />
               </div>
             </Field>
           </Section>

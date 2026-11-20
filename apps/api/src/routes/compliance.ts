@@ -16,6 +16,7 @@ import {
   tdsReturnDueDates,
   todayLocal,
   type Statute,
+  taxForms,
 } from "@hrms/shared";
 import { z } from "zod";
 import type { AppEnv } from "../env";
@@ -136,13 +137,13 @@ complianceRoutes.get("/overview", requirePerm("compliance", "view"), async (c) =
   const latest = obligations.filter((o) => o.period === latestMonth);
   const open = obligations.filter((o) => o.status !== "paid").sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 
-  // Filing calendar: unpaid obligations + this FY's 24Q / Form 16 deadlines still ahead
+  // Filing calendar: unpaid obligations + this year's quarterly TDS returns and certificate deadline still ahead
   const fy = fyOfMonth(today.slice(0, 7));
   const calendar = [
     ...open.map((o) => ({ date: o.dueDate, title: `${o.label} · ${monthLabel(o.period)}`, amount: o.amount, daysLeft: o.daysLeft, kind: "payment" as const })),
     ...tdsReturnDueDates(fy)
       .filter((q) => q.due >= today)
-      .map((q) => ({ date: q.due, title: q.quarter === "Form 16" ? `Form 16 to employees · ${q.period}` : `TDS return 24Q ${q.quarter} · ${q.period}`, amount: null, daysLeft: daysUntil(q.due, today), kind: "return" as const })),
+      .map((q) => ({ date: q.due, title: q.quarter === "certificate" ? `${taxForms(fy).certificate} to employees · ${q.period}` : `Salary TDS return (${taxForms(fy).quarterly}) ${q.quarter} · ${q.period}`, amount: null, daysLeft: daysUntil(q.due, today), kind: "return" as const })),
   ]
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 10);
@@ -273,9 +274,10 @@ async function lockedRun(c: Context<AppEnv>, month?: string) {
 const monthQ = z.object({ month: z.string().regex(/^\d{4}-\d{2}$/).optional() });
 
 export function contributionRow(i: Item, pfOnFullBasic: boolean, pfCeiling?: number) {
-  const basic = i.earnings.find((e) => e.code === "basic")?.amount ?? 0;
+  // PF wages are the Code wages the payslip used; older runs only kept basic
+  const wages = i.snapshot.codeWages ?? i.earnings.find((e) => e.code === "basic")?.amount ?? 0;
   const pfEe = line(i.deductions, "pf");
-  const w = pfEe > 0 ? pfWages(basic, pfOnFullBasic, pfCeiling) : { epf: 0, eps: 0, edli: 0 };
+  const w = pfEe > 0 ? pfWages(wages, pfOnFullBasic, pfCeiling) : { epf: 0, eps: 0, edli: 0 };
   return {
     employeeId: i.employeeId,
     name: i.snapshot.name,
