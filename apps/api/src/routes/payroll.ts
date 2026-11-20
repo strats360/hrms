@@ -1,3 +1,4 @@
+import { emitEvent, runEventData } from "../services/webhooks";
 import { Hono, type Context } from "hono";
 import { closeRepaidLoans } from "../services/loans";
 import { allowedRecipients } from "../services/notifications";
@@ -465,6 +466,7 @@ payrollRoutes.post("/runs/:id/approve", requirePerm("payroll", "approve"), async
   if ((corr?.n ?? 0) > 0) throw badRequest(`Resolve ${corr!.n} pending attendance correction(s) for this month first, then recalculate`);
   const [updated] = await db.update(payrollRuns).set({ status: "approved", approvedBy: uid(c), approvedAt: new Date() }).where(and(eq(payrollRuns.id, run.id), eq(payrollRuns.status, "calculated"))).returning();
   if (!updated) throw badRequest("This payroll changed. Reload and try again.");
+  await emitEvent(c, "payroll.approved", runEventData(run));
   await audit(c, { action: "payroll.approve", entity: "payroll_run", entityId: run.id, summary: `Approved and locked ${run.month} payroll (net ${fmtMoney(run.totals?.net ?? 0)})` });
   await closeRepaidLoans(db, tid(c));
   return c.json(updated);
@@ -808,6 +810,7 @@ payrollRoutes.post("/runs/:id/mark-paid", requirePerm("payroll", "approve"), v("
     .returning();
   const held = (await c.get("db").select({ e: payrollItems.employeeId }).from(payrollItems).where(and(eq(payrollItems.runId, run.id), eq(payrollItems.onHold, true)))).map((r) => r.e);
   await settleClaims(c.get("db"), run.id, held);
+  await emitEvent(c, "payroll.paid", runEventData(run));
   await audit(c, { action: "payroll.paid", entity: "payroll_run", entityId: run.id, summary: `Marked ${run.month} payroll as paid${b.reference ? ` (ref ${b.reference})` : ""}` });
   return c.json(row);
 });

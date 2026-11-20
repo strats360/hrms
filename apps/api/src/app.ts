@@ -26,6 +26,7 @@ import { dashboardRoutes } from "./routes/dashboard";
 import { essRoutes } from "./routes/ess";
 import { essFbpRoutes, fbpAdminRoutes } from "./routes/fbp";
 import { journalRoutes } from "./routes/journal";
+import { integrationRoutes, v1Routes } from "./routes/integrations";
 import { essExitRoutes, exitRoutes } from "./routes/exits";
 import { attendanceImportRoutes, devicePunchRoutes } from "./routes/attendance-devices";
 import { leaveExtrasRoutes, payrollExtrasRoutes } from "./routes/pay-extras";
@@ -137,6 +138,7 @@ export function buildApp() {
   api.use("*", loadSession);
   api.route("/public/payments", cashfreeWebhook);
   api.route("/public/attendance", devicePunchRoutes);
+  api.route("/v1", v1Routes);
   api.route("/public/careers", careersRoutes);
   api.route("/public", publicRoutes);
 
@@ -229,6 +231,7 @@ export function buildApp() {
   t.route("/admin/payroll/loans", loanRoutes);
   t.route("/admin/payroll/fbp", fbpAdminRoutes);
   t.route("/admin/payroll", journalRoutes);
+  t.route("/admin/integrations", integrationRoutes);
   t.route("/admin/payroll", payrollRoutes);
   t.route("/admin/compliance", complianceRoutes);
   t.route("/admin/tds", tdsRoutes);

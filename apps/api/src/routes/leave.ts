@@ -1,3 +1,4 @@
+import { emitEvent } from "../services/webhooks";
 import { Hono, type Context } from "hono";
 import { sendNotification } from "../services/notifications";
 import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
@@ -126,6 +127,7 @@ async function decide(c: Context<AppEnv>, id: string, decision: "approved" | "re
   }
   await db.update(leaveRequests).set({ approvals: step.approvals }).where(eq(leaveRequests.id, id));
   const updated = await decideLeave(db, t.tenantId, id, decision, c.get("session")!.userId, note);
+  if (decision === "approved") await emitEvent(c, "leave.approved", { id, code: req.code, employeeId: req.employeeId, startDate: req.startDate, endDate: req.endDate, days: Number(req.days), halfDay: req.halfDay });
   await audit(c, { action: `leave.${decision}`, entity: "leave_request", entityId: id, summary: `${decision === "approved" ? "Approved" : "Rejected"} ${req.code}`, data: note ? { note } : undefined });
   await notifyLeaveDecision(c, updated);
   return updated;

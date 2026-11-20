@@ -219,6 +219,7 @@ const router = createBrowserRouter([
               { path: "letters", element: L(() => import("@/pages/admin/settings/Letters")) },
               { path: "custom-fields", element: L(() => import("@/pages/admin/settings/CustomFields")) },
               { path: "accounting", element: L(() => import("@/pages/admin/settings/Accounting")) },
+              { path: "integrations", element: L(() => import("@/pages/admin/settings/Integrations")) },
               { path: "access", element: L(() => import("@/pages/admin/settings/Access")) },
               { path: "audit", element: L(() => import("@/pages/admin/settings/Audit")) },
               { path: "billing", element: L(() => import("@/pages/admin/settings/Billing")) },

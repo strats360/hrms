@@ -22,3 +22,4 @@ export * from "./announcements";
 export * from "./helpdesk";
 export * from "./contractors";
 export * from "./fbp";
+export * from "./integrations";

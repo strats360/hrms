@@ -1,3 +1,4 @@
+import { emitEvent } from "../services/webhooks";
 import { heldAssets } from "./assets";
 import { Hono, type Context } from "hono";
 import { sendNotification } from "../services/notifications";
@@ -305,6 +306,7 @@ exitRoutes.post("/:id/settle", requirePerm("payroll", "approve"), v("json", z.ob
   const b = c.req.valid("json");
   const row = await markSettled(c.get("db"), x, { on: b.settledOn, method: b.method, reference: b.reference ?? null });
   if (!row) throw badRequest("This exit changed. Reload and try again.");
+  await emitEvent(c, "employee.exited", { id: e.id, employeeCode: e.employeeCode, fullName: e.fullName, type: x.type, lastWorkingDay: x.lastWorkingDay });
   await audit(c, { action: "exit.settled", entity: "employee_exit", entityId: x.id, summary: `Closed ${e.fullName}'s full and final settlement (${b.method.replace(/_/g, " ")}${b.reference ? ` ${b.reference}` : ""}, net ${fmtMoney(Number(x.netAmount))})` });
   return c.json(row);
 });

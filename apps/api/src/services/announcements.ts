@@ -1,3 +1,4 @@
+import { retryDueDeliveries } from "./webhooks";
 import { and, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 import { announcements, createDb, employees, tenants, type Database } from "@hrms/db";
 import { ANNOUNCEMENT_CATEGORY_LABEL, type AnnouncementCategory } from "@hrms/shared";
@@ -74,5 +75,11 @@ export async function runHourly(env: Env) {
     console.error("scheduled announcements failed", e);
   } finally {
     await db.$client.end({ timeout: 5 });
+  }
+  try {
+    const w = await retryDueDeliveries(env);
+    if (w.tried) console.log(`webhooks: retried ${w.tried} deliveries`);
+  } catch (e) {
+    console.error("webhook retries failed", e);
   }
 }

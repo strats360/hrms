@@ -14,6 +14,7 @@ const ITEMS = [
   { to: "/settings/letters", label: "Letter templates" },
   { to: "/settings/custom-fields", label: "Custom employee fields" },
   { to: "/settings/accounting", label: "Accounting" },
+  { to: "/settings/integrations", label: "API & webhooks" },
   { to: "/settings/access", label: "Admin users & access", perm: "users" as const },
   { to: "/settings/billing", label: "Billing & invoices", perm: "billing" as const },
   { to: "/settings/audit", label: "Audit log" },

@@ -1,3 +1,4 @@
+import { emitEvent, runEventData } from "../services/webhooks";
 import { Hono, type Context } from "hono";
 import { sendNotification } from "../services/notifications";
 import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, notInArray, sql, type SQL } from "drizzle-orm";
@@ -521,7 +522,10 @@ async function updatePayments(c: Context<AppEnv>, ids: string[], u: z.infer<type
   for (const { batch, list } of changed.values()) {
     await applyPaymentEffects(db, batch, list);
     const { batch: fresh, completed } = await refreshBatch(db, batch.id);
-    if (completed && fresh) await completeSalaryRun(db, fresh, uid(c));
+    if (completed && fresh) {
+      const paidRun = await completeSalaryRun(db, fresh, uid(c));
+      if (paidRun) await emitEvent(c, "payroll.paid", runEventData(paidRun));
+    }
     await audit(c, { action: `payments.mark_${u.status}`, entity: "payment_batch", entityId: batch.id, summary: `${batch.code}: marked ${list.length} payment${list.length === 1 ? "" : "s"} ${u.status}${u.reason ? ` (${u.reason})` : ""}` });
   }
   await notifyFailed(c, failedNow);

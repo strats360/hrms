@@ -215,9 +215,9 @@ export async function applyPaymentEffects(db: Database, batch: Batch, changed: P
 
 /** A salary batch that has no payments left pending marks its payroll run paid. */
 export async function completeSalaryRun(db: Database, batch: Batch, userId: string | null) {
-  if (batch.type !== "salary" || !batch.payrollRunId) return;
+  if (batch.type !== "salary" || !batch.payrollRunId) return null;
   const [run] = await db.select().from(payrollRuns).where(eq(payrollRuns.id, batch.payrollRunId));
-  if (!run || run.status !== "approved") return;
+  if (!run || run.status !== "approved") return null;
   await db
     .update(payrollRuns)
     .set({ status: "paid", paidAt: zonedDateTime(batch.paymentDate, "12:00"), paidBy: userId, paymentReference: batch.code, publishedAt: run.publishedAt ?? new Date() })
@@ -225,6 +225,7 @@ export async function completeSalaryRun(db: Database, batch: Batch, userId: stri
   // salaries on hold in payroll release their claims to the next run
   const held = (await db.select({ e: payrollItems.employeeId }).from(payrollItems).where(and(eq(payrollItems.runId, run.id), eq(payrollItems.onHold, true)))).map((r) => r.e);
   if (held.length) await db.update(reimbursementClaims).set({ payrollRunId: null }).where(and(eq(reimbursementClaims.payrollRunId, run.id), eq(reimbursementClaims.status, "approved"), inArray(reimbursementClaims.employeeId, held)));
+  return run;
 }
 
 /** Active (not cancelled) salary batch for a run, if any. */

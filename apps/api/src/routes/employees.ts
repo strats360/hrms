@@ -1,3 +1,4 @@
+import { emitEvent } from "../services/webhooks";
 import { alias } from "drizzle-orm/pg-core";
 import { Hono, type Context } from "hono";
 import { and, asc, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle-orm";
@@ -157,6 +158,9 @@ employeeRoutes.get("/export.csv", requirePerm("employees", "export"), async (c) 
   return c.body(csv, 200, { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": 'attachment; filename="employee-master.csv"' });
 });
 
+/** Never named in webhooks: which bank or ID details changed is nobody else's business. */
+const SENSITIVE_FIELDS = new Set(["accountNumber", "accountHolderName", "bankName", "ifsc", "pan", "aadhaarLast4", "uan", "esicIpNumber"]);
+
 /** Fields blanked out when the viewer only gets the directory card (see canSeePrivate). */
 const PRIVATE_BLANK = {
   personalEmail: null, dateOfBirth: null, maritalStatus: null, bloodGroup: null, currentAddress: null, permanentAddress: null,
@@ -267,6 +271,7 @@ employeeRoutes.post("/", requirePerm("employees", "edit"), v("json", employeeCre
     .returning();
   const linked = await linkExistingLogin(db, tid, emp!.id, emp!.workEmail);
   if (sendInvite && !linked) await sendOnboardingInvite(c, emp!.id);
+  await emitEvent(c, "employee.created", { id: emp!.id, employeeCode: code, fullName, workEmail: emp!.workEmail, status, dateOfJoining: emp!.dateOfJoining });
   await audit(c, { action: "employee.create", entity: "employee", entityId: emp!.id, summary: `Added ${fullName} (${code})` });
   return c.json({ id: emp!.id, employeeCode: code, invited: sendInvite && !linked }, 201);
 });
@@ -289,6 +294,7 @@ employeeRoutes.patch("/:id", requirePerm("employees", "edit"), vPatch(employeeUp
   if (accountNumber !== undefined || body.ifsc !== undefined) patch.bankVerified = false;
   const [row] = await db.update(employees).set(patch).where(eq(employees.id, id)).returning();
   const changed = Object.keys(body).filter((k) => k !== "accountNumber");
+  await emitEvent(c, "employee.updated", { id, employeeCode: row!.employeeCode, fullName: row!.fullName, status: row!.status, fields: changed.filter((k) => !SENSITIVE_FIELDS.has(k)) });
   await audit(c, { action: "employee.update", entity: "employee", entityId: id, summary: `Updated ${row!.fullName}`, data: { fields: accountNumber !== undefined ? [...changed, "accountNumber"] : changed } });
   return c.json({ id: row!.id });
 });
