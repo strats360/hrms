@@ -158,6 +158,7 @@ const router = createBrowserRouter([
               { path: "review", element: L(() => import("@/pages/admin/payroll/Review")) },
               { path: "payslips", element: L(() => import("@/pages/admin/payroll/Payslips")) },
               { path: "loans", element: L(() => import("@/pages/admin/payroll/Loans")) },
+              { path: "contractors", element: L(() => import("@/pages/admin/payroll/Contractors")) },
             ],
           },
           {

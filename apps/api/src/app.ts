@@ -1,3 +1,4 @@
+import { contractorRoutes } from "./routes/contractors";
 import { setLocalDefaults } from "@hrms/shared";
 import { essHelpdeskRoutes, helpdeskRoutes } from "./routes/helpdesk";
 import { announcementRoutes, essAnnouncementRoutes } from "./routes/announcements";
@@ -202,6 +203,7 @@ export function buildApp() {
   t.route("/admin/performance", performanceRoutes);
   t.route("/admin/recruitment", recruitmentRoutes);
   t.route("/admin/assets", assetRoutes);
+  t.route("/admin/contractors", contractorRoutes);
   t.route("/admin/announcements", announcementRoutes);
   t.route("/admin/helpdesk", helpdeskRoutes);
   t.use("/admin/*", requireAdmin);
