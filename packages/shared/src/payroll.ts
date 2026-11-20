@@ -87,15 +87,32 @@ export const STATUTORY = {
   esi: { employeeRate: 0.0075, employerRate: 0.0325, grossThreshold: 21000, disabledThreshold: 25000 },
 } as const;
 
-/** Professional Tax monthly slabs by state. [upToMonthlyGross, amount]; Infinity for the last slab. */
+/**
+ * Professional Tax by state. [upTo, amount] slabs, Infinity for the last. Most states charge
+ * monthly on the month's gross. Half-yearly and yearly states set `basis`: their slabs are on the
+ * period's income, deducted in `months`. The yearly cap is ₹2,500 everywhere.
+ */
 export interface PtRule {
   slabs: [number, number][];
   /** Slabs for women where the state gives a different exemption. */
   femaleSlabs?: [number, number][];
   /** Amount charged in February instead of the top slab (annual top-up). */
   februaryTop?: number;
+  /** How the slabs read: on monthly gross (default), half-yearly or yearly income. */
+  basis?: "monthly" | "half_yearly" | "yearly";
+  /** Months (1 to 12) a half-yearly or yearly amount is deducted in. */
+  months?: number[];
+  /** Exempt from this age (senior citizens). */
+  seniorAge?: number;
+}
+/** Who's exempt from PT: persons with disability (most states), and seniors where the state says so. */
+export interface PtPerson {
+  disabled?: boolean;
+  age?: number | null;
 }
 export const PT_RULES: Record<string, PtRule> = {
+  // FY 2026-27, from the India HR compliance report (Treelife). Confirm the starred states:
+  // Jharkhand, Manipur, Mizoram, Nagaland, Tripura and Assam, where published summaries differ.
   Gujarat: { slabs: [[11999, 0], [Infinity, 200]] },
   Maharashtra: {
     slabs: [[7500, 0], [10000, 175], [Infinity, 200]],
@@ -107,9 +124,24 @@ export const PT_RULES: Record<string, PtRule> = {
   Telangana: { slabs: [[15000, 0], [20000, 150], [Infinity, 200]] },
   "Andhra Pradesh": { slabs: [[15000, 0], [20000, 150], [Infinity, 200]] },
   "Madhya Pradesh": { slabs: [[18750, 0], [25000, 125], [33333, 167], [Infinity, 208]], februaryTop: 212 },
+  Assam: { slabs: [[10000, 0], [15000, 150], [Infinity, 208]] },
+  Punjab: { slabs: [[24999, 0], [Infinity, 200]] },
+  Sikkim: { slabs: [[20000, 0], [30000, 125], [40000, 150], [Infinity, 200]] },
+  Tripura: { slabs: [[7500, 0], [15000, 100], [Infinity, 200]] },
+  Mizoram: { slabs: [[5000, 0], [Infinity, 208]] },
+  Nagaland: { slabs: [[5000, 0], [Infinity, 208]] },
+  // half-yearly on the half year's income, deducted in the month it's due
+  Kerala: { basis: "half_yearly", months: [8, 2], slabs: [[11999, 0], [17999, 120], [29999, 180], [44999, 300], [59999, 450], [74999, 600], [99999, 750], [124999, 1000], [Infinity, 1250]] },
+  "Tamil Nadu": { basis: "half_yearly", months: [9, 3], slabs: [[21000, 0], [30000, 135], [45000, 315], [60000, 690], [75000, 1025], [Infinity, 1250]] },
+  // yearly on the year's income
+  Bihar: { basis: "yearly", months: [11], slabs: [[300000, 0], [500000, 1000], [1000000, 2000], [Infinity, 2500]] },
+  Jharkhand: { basis: "yearly", months: [10], slabs: [[300000, 0], [500000, 1200], [800000, 1800], [1000000, 2100], [Infinity, 2500]] },
+  Manipur: { basis: "yearly", months: [3], slabs: [[50000, 0], [75000, 1200], [100000, 2000], [Infinity, 2500]] },
 };
 /** States/UTs that do not levy Professional Tax (no warning raised). */
 export const NO_PT_STATES = new Set([
+  // Odisha abolished PT from 1 April 2026
+  "Odisha", "Arunachal Pradesh", "Chhattisgarh",
   "Delhi", "Uttar Pradesh", "Haryana", "Rajasthan", "Himachal Pradesh", "Uttarakhand", "Goa", "Chandigarh",
   "Jammu and Kashmir", "Ladakh", "Andaman and Nicobar Islands", "Dadra and Nagar Haveli and Daman and Diu", "Lakshadweep",
 ]);
@@ -121,10 +153,34 @@ export interface LwfRule {
   employer: number;
   /** Only deducted when monthly gross exceeds this. */
   minGross?: number;
+  /** Not deducted above this monthly gross (managerial staff are usually out). */
+  maxGross?: number;
+  /** A share of gross in place of a fixed amount (Haryana: 0.2%), capped at `employee`. */
+  employeeRate?: number;
+  /** The employer pays this many times the employee's share (Haryana: twice). */
+  employerFactor?: number;
 }
+const H = [6, 12];
+const ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 export const LWF_RULES: Record<string, LwfRule> = {
-  Gujarat: { months: [6, 12], employee: 6, employer: 12 },
-  Maharashtra: { months: [6, 12], employee: 25, employer: 75, minGross: 3000 },
+  // employee + employer per period, rates as of July 2026 (SalaryBox). Confirm deposit dates and wage limits per state.
+  Gujarat: { months: H, employee: 6, employer: 12 },
+  Maharashtra: { months: H, employee: 25, employer: 75, minGross: 3000 },
+  Chhattisgarh: { months: H, employee: 15, employer: 45 },
+  Goa: { months: H, employee: 60, employer: 180 },
+  "Madhya Pradesh": { months: H, employee: 10, employer: 30 },
+  Odisha: { months: H, employee: 20, employer: 40 },
+  "West Bengal": { months: H, employee: 3, employer: 30 },
+  Delhi: { months: H, employee: 0.75, employer: 2.25 },
+  Haryana: { months: ALL, employee: 35, employer: 70, employeeRate: 0.002, employerFactor: 2 },
+  Punjab: { months: ALL, employee: 5, employer: 20 },
+  Chandigarh: { months: ALL, employee: 5, employer: 20 },
+  // shops and establishments; IT and ITES pay 100 + 100
+  Kerala: { months: ALL, employee: 50, employer: 50 },
+  "Andhra Pradesh": { months: [12], employee: 30, employer: 70 },
+  Karnataka: { months: [12], employee: 50, employer: 100 },
+  "Tamil Nadu": { months: [12], employee: 20, employer: 40 },
+  Telangana: { months: [12], employee: 2, employer: 5 },
 };
 
 // ---------------------------------------------------------------------------
@@ -250,13 +306,18 @@ export function structureFromComponents(components: MonthlyComponents, t: Salary
 // Professional Tax and LWF
 // ---------------------------------------------------------------------------
 
-export function professionalTax(state: string | null | undefined, monthlyGross: number, month1: number, gender?: string | null, R: StatutoryRules = DEFAULT_RULES): { amount: number; configured: boolean } {
+export function professionalTax(state: string | null | undefined, monthlyGross: number, month1: number, gender?: string | null, R: StatutoryRules = DEFAULT_RULES, person: PtPerson = {}): { amount: number; configured: boolean } {
   if (!state) return { amount: 0, configured: false };
   if (R.noPt.includes(state)) return { amount: 0, configured: true };
   const rule = R.pt[state];
   if (!rule) return { amount: 0, configured: false };
+  if (person.disabled || (rule.seniorAge && person.age != null && person.age >= rule.seniorAge)) return { amount: 0, configured: true };
+  // half-yearly and yearly states: only in their months, on the period's income
+  const basis = rule.basis ?? "monthly";
+  if (basis !== "monthly" && !(rule.months ?? []).includes(month1)) return { amount: 0, configured: true };
+  const income = basis === "half_yearly" ? monthlyGross * 6 : basis === "yearly" ? monthlyGross * 12 : monthlyGross;
   const slabs = gender === "female" && rule.femaleSlabs ? rule.femaleSlabs : rule.slabs;
-  const slab = slabs.find(([upTo]) => monthlyGross <= upTo) ?? slabs[slabs.length - 1]!;
+  const slab = slabs.find(([upTo]) => income <= upTo) ?? slabs[slabs.length - 1]!;
   let amount = slab[1];
   const top = slabs[slabs.length - 1]![1];
   if (month1 === 2 && rule.februaryTop && amount === top) amount = rule.februaryTop;
@@ -266,6 +327,12 @@ export function professionalTax(state: string | null | undefined, monthlyGross: 
 export function labourWelfareFund(state: string | null | undefined, monthlyGross: number, month1: number, R: StatutoryRules = DEFAULT_RULES) {
   const rule = state ? R.lwf[state] : undefined;
   if (!rule || !rule.months.includes(month1) || monthlyGross <= (rule.minGross ?? 0)) return { employee: 0, employer: 0 };
+  if (rule.maxGross && monthlyGross > rule.maxGross) return { employee: 0, employer: 0 };
+  if (rule.employeeRate) {
+    // a share of wages, capped (Haryana 0.2% up to ₹35), the employer paying a multiple of it
+    const employee = Math.round(Math.min(rule.employee, monthlyGross * rule.employeeRate) * 100) / 100;
+    return { employee, employer: Math.round(employee * (rule.employerFactor ?? 1) * 100) / 100 };
+  }
   return { employee: rule.employee, employer: rule.employer };
 }
 

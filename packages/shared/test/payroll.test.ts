@@ -53,8 +53,28 @@ describe("professional tax and LWF", () => {
     expect(professionalTax("Maharashtra", 20000, 5, "female").amount).toBe(0);
   });
   it("flags unconfigured states and knows states without PT", () => {
-    expect(professionalTax("Kerala", 50000, 5).configured).toBe(false);
+    expect(professionalTax("Meghalaya", 50000, 5).configured).toBe(false);
     expect(professionalTax("Delhi", 50000, 5)).toEqual({ amount: 0, configured: true });
+    expect(professionalTax("Odisha", 50000, 5)).toEqual({ amount: 0, configured: true }); // abolished from April 2026
+  });
+  it("charges half-yearly and yearly PT on the period's income, in the month it's due", () => {
+    expect(professionalTax("Kerala", 6000, 8).amount).toBe(300); // 36,000 a half year
+    expect(professionalTax("Kerala", 25000, 8).amount).toBe(1250); // 1.5 lakh: the top slab
+    expect(professionalTax("Kerala", 25000, 9).amount).toBe(0); // not a PT month
+    expect(professionalTax("Tamil Nadu", 6000, 9).amount).toBe(315); // 36,000 a half year
+    expect(professionalTax("Bihar", 60000, 11).amount).toBe(2000); // 7.2 lakh a year
+    expect(professionalTax("Bihar", 60000, 10).amount).toBe(0);
+  });
+  it("exempts persons with disability and seniors", () => {
+    expect(professionalTax("Gujarat", 30000, 5, null, undefined, { disabled: true }).amount).toBe(0);
+    expect(professionalTax("Gujarat", 30000, 5, null, undefined, { age: 70 }).amount).toBe(200); // no senior age set for Gujarat
+  });
+  it("works out Haryana LWF as 0.2% up to ₹35, with the employer paying double", () => {
+    expect(labourWelfareFund("Haryana", 10000, 5)).toEqual({ employee: 20, employer: 40 });
+    expect(labourWelfareFund("Haryana", 50000, 5)).toEqual({ employee: 35, employer: 70 });
+    expect(labourWelfareFund("Karnataka", 30000, 12)).toEqual({ employee: 50, employer: 100 });
+    expect(labourWelfareFund("Karnataka", 30000, 6)).toEqual({ employee: 0, employer: 0 });
+    expect(labourWelfareFund("Punjab", 30000, 3)).toEqual({ employee: 5, employer: 20 });
   });
   it("Gujarat LWF only in June and December", () => {
     expect(labourWelfareFund("Gujarat", 30000, 12)).toEqual({ employee: 6, employer: 12 });

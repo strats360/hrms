@@ -19,8 +19,24 @@ const upTo = z.union([z.null(), z.coerce.number().min(0)]);
 export const pfValue = z.object({ employeeRate: rate, employerRate: rate, epsRate: rate, edliRate: rate, adminRate: rate, wageCeiling: amount });
 export const esiValue = z.object({ employeeRate: rate, employerRate: rate, grossThreshold: amount, disabledThreshold: amount.optional() });
 const slabs = z.array(z.object({ upTo, amount })).min(1).max(20);
-export const ptValue = z.object({ none: z.boolean().default(false), slabs: slabs.optional(), femaleSlabs: slabs.nullable().optional(), februaryTop: amount.nullable().optional() }).refine((v) => v.none || (v.slabs && v.slabs.at(-1)!.upTo === null), "The last slab must be open-ended (leave its 'up to' empty)");
-export const lwfValue = z.object({ months: z.array(z.coerce.number().int().min(1).max(12)).min(1).max(12), employee: amount, employer: amount, minGross: amount.nullable().optional() });
+export const ptValue = z.object({
+  none: z.boolean().default(false),
+  slabs: slabs.optional(),
+  femaleSlabs: slabs.nullable().optional(),
+  februaryTop: amount.nullable().optional(),
+  basis: z.enum(["monthly", "half_yearly", "yearly"]).nullable().optional(),
+  months: z.array(z.coerce.number().int().min(1).max(12)).max(12).nullable().optional(),
+  seniorAge: z.coerce.number().int().min(50).max(100).nullable().optional(),
+}).refine((v) => v.none || (v.slabs && v.slabs.at(-1)!.upTo === null), "The last slab must be open-ended (leave its 'up to' empty)");
+export const lwfValue = z.object({
+  months: z.array(z.coerce.number().int().min(1).max(12)).min(1).max(12),
+  employee: amount,
+  employer: amount,
+  minGross: amount.nullable().optional(),
+  maxGross: amount.nullable().optional(),
+  employeeRate: z.coerce.number().min(0).max(0.1).nullable().optional(),
+  employerFactor: z.coerce.number().min(0).max(10).nullable().optional(),
+});
 const regimeTable = z.object({
   standardDeduction: amount,
   rebateLimit: amount,
@@ -78,12 +94,18 @@ export function applyRule(R: StatutoryRules, category: RuleCategory, scope: stri
       const rule: PtRule = { slabs: toPairs(v.slabs!, "amount") };
       if (v.femaleSlabs?.length) rule.femaleSlabs = toPairs(v.femaleSlabs, "amount");
       if (v.februaryTop) rule.februaryTop = v.februaryTop;
+      if (v.basis && v.basis !== "monthly") rule.basis = v.basis;
+      if (v.months?.length) rule.months = v.months;
+      if (v.seniorAge) rule.seniorAge = v.seniorAge;
       R.pt[scope] = rule;
     }
   } else if (category === "lwf") {
     const v = lwfValue.parse(value);
     const rule: LwfRule = { months: v.months, employee: v.employee, employer: v.employer };
     if (v.minGross) rule.minGross = v.minGross;
+    if (v.maxGross) rule.maxGross = v.maxGross;
+    if (v.employeeRate) rule.employeeRate = v.employeeRate;
+    if (v.employerFactor) rule.employerFactor = v.employerFactor;
     R.lwf[scope] = rule;
   } else if (category === "tax") {
     const v = taxValue.parse(value);
@@ -146,11 +168,11 @@ export function builtInValue(category: RuleCategory, scope?: string | null): Rec
   if (category === "pt" && scope) {
     if (DEFAULT_RULES.noPt.includes(scope)) return { none: true };
     const r = PT_RULES[scope];
-    return r ? { none: false, slabs: fromPairs(r.slabs, "amount"), femaleSlabs: r.femaleSlabs ? fromPairs(r.femaleSlabs, "amount") : null, februaryTop: r.februaryTop ?? null } : null;
+    return r ? { none: false, slabs: fromPairs(r.slabs, "amount"), femaleSlabs: r.femaleSlabs ? fromPairs(r.femaleSlabs, "amount") : null, februaryTop: r.februaryTop ?? null, basis: r.basis ?? null, months: r.months ?? null, seniorAge: r.seniorAge ?? null } : null;
   }
   if (category === "lwf" && scope) {
     const r = LWF_RULES[scope];
-    return r ? { months: r.months, employee: r.employee, employer: r.employer, minGross: r.minGross ?? null } : null;
+    return r ? { months: r.months, employee: r.employee, employer: r.employer, minGross: r.minGross ?? null, maxGross: r.maxGross ?? null, employeeRate: r.employeeRate ?? null, employerFactor: r.employerFactor ?? null } : null;
   }
   if (category === "tax" && scope) {
     const years = Object.keys(TAX_TABLES).sort();

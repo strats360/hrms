@@ -17,9 +17,9 @@ To confirm with a consultant: whether ESI contributions move to Code wages too (
 
 ## Phase B: state coverage
 
-- Professional tax for every state in the report, with yearly, half-yearly and quarterly states, and exemptions (disability, senior citizens). Odisha abolished PT from 1 Apr 2026.
-- Labour welfare fund for every state: monthly (Haryana as a % with a cap, Punjab, Chandigarh, Kerala), half-yearly and yearly in December.
-- Minimum wages by state, zone, industry and skill, revised every 1 April and 1 October, never below the central floor wage.
+- **Professional tax** ✅ for every state in the report except Meghalaya and Puducherry, where published slabs disagree (payroll flags them as not configured). Kerala and Tamil Nadu are half-yearly on the half year's income, deducted in the month it's due. Bihar, Jharkhand and Manipur are yearly on the year's income. Odisha, Arunachal Pradesh and Chhattisgarh have none. Persons with disability are exempt, and a state can set a senior citizen age. Due dates added for Andhra Pradesh, Telangana, Madhya Pradesh, Assam, Nagaland, Gujarat, Punjab and Tripura. To confirm: Assam, Mizoram, Nagaland and Tripura, where the report's summary is simpler than the state tables.
+- **Labour welfare fund** ✅ for all 16 states in the report: half-yearly in June and December, monthly (Haryana as 0.2% up to ₹35 with the employer paying double, Punjab, Chandigarh, Kerala), and yearly in December (Andhra Pradesh, Karnataka, Tamil Nadu, Telangana). Rules can exclude staff above a wage limit. Kerala uses the shops rate (IT and ITES pay ₹100 + ₹100).
+- **Minimum wages** by state, zone, industry and skill, revised every 1 April and 1 October, never below the central floor wage: next.
 
 ## Phase C: new features
 

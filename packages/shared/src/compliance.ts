@@ -32,6 +32,14 @@ const PT_DUE: Record<string, number | "same-month-end"> = {
   Maharashtra: "same-month-end",
   Karnataka: 20,
   "West Bengal": 21,
+  "Andhra Pradesh": 10,
+  Telangana: 10,
+  "Madhya Pradesh": 10,
+  Assam: 28,
+  Nagaland: 28,
+  Gujarat: 15,
+  Punjab: 15,
+  Tripura: 15,
 };
 
 /**

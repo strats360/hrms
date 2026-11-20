@@ -40,7 +40,7 @@ export function indiaStatutory(ctx: StatutoryContext): StatutoryResult {
   // PT and LWF
   let pt = 0;
   if (input.ptApplicable) {
-    const p = professionalTax(input.state, gross, month1, input.gender, R);
+    const p = professionalTax(input.state, gross, month1, input.gender, R, { disabled });
     pt = p.amount;
     if (!p.configured) warnings.push(`Professional Tax rules for ${input.state ?? "this branch"} aren't configured`);
   }
