@@ -20,6 +20,7 @@ export const canadaPack: CountryPack = {
     roundingDecimals: 2,
     amountInWords: (n) => `$${n.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} CAD`,
     taxYearStartMonth: 1,
+    payFrequencies: ["monthly", "semi_monthly", "biweekly", "weekly"],
   },
   settlement: canadaSettlement,
   publicHolidays: ontarioHolidays,

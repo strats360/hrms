@@ -4,18 +4,17 @@ import { usPayrollProfileSchema, type UsPayrollProfile } from "./profile";
 import { BRACKETS, FICA, FUTA, NO_WAGE_TAX_STATES, STANDARD_DEDUCTION, stateCode, TAX_YEAR, US_STATES } from "./rules";
 
 const cents = (n: number) => Math.round(n * 100) / 100;
-const PERIODS = 12;
 
 /**
- * Federal income tax to withhold from one monthly paycheck, the Publication 15-T percentage
+ * Federal income tax to withhold from one paycheck, the Publication 15-T percentage
  * method for a 2020 or later W-4: annualise the pay, add other income and take off deductions
  * and the standard deduction, apply the brackets, take off credits, and spread it over the year.
  * With Step 2 checked, the standard deduction and brackets are halved.
  */
-export function federalWithholding(wages: number, w4: UsPayrollProfile) {
+export function federalWithholding(wages: number, w4: UsPayrollProfile, periods = 12) {
   if (w4.exempt) return 0;
   const half = w4.multipleJobs ? 0.5 : 1;
-  const annual = wages * PERIODS + w4.otherIncome - w4.deductions - STANDARD_DEDUCTION[w4.filingStatus] * half;
+  const annual = wages * periods + w4.otherIncome - w4.deductions - STANDARD_DEDUCTION[w4.filingStatus] * half;
   let tax = 0;
   let lower = 0;
   for (const b of BRACKETS[w4.filingStatus]) {
@@ -24,7 +23,7 @@ export function federalWithholding(wages: number, w4: UsPayrollProfile) {
     lower = upper;
   }
   const yearly = Math.max(0, tax - w4.dependents);
-  return cents(yearly / PERIODS + w4.extraWithholding);
+  return cents(yearly / periods + w4.extraWithholding);
 }
 
 /**
@@ -43,13 +42,15 @@ export function usStatutory(ctx: StatutoryContext): StatutoryResult {
 
   const gross = ctx.gross;
   const k401 = cents((gross * w4.k401Percent) / 100);
-  const health = Math.min(gross, w4.preTaxHealth * ctx.factor);
+  const P = ctx.periodsPerYear;
+  // the health premium is kept as a monthly amount; spread it over the pay periods
+  const health = Math.min(gross, ((w4.preTaxHealth * 12) / P) * ctx.factor);
   // 401(k) comes off income tax wages only; Section 125 health comes off FICA wages too
   const fitWages = Math.max(0, gross - ctx.nonTaxableEarnings - k401 - health);
   const ficaWages = Math.max(0, gross - health);
   const ytd = input.ytd?.taxableGross ?? 0;
 
-  const fit = federalWithholding(fitWages, w4);
+  const fit = federalWithholding(fitWages, w4, P);
   const ssRoom = Math.max(0, FICA.socialSecurityWageBase - ytd);
   const ssWages = Math.min(ficaWages, ssRoom);
   if (ficaWages > ssRoom) warnings.push(`Social Security wage base of $${FICA.socialSecurityWageBase.toLocaleString("en-US")} reached this year`);
@@ -83,7 +84,7 @@ export function usStatutory(ctx: StatutoryContext): StatutoryResult {
     deductions,
     employer,
     tds: fit,
-    tax: { taxableIncome: fitWages * PERIODS, baseTax: fit * PERIODS, rebate: 0, surcharge: 0, cess: 0, total: fit * PERIODS, projectedAnnualGross: input.structure.gross * PERIODS, monthsLeft: 12 - Number(input.month.slice(5, 7)), annualised: true },
+    tax: { taxableIncome: fitWages * P, baseTax: fit * P, rebate: 0, surcharge: 0, cess: 0, total: fit * P, projectedAnnualGross: input.structure.gross * 12, monthsLeft: 12 - Number(input.month.slice(5, 7)), annualised: true },
     warnings,
   };
 }

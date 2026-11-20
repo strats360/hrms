@@ -20,6 +20,7 @@ export const usPack: CountryPack = {
     roundingDecimals: 2,
     amountInWords: (n) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     taxYearStartMonth: 1,
+    payFrequencies: ["monthly", "semi_monthly", "biweekly", "weekly"],
   },
   settlement: usSettlement,
   publicHolidays: usFederalHolidays,
