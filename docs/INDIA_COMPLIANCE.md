@@ -44,7 +44,8 @@ To confirm with a consultant: whether ESI contributions move to Code wages too (
 | Women's night shifts | A consent tick box on the employee (OSH Code section 43). The page lists women whose usual shift, or rostered shifts in the next 30 days, fall outside 6 am to 7 pm, and flags those without consent. |
 | Health checks from 40 | A last health check date on the employee (OSH Code section 6). The page lists everyone 40 or older and who is due. |
 | Contract labour | Compliance, Contract labour. Mark a contractor as supplying workers and keep their licence, work site, contract dates and workers. Flags: a contractor with 50 or more workers and no licence, an expired licence, workers still on an ended contract, workers under 18, daily wages below the site's minimum wage, last month's wages not confirmed paid by the 7th, and missing PF or ESI challans. Shows when you must register as a principal employer (50 or more on any day in the last year). Exports the register of contract workers. |
-| Still to build | Statutory registers and the unified annual return; DPDP privacy notice, consent log, breach workflow and retention rules. |
+| Registers and annual return | Compliance, Registers & returns. The five unified registers for any month, as Excel or CSV: Form A employees, B wages (from approved payroll), C deductions and recoveries, D the attendance muster roll, E leave. The unified annual return card gives the year's headcount by gender, average employed, joiners and leavers, man-days, wages, PF, TDS, maternity cases, POSH complaints and contract workers. |
+| Still to build | DPDP privacy notice, consent log, breach workflow and retention rules. |
 
 ## Payroll product gaps (in progress)
 

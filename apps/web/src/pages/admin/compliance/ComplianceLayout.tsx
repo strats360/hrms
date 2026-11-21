@@ -14,6 +14,7 @@ export default function ComplianceLayout() {
           { to: "/compliance/committees", label: "Committees" },
           { to: "/compliance/workplace", label: "Maternity & welfare" },
           { to: "/compliance/contract-labour", label: "Contract labour" },
+          { to: "/compliance/registers", label: "Registers & returns" },
           { to: "/compliance/rules", label: "Rules" },
         ]}
       />
