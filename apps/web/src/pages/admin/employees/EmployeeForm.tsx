@@ -147,7 +147,7 @@ export default function EmployeeForm() {
   const [ukInitial, setUkInitial] = useState<UkForm>(EMPTY_UK);
   const [us, setUs] = useState<UsForm>(EMPTY_US);
   const [usInitial, setUsInitial] = useState<UsForm>(EMPTY_US);
-  const IN_EMPTY = { disability: false, overtimeConsent: false, vpfPercent: 0, npsEmployerPercent: 0, car: "none" as "none" | "small" | "large", driver: false };
+  const IN_EMPTY = { disability: false, overtimeConsent: false, vpfPercent: 0, npsEmployerPercent: 0, car: "none" as "none" | "small" | "large", driver: false, nightShiftConsent: false, lastHealthCheckOn: "" as string | null };
   const [india, setIndia] = useState(IN_EMPTY);
   const [indiaInitial, setIndiaInitial] = useState(IN_EMPTY);
   const [ca, setCa] = useState<CaForm>(EMPTY_CA);
@@ -169,7 +169,7 @@ export default function EmployeeForm() {
       setUs(w);
       setUsInitial(w);
       const ip = (detail.data.countryProfile ?? {}) as Partial<typeof IN_EMPTY>;
-      const iv = { ...IN_EMPTY, ...ip, disability: !!ip.disability, overtimeConsent: !!ip.overtimeConsent };
+      const iv = { ...IN_EMPTY, ...ip, disability: !!ip.disability, overtimeConsent: !!ip.overtimeConsent, nightShiftConsent: !!ip.nightShiftConsent, lastHealthCheckOn: ip.lastHealthCheckOn ?? "" };
       setIndia(iv);
       setIndiaInitial(iv);
       const t = caFromProfile(detail.data.countryProfile);
@@ -237,7 +237,7 @@ export default function EmployeeForm() {
     const ukProfile = !ukChanged
       ? null
       : country === "IN"
-        ? indiaPayrollProfileSchema.safeParse(india)
+        ? indiaPayrollProfileSchema.safeParse({ ...india, lastHealthCheckOn: india.lastHealthCheckOn || null })
         : country === "GB"
         ? ukPayrollProfileSchema.safeParse(ukToProfile(uk))
         : country === "US"
@@ -484,6 +484,7 @@ export default function EmployeeForm() {
                 <Checkbox checked={form.ptApplicable} onChange={(v) => set("ptApplicable", v)} label="Professional Tax" />
                 <Checkbox checked={india.disability} onChange={(v) => setIndia((x) => ({ ...x, disability: v }))} label="Person with disability (ESI limit ₹25,000, PT exempt)" />
                 <Checkbox checked={india.overtimeConsent} onChange={(v) => setIndia((x) => ({ ...x, overtimeConsent: v }))} label="Has given written consent to overtime" />
+                {form.gender === "female" ? <Checkbox checked={india.nightShiftConsent} onChange={(v) => setIndia((x) => ({ ...x, nightShiftConsent: v }))} label="Has consented in writing to work before 6 am or after 7 pm" /> : null}
               </div>
             </Field>
             <Field label="Voluntary PF (% of PF wages)" hint="On top of the 12%">
@@ -491,6 +492,9 @@ export default function EmployeeForm() {
             </Field>
             <Field label="Employer NPS (% of basic plus DA)" hint="Deductible under 80CCD(2): up to 14% new regime, 10% old">
               <Input type="number" min={0} max={20} value={india.npsEmployerPercent || ""} onChange={(e) => setIndia((x) => ({ ...x, npsEmployerPercent: Number(e.target.value) || 0 }))} placeholder="0" />
+            </Field>
+            <Field label="Last yearly health check" hint="Free yearly check from age 40 (OSH Code)">
+              <Input type="date" value={india.lastHealthCheckOn ?? ""} onChange={(e) => setIndia((x) => ({ ...x, lastHealthCheckOn: e.target.value }))} />
             </Field>
             <Field label="Company car (perquisite)">
               <Select value={india.car} onChange={(e) => setIndia((x) => ({ ...x, car: e.target.value as typeof IN_EMPTY.car }))}>

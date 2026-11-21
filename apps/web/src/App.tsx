@@ -173,6 +173,7 @@ const router = createBrowserRouter([
               { path: "challans", element: L(() => import("@/pages/admin/compliance/Challans")) },
               { path: "rules", element: L(() => import("@/pages/admin/compliance/Rules")) },
               { path: "committees", element: L(() => import("@/pages/admin/compliance/Committees")) },
+              { path: "workplace", element: L(() => import("@/pages/admin/compliance/Workplace")) },
             ],
           },
           {

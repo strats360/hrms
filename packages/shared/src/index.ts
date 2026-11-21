@@ -41,3 +41,4 @@ export * from "./fbp";
 export * from "./journal";
 export * from "./webhooks";
 export * from "./committees";
+export * from "./maternity";

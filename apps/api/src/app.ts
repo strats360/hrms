@@ -27,6 +27,7 @@ import { essRoutes } from "./routes/ess";
 import { essFbpRoutes, fbpAdminRoutes } from "./routes/fbp";
 import { journalRoutes } from "./routes/journal";
 import { committeeAdminRoutes, essCommitteeRoutes } from "./routes/committees";
+import { workplaceRoutes } from "./routes/workplace";
 import { integrationRoutes, v1Routes } from "./routes/integrations";
 import { essExitRoutes, exitRoutes } from "./routes/exits";
 import { attendanceImportRoutes, devicePunchRoutes } from "./routes/attendance-devices";
@@ -235,6 +236,7 @@ export function buildApp() {
   t.route("/admin/payroll", journalRoutes);
   t.route("/admin/integrations", integrationRoutes);
   t.route("/admin/compliance/committees", committeeAdminRoutes);
+  t.route("/admin/compliance/workplace", workplaceRoutes);
   t.route("/admin/payroll", payrollRoutes);
   t.route("/admin/compliance", complianceRoutes);
   t.route("/admin/tds", tdsRoutes);

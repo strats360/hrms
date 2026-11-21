@@ -12,6 +12,7 @@ export default function ComplianceLayout() {
           { to: "/compliance/employee", label: "Employee-wise" },
           { to: "/compliance/challans", label: "Challans & filings" },
           { to: "/compliance/committees", label: "Committees" },
+          { to: "/compliance/workplace", label: "Maternity & welfare" },
           { to: "/compliance/rules", label: "Rules" },
         ]}
       />

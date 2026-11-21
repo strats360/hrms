@@ -50,4 +50,8 @@ export const indiaPayrollProfileSchema = z.object({
   /** A company car used partly for personal travel: small is up to 1.6 litres or electric. */
   car: z.enum(["none", "small", "large"]).default("none"),
   driver: z.boolean().default(false),
+  /** A woman's written consent to work before 6 am or after 7 pm (OSH Code section 43). */
+  nightShiftConsent: z.boolean().default(false),
+  /** The last free yearly health check, for employees 40 or older (OSH Code section 6). */
+  lastHealthCheckOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
 });
