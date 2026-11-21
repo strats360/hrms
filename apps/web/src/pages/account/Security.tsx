@@ -1,3 +1,4 @@
+import { MyPrivacyCard } from "@/components/account/MyPrivacy";
 import { useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -64,6 +65,7 @@ export default function Security() {
         {needsTwoFactor ? null : <MyNotificationsCard />}
         <PasswordCard />
         <SessionsCard />
+        {needsTwoFactor ? null : <MyPrivacyCard />}
         {needsTwoFactor ? null : <MyDataCard />}
       </main>
     </div>

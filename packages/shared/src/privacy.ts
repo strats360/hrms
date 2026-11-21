@@ -15,13 +15,16 @@ export interface PrivacySettings {
   officerEmail: string | null;
   /** HR should answer an erasure request within this many days. */
   responseDays: number;
+  /** Keep a former employee's data this many years after they leave, then erase it. */
+  retentionYears?: number;
 }
-export const DEFAULT_PRIVACY: PrivacySettings = { officerName: null, officerEmail: null, responseDays: 30 };
+export const DEFAULT_PRIVACY: PrivacySettings = { officerName: null, officerEmail: null, responseDays: 30, retentionYears: 8 };
 
 export const privacySettingsSchema = z.object({
   officerName: z.string().trim().max(120).nullable(),
   officerEmail: z.email().nullable(),
   responseDays: z.number().int().min(1).max(90),
+  retentionYears: z.number().int().min(3).max(30).optional(),
 });
 export const erasureRequestSchema = z.object({ reason: z.string().trim().max(1000).default("") });
 export const privacyDecisionSchema = z.object({ note: z.string().trim().min(3, "Say why, so the employee knows").max(1000) });

@@ -1,3 +1,4 @@
+import { DpdpAdmin } from "@/components/privacy/DpdpAdmin";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -116,6 +117,7 @@ export default function DataRequests() {
         <DataTable data={q.data?.rows ?? []} columns={columns} getRowId={(r) => r.id} loading={q.isFetching} onRowClick={(r) => nav(`/employees/${r.employeeId}`)} storageKey="privacy" empty="No data requests yet." />
       </TableCard>
       {action && q.data ? <DecideDialog action={action} data={q.data} onClose={() => setAction(null)} /> : null}
+      <DpdpAdmin />
     </div>
   );
 }
@@ -211,6 +213,7 @@ function SettingsButton({ settings }: { settings: PrivacySettings }) {
             <Field label="Grievance officer"><Input value={s.officerName ?? ""} onChange={(e) => setS({ ...s, officerName: e.target.value })} placeholder="Name" /></Field>
             <Field label="Their email"><Input type="email" value={s.officerEmail ?? ""} onChange={(e) => setS({ ...s, officerEmail: e.target.value })} placeholder="privacy@company.com" /></Field>
             <Field label="Answer requests within (days)"><Input type="number" min={1} max={90} value={s.responseDays} onChange={(e) => setS({ ...s, responseDays: Number(e.target.value) })} /></Field>
+            <Field label="Keep former employees' data for (years)" hint="Then erase it"><Input type="number" min={3} max={30} value={s.retentionYears ?? 8} onChange={(e) => setS({ ...s, retentionYears: Number(e.target.value) })} /></Field>
           </div>
         </Dialog>
       ) : null}

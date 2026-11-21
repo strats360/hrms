@@ -30,6 +30,7 @@ import { committeeAdminRoutes, essCommitteeRoutes } from "./routes/committees";
 import { workplaceRoutes } from "./routes/workplace";
 import { contractLabourRoutes } from "./routes/contract-labour";
 import { registerRoutes } from "./routes/registers";
+import { dpdpAdminRoutes, essDpdpRoutes } from "./routes/dpdp";
 import { integrationRoutes, v1Routes } from "./routes/integrations";
 import { essExitRoutes, exitRoutes } from "./routes/exits";
 import { attendanceImportRoutes, devicePunchRoutes } from "./routes/attendance-devices";
@@ -194,6 +195,7 @@ export function buildApp() {
   t.route("/ess/loans", essLoanRoutes);
   t.route("/ess/roster", essRosterRoutes);
   t.route("/ess/privacy", essPrivacyRoutes);
+  t.route("/ess/dpdp", essDpdpRoutes);
   t.route("/ess/reviews", essPerformanceRoutes);
   t.route("/ess/interviews", myInterviewRoutes);
   t.route("/ess/assets", essAssetRoutes);
@@ -210,6 +212,7 @@ export function buildApp() {
   t.route("/admin/letters", letterRoutes);
   t.route("/admin/probation", probationRoutes);
   t.route("/admin/privacy", privacyRoutes);
+  t.route("/admin/dpdp", dpdpAdminRoutes);
   t.route("/admin/performance", performanceRoutes);
   t.route("/admin/recruitment", recruitmentRoutes);
   t.route("/admin/assets", assetRoutes);

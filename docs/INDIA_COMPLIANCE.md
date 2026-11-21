@@ -34,7 +34,7 @@ To confirm with a consultant: whether ESI contributions move to Code wages too (
 | Headcount thresholds | The compliance overview shows, for each entity and state, employees and workers (managers earning over ₹18,000 left out) and the obligations they switch on, including the ones within 20% of a threshold. |
 | Calendar | Adds the POSH annual report (31 Jan), unified annual return, minimum wage revisions and ESI periods (1 Apr, 1 Oct) and statutory bonus (30 Nov). |
 
-## Phase D: new modules (in progress)
+## Phase D: new modules ✅
 
 | Module | What Saralix does now |
 | --- | --- |
@@ -45,7 +45,9 @@ To confirm with a consultant: whether ESI contributions move to Code wages too (
 | Health checks from 40 | A last health check date on the employee (OSH Code section 6). The page lists everyone 40 or older and who is due. |
 | Contract labour | Compliance, Contract labour. Mark a contractor as supplying workers and keep their licence, work site, contract dates and workers. Flags: a contractor with 50 or more workers and no licence, an expired licence, workers still on an ended contract, workers under 18, daily wages below the site's minimum wage, last month's wages not confirmed paid by the 7th, and missing PF or ESI challans. Shows when you must register as a principal employer (50 or more on any day in the last year). Exports the register of contract workers. |
 | Registers and annual return | Compliance, Registers & returns. The five unified registers for any month, as Excel or CSV: Form A employees, B wages (from approved payroll), C deductions and recoveries, D the attendance muster roll, E leave. The unified annual return card gives the year's headcount by gender, average employed, joiners and leavers, man-days, wages, PF, TDS, maternity cases, POSH complaints and contract workers. |
-| Still to build | DPDP privacy notice, consent log, breach workflow and retention rules. |
+| DPDP privacy notice and consents | Employees, Data requests. HR publishes a versioned privacy notice (a plain starting text is provided) and sees how many have read it. Employees read and acknowledge it on their account page, and give or withdraw consent for the optional uses: a selfie and location on punches, and their photo and birthday shown to colleagues. Every acknowledgement and change is kept in a consent log. HR is warned when a punch policy needs a consent some employees have withdrawn. Running employment itself is a legitimate use and doesn't need consent. |
+| Breaches | A breach register: when it was found, what and how many people were affected, when the Data Protection Board was told, when the full report went (due within 72 hours) and when the people affected were told, with what's still to do. |
+| Retention | A setting for how many years to keep a former employee's data (8 by default), and a list of those past it, to erase with the existing erasure flow after telling them 48 hours before. |
 
 ## Payroll product gaps (in progress)
 
