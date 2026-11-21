@@ -43,7 +43,8 @@ To confirm with a consultant: whether ESI contributions move to Code wages too (
 | Maternity benefit | Compliance, Maternity & welfare. Works out eligibility (80 days in the 12 months before, from attendance or payroll paid days), weeks (26 for a first or second child with up to 8 before the due date, 12 from the third or for adoption and surrogacy, 6 after a miscarriage, 2 after a tubectomy), the average daily wage from the last three paid months, and who pays (ESIC for women covered by ESI). Granting it adds approved maternity leave, split at the year end: paid leave, or unpaid when ESIC pays. Shows the medical bonus (₹3,500 when no free care is given). |
 | Women's night shifts | A consent tick box on the employee (OSH Code section 43). The page lists women whose usual shift, or rostered shifts in the next 30 days, fall outside 6 am to 7 pm, and flags those without consent. |
 | Health checks from 40 | A last health check date on the employee (OSH Code section 6). The page lists everyone 40 or older and who is due. |
-| Still to build | Contract labour; statutory registers and the unified annual return; DPDP privacy notice, consent log, breach workflow and retention rules. |
+| Contract labour | Compliance, Contract labour. Mark a contractor as supplying workers and keep their licence, work site, contract dates and workers. Flags: a contractor with 50 or more workers and no licence, an expired licence, workers still on an ended contract, workers under 18, daily wages below the site's minimum wage, last month's wages not confirmed paid by the 7th, and missing PF or ESI challans. Shows when you must register as a principal employer (50 or more on any day in the last year). Exports the register of contract workers. |
+| Still to build | Statutory registers and the unified annual return; DPDP privacy notice, consent log, breach workflow and retention rules. |
 
 ## Payroll product gaps (in progress)
 

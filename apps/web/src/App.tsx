@@ -174,6 +174,7 @@ const router = createBrowserRouter([
               { path: "rules", element: L(() => import("@/pages/admin/compliance/Rules")) },
               { path: "committees", element: L(() => import("@/pages/admin/compliance/Committees")) },
               { path: "workplace", element: L(() => import("@/pages/admin/compliance/Workplace")) },
+              { path: "contract-labour", element: L(() => import("@/pages/admin/compliance/ContractLabour")) },
             ],
           },
           {
