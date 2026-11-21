@@ -65,6 +65,8 @@ const router = createBrowserRouter([
           { path: "payslips", element: L(() => import("@/pages/ess/Payslips")) },
           { path: "tax", element: L(() => import("@/pages/ess/Tax")) },
           { path: "claims", element: L(() => import("@/pages/ess/Claims")) },
+          { path: "committees", element: L(() => import("@/pages/ess/Committees")) },
+          { path: "committees/:id", element: L(() => import("@/pages/ess/Committees")) },
           { path: "reviews", element: L(() => import("@/pages/ess/Reviews")) },
           { path: "interviews", element: L(() => import("@/pages/ess/Interviews")) },
           { path: "timesheets", element: L(() => import("@/pages/ess/Timesheets")) },
@@ -170,6 +172,7 @@ const router = createBrowserRouter([
               { path: "employee", element: L(() => import("@/pages/admin/compliance/EmployeeWise")) },
               { path: "challans", element: L(() => import("@/pages/admin/compliance/Challans")) },
               { path: "rules", element: L(() => import("@/pages/admin/compliance/Rules")) },
+              { path: "committees", element: L(() => import("@/pages/admin/compliance/Committees")) },
             ],
           },
           {

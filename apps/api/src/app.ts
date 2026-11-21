@@ -26,6 +26,7 @@ import { dashboardRoutes } from "./routes/dashboard";
 import { essRoutes } from "./routes/ess";
 import { essFbpRoutes, fbpAdminRoutes } from "./routes/fbp";
 import { journalRoutes } from "./routes/journal";
+import { committeeAdminRoutes, essCommitteeRoutes } from "./routes/committees";
 import { integrationRoutes, v1Routes } from "./routes/integrations";
 import { essExitRoutes, exitRoutes } from "./routes/exits";
 import { attendanceImportRoutes, devicePunchRoutes } from "./routes/attendance-devices";
@@ -183,6 +184,7 @@ export function buildApp() {
   t.route("/ess/tax", essTaxRoutes);
   t.route("/ess/claims", essClaimRoutes);
   t.route("/ess/fbp", essFbpRoutes);
+  t.route("/ess/committees", essCommitteeRoutes);
   t.route("/notifications/mine", myNotificationRoutes);
   t.route("/photos", photoIndexRoutes);
   t.route("/ess/photo", essPhotoRoutes);
@@ -232,6 +234,7 @@ export function buildApp() {
   t.route("/admin/payroll/fbp", fbpAdminRoutes);
   t.route("/admin/payroll", journalRoutes);
   t.route("/admin/integrations", integrationRoutes);
+  t.route("/admin/compliance/committees", committeeAdminRoutes);
   t.route("/admin/payroll", payrollRoutes);
   t.route("/admin/compliance", complianceRoutes);
   t.route("/admin/tds", tdsRoutes);

@@ -40,3 +40,4 @@ export * from "./custom-fields";
 export * from "./fbp";
 export * from "./journal";
 export * from "./webhooks";
+export * from "./committees";

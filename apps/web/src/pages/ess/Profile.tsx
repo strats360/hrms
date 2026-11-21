@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { IdentitiesCard } from "@/components/employees/IdentitiesCard";
 import { useEffect, useRef, useState } from "react";
 import { PhotoEditor } from "@/components/account/PhotoEditor";
@@ -107,6 +108,11 @@ export default function EssProfilePage() {
           {(p.customFields ?? []).map((x) => <KV key={x.label} label={x.label}>{x.value}</KV>)}
         </div>
       </Card>
+
+      <Link to="/me/committees" className="card flex-row items-center justify-between !gap-3 no-underline md:hidden">
+        <span><b className="font-semibold">Raise a concern</b> <span className="text-muted text-[13px]">Confidential, to your company's committees</span></span>
+        <span aria-hidden>›</span>
+      </Link>
 
       <Card className="!gap-4">
         <CardHeader title="Bank & tax" />

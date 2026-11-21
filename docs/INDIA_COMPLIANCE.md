@@ -34,9 +34,13 @@ To confirm with a consultant: whether ESI contributions move to Code wages too (
 | Headcount thresholds | The compliance overview shows, for each entity and state, employees and workers (managers earning over ₹18,000 left out) and the obligations they switch on, including the ones within 20% of a threshold. |
 | Calendar | Adds the POSH annual report (31 Jan), unified annual return, minimum wage revisions and ESI periods (1 Apr, 1 Oct) and statutory bonus (30 Nov). |
 
-## Phase D: new modules
+## Phase D: new modules (in progress)
 
-POSH; Grievance Redressal Committee; maternity eligibility and benefits; contract labour; women's night shift consent; health checks from 40; statutory registers and the unified annual return; DPDP privacy notice, consent log, breach workflow and retention rules.
+| Module | What Saralix does now |
+| --- | --- |
+| POSH Internal Committee | Compliance, Committees. HR constitutes it and Saralix checks it against section 4: a senior woman presiding, two employee members, an external member, at least half women, a term of three years at most. Employees raise a complaint from self-service (Concerns). Only the committee's members and the person who filed can read it; HR sees counts. Descriptions, notes and outcomes are encrypted, emails carry no details, and the audit log records only that a case exists. Deadlines: inquiry in 90 days, report in 10 days, employer action in 60 days, with a flag for complaints filed more than three months after the incident. The annual report for the District Officer (received, disposed, pending, pending over 90 days, awareness sessions) comes from the cases. |
+| Grievance Redressal Committee | Same module: equal employer and worker members, at most 10, a chairperson, women included. Grievances are decided in 30 days, with the appeal to the employer noted. |
+| Still to build | Maternity eligibility and benefits; contract labour; women's night shift consent; health checks from 40; statutory registers and the unified annual return; DPDP privacy notice, consent log, breach workflow and retention rules. |
 
 ## Payroll product gaps (in progress)
 

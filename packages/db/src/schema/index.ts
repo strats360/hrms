@@ -23,3 +23,4 @@ export * from "./helpdesk";
 export * from "./contractors";
 export * from "./fbp";
 export * from "./integrations";
+export * from "./committees";

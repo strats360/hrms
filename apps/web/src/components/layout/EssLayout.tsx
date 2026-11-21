@@ -22,6 +22,7 @@ const TABS = [
   // the phone tab bar has no room; phones reach reviews from Home
   { to: "/me/reviews", label: "Reviews", icon: Target, feature: "module.performance", phone: false },
   { to: "/me/helpdesk", label: "Help", icon: LifeBuoy, feature: "module.helpdesk", phone: false },
+  { to: "/me/committees", label: "Concerns", icon: ShieldCheck, phone: false },
   { to: "/me/profile", label: "Profile", icon: User },
 ];
 
